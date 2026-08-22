@@ -1,13 +1,19 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f6f7fb;
-  --foreground: #17182b;
+  --background: #f6f8fc;
+  --foreground: #0d1226;
   --surface: #ffffff;
-  --border: #e4e6f0;
-  --primary: #5b4bfb;
-  --primary-hover: #4a3cf0;
-  --primary-soft: #eeecff;
+  --border: #e3e7f0;
+  --muted: #64708a;
+
+  /* Brand — extracted from valuebasedbidding.com */
+  --primary: #2a5cff;
+  --primary-hover: #1c46e0;
+  --primary-soft: #eaf0ff;
+  --navy: #0a0e1e;
+  --navy-soft: #131a33;
+
   --accent: #10b981;
   --warn: #f59e0b;
   --danger: #ef4444;
@@ -18,9 +24,12 @@
   --color-foreground: var(--foreground);
   --color-surface: var(--surface);
   --color-border: var(--border);
+  --color-muted: var(--muted);
   --color-primary: var(--primary);
   --color-primary-hover: var(--primary-hover);
   --color-primary-soft: var(--primary-soft);
+  --color-navy: var(--navy);
+  --color-navy-soft: var(--navy-soft);
   --color-accent: var(--accent);
   --color-warn: var(--warn);
   --color-danger: var(--danger);
@@ -36,20 +45,27 @@ body {
   .card {
     background: var(--surface);
     border: 1px solid var(--border);
-    border-radius: 1rem;
-    box-shadow: 0 1px 2px rgba(23, 24, 43, 0.04);
+    border-radius: 1.1rem;
+    box-shadow: 0 1px 2px rgba(10, 14, 30, 0.04);
+    transition: transform 180ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 180ms ease, border-color 180ms ease;
+  }
+
+  .card-hover:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 16px 32px -12px rgba(10, 14, 30, 0.16);
+    border-color: rgba(42, 92, 255, 0.35);
   }
 
   .btn {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 0.5rem;
-    border-radius: 0.65rem;
-    padding: 0.6rem 1.1rem;
+    gap: 0.6rem;
+    border-radius: 999px;
+    padding: 0.65rem 1.3rem;
     font-weight: 600;
     font-size: 0.875rem;
-    transition: all 120ms ease;
+    transition: transform 150ms ease, box-shadow 150ms ease, background 150ms ease, color 150ms ease, border-color 150ms ease;
     white-space: nowrap;
   }
 
@@ -59,12 +75,14 @@ body {
   }
 
   .btn-primary {
-    background: var(--primary);
+    background: linear-gradient(135deg, var(--primary), #1947c7);
     color: white;
+    box-shadow: 0 8px 20px -8px rgba(42, 92, 255, 0.55);
   }
 
   .btn-primary:not(:disabled):hover {
-    background: var(--primary-hover);
+    transform: translateY(-1px);
+    box-shadow: 0 12px 24px -8px rgba(42, 92, 255, 0.6);
   }
 
   .btn-secondary {
@@ -76,22 +94,34 @@ body {
   .btn-secondary:not(:disabled):hover {
     border-color: var(--primary);
     color: var(--primary);
+    transform: translateY(-1px);
   }
 
   .btn-ghost {
     background: transparent;
-    color: #6b6d85;
+    color: var(--muted);
+    border-radius: 0.65rem;
   }
 
   .btn-ghost:not(:disabled):hover {
-    background: #eceeF7;
+    background: #eef1f8;
     color: var(--foreground);
+  }
+
+  .btn-navy {
+    background: linear-gradient(135deg, var(--navy-soft), var(--navy));
+    color: white;
+  }
+
+  .btn-navy:not(:disabled):hover {
+    transform: translateY(-1px);
+    box-shadow: 0 12px 24px -10px rgba(10, 14, 30, 0.5);
   }
 
   .input {
     width: 100%;
     border: 1px solid var(--border);
-    border-radius: 0.55rem;
+    border-radius: 0.6rem;
     padding: 0.5rem 0.7rem;
     font-size: 0.875rem;
     background: var(--surface);
@@ -107,9 +137,41 @@ body {
   .label {
     font-size: 0.75rem;
     font-weight: 600;
-    color: #6b6d85;
+    color: var(--muted);
     text-transform: uppercase;
     letter-spacing: 0.04em;
+  }
+
+  .gradient-hero {
+    background:
+      radial-gradient(60% 60% at 15% 0%, rgba(42, 92, 255, 0.10) 0%, rgba(42, 92, 255, 0) 60%),
+      radial-gradient(50% 50% at 90% 10%, rgba(42, 92, 255, 0.08) 0%, rgba(42, 92, 255, 0) 60%);
+  }
+
+  .gradient-navy {
+    background: linear-gradient(135deg, var(--navy) 0%, var(--navy-soft) 55%, #1b2a5e 100%);
+  }
+
+  .skeleton {
+    position: relative;
+    overflow: hidden;
+    background: #edeff6;
+    border-radius: 0.5rem;
+  }
+
+  .skeleton::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.7), transparent);
+    animation: shimmer 1.4s infinite;
+  }
+}
+
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
   }
 }
 
@@ -126,4 +188,19 @@ body {
 
 .animate-block-enter {
   animation: block-enter 200ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes page-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-page-in {
+  animation: page-in 260ms cubic-bezier(0.16, 1, 0.3, 1);
 }

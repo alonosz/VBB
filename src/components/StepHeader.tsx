@@ -23,11 +23,11 @@ export function StepHeader({ current }: { current: StepKey }) {
     <header className="sticky top-0 z-20 border-b border-[var(--border)] bg-white/80 backdrop-blur-md">
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-6 px-6 py-3">
         <Link href="/" className="flex items-center gap-2 shrink-0">
-          <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[var(--primary)] text-sm font-bold text-white">
+          <span className="gradient-navy flex h-7 w-7 items-center justify-center rounded-lg text-sm font-bold text-white">
             V
           </span>
           <span className="text-sm font-semibold tracking-tight">
-            Value Bidding Builder
+            ValueBasedBidding
           </span>
         </Link>
 

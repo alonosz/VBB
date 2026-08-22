@@ -22,6 +22,7 @@ import { WeightSummaryBar } from "@/components/WeightSummaryBar";
 import { LivePreviewPanel } from "@/components/LivePreviewPanel";
 import { TemplateGallery } from "@/components/TemplateGallery";
 import { createDefaultBlock, RULE_TYPE_META } from "@/lib/blockDefaults";
+import { ArrowIcon } from "@/components/ArrowIcon";
 import { TEMPLATES } from "@/lib/templates";
 import type { ModelConfig, RuleBlock, RuleType } from "@/lib/types";
 import { MODEL_FORMAT_VERSION } from "@/lib/types";
@@ -124,7 +125,7 @@ export default function BuildPage() {
   const hasEnabledBlocks = model.blocks.some((b) => b.enabled);
 
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="animate-page-in flex min-h-screen flex-col">
       <StepHeader current="build" />
       <main className="mx-auto w-full max-w-6xl flex-1 px-6 py-10">
         <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
@@ -222,7 +223,7 @@ export default function BuildPage() {
                   hasEnabledBlocks ? undefined : "Add at least one rule block first"
                 }
               >
-                Continue to summary →
+                Continue to summary <ArrowIcon />
               </button>
             </div>
           </div>

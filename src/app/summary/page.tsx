@@ -7,6 +7,7 @@ import { StepHeader } from "@/components/StepHeader";
 import { buildSummaryLines, composeSummarySentence, RULE_TYPE_META } from "@/lib/summary";
 import { downloadTextFile } from "@/lib/csv";
 import { modelFileName, serializeModel } from "@/lib/modelIO";
+import { ArrowIcon } from "@/components/ArrowIcon";
 
 export default function SummaryPage() {
   const router = useRouter();
@@ -41,7 +42,7 @@ export default function SummaryPage() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="animate-page-in flex min-h-screen flex-col">
       <StepHeader current="summary" />
       <main className="mx-auto w-full max-w-3xl flex-1 px-6 py-10">
         <h1 className="text-2xl font-bold tracking-tight">Model summary</h1>
@@ -110,7 +111,7 @@ export default function SummaryPage() {
             }}
             className="btn btn-primary"
           >
-            View scored results →
+            View scored results <ArrowIcon />
           </button>
         </div>
       </main>

@@ -8,6 +8,7 @@ import { FileDropzone } from "@/components/FileDropzone";
 import { DataTable } from "@/components/DataTable";
 import { CsvParseError, parseCsvFile } from "@/lib/csv";
 import type { MatchType } from "@/lib/types";
+import { ArrowIcon } from "@/components/ArrowIcon";
 
 function guessMatchColumn(headers: string[]): { column: string; type: MatchType } | null {
   const lower = headers.map((h) => h.toLowerCase());
@@ -54,7 +55,7 @@ export default function UploadPage() {
   }, [csvData, matchConfig.column]);
 
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="animate-page-in flex min-h-screen flex-col">
       <StepHeader current="upload" />
       <main className="mx-auto w-full max-w-5xl flex-1 px-6 py-10">
         <div className="mb-8">
@@ -180,7 +181,7 @@ export default function UploadPage() {
                 onClick={() => router.push("/build")}
                 className="btn btn-primary"
               >
-                Continue to model builder →
+                Continue to model builder <ArrowIcon />
               </button>
             </div>
           </div>

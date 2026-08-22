@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAppState } from "@/context/AppStateContext";
 import { parseModelFile, ModelParseError } from "@/lib/modelIO";
+import { ArrowIcon } from "@/components/ArrowIcon";
 
 export default function LandingPage() {
   const router = useRouter();
@@ -34,16 +35,16 @@ export default function LandingPage() {
   }
 
   return (
-    <main className="flex flex-1 flex-col">
+    <main className="gradient-hero animate-page-in flex flex-1 flex-col">
       <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col items-center justify-center px-6 py-16 text-center">
-        <span className="mb-4 inline-flex items-center gap-1.5 rounded-full border border-[var(--border)] bg-white px-3 py-1 text-xs font-medium text-[#6b6d85]">
+        <span className="mb-4 inline-flex items-center gap-1.5 rounded-full border border-[var(--border)] bg-white px-3 py-1 text-xs font-medium text-[var(--muted)]">
           <span className="h-1.5 w-1.5 rounded-full bg-[var(--accent)]" />
           No code. No data science team. No live integrations required.
         </span>
         <h1 className="max-w-3xl text-4xl font-bold tracking-tight text-balance sm:text-5xl">
-          Build a value-based bidding model from your own conversion data
+          Build a <span className="text-[var(--primary)]">value-based bidding</span> model from your own conversion data
         </h1>
-        <p className="mt-4 max-w-2xl text-base text-[#6b6d85] sm:text-lg">
+        <p className="mt-4 max-w-2xl text-base text-[var(--muted)] sm:text-lg">
           Turn historical leads and outcomes into a reusable scoring model —
           visually, in minutes. Export ad-platform-ready conversion values
           whenever you have new data, without touching code.
@@ -53,7 +54,7 @@ export default function LandingPage() {
           <button
             type="button"
             onClick={() => router.push("/upload")}
-            className="card group flex flex-col items-start gap-3 p-6 text-left transition-all hover:-translate-y-0.5 hover:shadow-lg hover:border-[var(--primary)]"
+            className="card card-hover group flex flex-col items-start gap-3 p-6 text-left"
           >
             <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--primary-soft)] text-lg">
               🧩
@@ -61,12 +62,12 @@ export default function LandingPage() {
             <span className="text-base font-semibold">
               Build a lead scoring model
             </span>
-            <span className="text-sm text-[#6b6d85]">
+            <span className="text-sm text-[var(--muted)]">
               Start fresh: upload sample data and stack scoring rules
               visually to build a new model from scratch.
             </span>
-            <span className="mt-auto text-sm font-semibold text-[var(--primary)] opacity-0 transition-opacity group-hover:opacity-100">
-              Start building →
+            <span className="mt-auto flex items-center gap-2 text-sm font-semibold text-[var(--primary)] opacity-0 transition-opacity group-hover:opacity-100">
+              Start building <ArrowIcon variant="onLight" />
             </span>
           </button>
 
@@ -74,7 +75,7 @@ export default function LandingPage() {
             type="button"
             disabled={loading}
             onClick={() => fileInputRef.current?.click()}
-            className="card group flex flex-col items-start gap-3 p-6 text-left transition-all hover:-translate-y-0.5 hover:shadow-lg hover:border-[var(--primary)] disabled:opacity-60"
+            className="card card-hover group flex flex-col items-start gap-3 p-6 text-left disabled:opacity-60"
           >
             <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--primary-soft)] text-lg">
               📂
@@ -82,12 +83,12 @@ export default function LandingPage() {
             <span className="text-base font-semibold">
               Load a saved model
             </span>
-            <span className="text-sm text-[#6b6d85]">
+            <span className="text-sm text-[var(--muted)]">
               Re-use a model you exported earlier. Upload its .json file,
               then score a fresh batch of data with it.
             </span>
-            <span className="mt-auto text-sm font-semibold text-[var(--primary)] opacity-0 transition-opacity group-hover:opacity-100">
-              {loading ? "Loading…" : "Choose file →"}
+            <span className="mt-auto flex items-center gap-2 text-sm font-semibold text-[var(--primary)] opacity-0 transition-opacity group-hover:opacity-100">
+              {loading ? "Loading…" : "Choose file"} <ArrowIcon variant="onLight" />
             </span>
           </button>
           <input

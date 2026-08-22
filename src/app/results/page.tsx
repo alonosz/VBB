@@ -7,6 +7,7 @@ import { StepHeader } from "@/components/StepHeader";
 import { TierBadge } from "@/components/TierBadge";
 import { Histogram } from "@/components/Histogram";
 import { computeHistogram, computeModelScores } from "@/lib/scoring";
+import { ArrowIcon } from "@/components/ArrowIcon";
 
 const PAGE_SIZE = 50;
 
@@ -71,7 +72,7 @@ export default function ResultsPage() {
     included.length ? `${Math.round((n / included.length) * 100)}%` : "0%";
 
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="animate-page-in flex min-h-screen flex-col">
       <StepHeader current="results" />
       <main className="mx-auto w-full max-w-6xl flex-1 px-6 py-10">
         <h1 className="text-2xl font-bold tracking-tight">Scored results</h1>
@@ -228,7 +229,7 @@ export default function ResultsPage() {
             ← Back to summary
           </button>
           <button type="button" onClick={() => router.push("/export")} className="btn btn-primary">
-            Continue to export →
+            Continue to export <ArrowIcon />
           </button>
         </div>
       </main>
