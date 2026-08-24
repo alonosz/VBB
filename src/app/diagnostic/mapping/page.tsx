@@ -72,7 +72,7 @@ function IssueCard({ issue }: { issue: FileIssue }) {
 
 export default function MappingPage() {
   const router = useRouter();
-  const { file, fields, setFields, issues, currency, setCurrency } = useDiagnostic();
+  const { file, fields, setFields, issues, currency, setCurrency, stageTiming } = useDiagnostic();
 
   useEffect(() => {
     if (!file) router.replace("/diagnostic/upload");
@@ -82,8 +82,8 @@ export default function MappingPage() {
 
   const preview = useMemo(() => {
     if (!file) return { deals: [], excluded: [] };
-    return rowsToDeals({ rows: file.rows, fields, currency });
-  }, [file, fields, currency]);
+    return rowsToDeals({ rows: file.rows, fields, currency, stageTiming });
+  }, [file, fields, currency, stageTiming]);
 
   if (!file) return null;
 

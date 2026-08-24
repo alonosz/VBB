@@ -1,20 +1,34 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useDiagnostic } from "@/context/DiagnosticContext";
 import { Stepper } from "@/components/diagnostic/Stepper";
+import { ArrowIcon } from "@/components/ArrowIcon";
 import { rowsToDeals } from "@/lib/mapping/toDeals";
 import { runDiagnostic } from "@/lib/analysis";
+import { buildComparisons } from "@/lib/analysis/statedVsActual";
+import { buildCohortValueCsv, downloadCsv } from "@/lib/export/googleAds";
+import {
+  CohortValueSection,
+  CycleSection,
+  DataQualitySection,
+  DomainSection,
+  SectionHead,
+  ShadowRoasSection,
+  SourceEconomicsSection,
+  StatedVsActual,
+  TrackingGapSection,
+  ValueSpreadSection,
+  VerdictBanner,
+  money,
+} from "@/components/report/sections";
 
-/**
- * Placeholder report. The full layout (shadow ROAS, stated-vs-actual, cohort
- * table, exports) lands next; this renders the computed result so the whole
- * pipeline is verifiable end to end.
- */
 export default function ReportPage() {
   const router = useRouter();
-  const { file, fields, currency, businessContext } = useDiagnostic();
+  const { file, fields, currency, businessContext, stageTiming } = useDiagnostic();
+  const [conversionName, setConversionName] = useState("VBB Lead Value");
+  const [downloaded, setDownloaded] = useState(false);
 
   useEffect(() => {
     if (!file) router.replace("/diagnostic/upload");
@@ -22,107 +36,163 @@ export default function ReportPage() {
 
   const result = useMemo(() => {
     if (!file) return null;
-    const { deals, excluded } = rowsToDeals({ rows: file.rows, fields, currency });
+    const { deals, excluded } = rowsToDeals({ rows: file.rows, fields, currency, stageTiming });
     return runDiagnostic({
       deals,
       excluded,
       businessContext,
       currencyCode: currency.reportingCurrency,
     });
-  }, [file, fields, currency, businessContext]);
+  }, [file, fields, currency, businessContext, stageTiming]);
+
+  const comparisons = useMemo(() => {
+    if (!result) return [];
+    return buildComparisons(
+      businessContext,
+      result.cycle,
+      result.volume,
+      result.sources,
+      result.cohortValues,
+      result.icpFit
+    ).comparisons;
+  }, [result, businessContext]);
 
   if (!file || !result) return null;
 
-  const v = result.verdict;
+  const cur = result.currencyCode;
+
+  function handleDownload() {
+    const csv = buildCohortValueCsv({
+      cohorts: result!.cohortValues,
+      conversionName,
+      currencyCode: cur,
+    });
+    downloadCsv("vbb-cohort-values-google-ads.csv", csv);
+    setDownloaded(true);
+  }
 
   return (
     <div className="animate-page-in flex min-h-screen flex-col">
       <Stepper current="report" />
-      <main className="mx-auto w-full max-w-4xl flex-1 px-6 py-10">
-        <p className="label mb-2">Step 4 of 4</p>
-        <h1 className="text-3xl font-bold tracking-tight text-balance">
-          Lead value diagnostic
-        </h1>
 
-        <div
-          className={
-            "mt-6 rounded-xl border p-5 " +
-            (v.mode === "MEASURED"
-              ? "border-emerald-300/60 bg-emerald-50/60"
-              : v.mode === "PREDICTED"
-              ? "border-[var(--primary)]/30 bg-[var(--primary-soft)]"
-              : "border-amber-300/60 bg-amber-50/60")
-          }
-        >
-          <span className="mono inline-block rounded-lg bg-[var(--foreground)] px-3 py-1.5 text-[12px] font-bold tracking-wider text-white">
-            {v.mode.replace("_", " ")}
-          </span>
-          <h2 className="mt-3 text-[17px] font-bold">{v.headline}</h2>
-          <p className="mt-1 max-w-[72ch] text-[14.5px] text-[var(--muted)]">{v.reasoning}</p>
-          {v.blockers.length > 0 && (
-            <ul className="mt-3 space-y-1.5">
-              {v.blockers.map((b, i) => (
-                <li key={i} className="text-[13.5px] text-[var(--muted)]">
-                  • {b}
-                </li>
-              ))}
-            </ul>
-          )}
+      <main className="mx-auto w-full max-w-5xl flex-1 px-6 py-10">
+        {/* Header */}
+        <div className="mb-7">
+          <p className="label mb-2">Lead value diagnostic</p>
+          <h1 className="text-[clamp(26px,3.6vw,34px)] font-bold leading-tight tracking-tight text-balance">
+            What your leads are actually worth
+          </h1>
+          <p className="mono mt-2 text-[13px] text-[var(--muted)]">
+            {result.rowsAnalyzed.toLocaleString()} deals analyzed · {file.name}
+            {result.excluded.length > 0 &&
+              ` · ${result.excluded.length.toLocaleString()} excluded`}
+          </p>
         </div>
 
-        <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {[
-            { k: "Rows analyzed", v: result.rowsAnalyzed.toLocaleString(), s: `${result.excluded.length} excluded` },
-            { k: "Median cycle", v: result.cycle.medianDays !== null ? `${result.cycle.medianDays}d` : "—", s: result.cycle.classification ?? "no closed deals" },
-            { k: "Leads / month", v: String(result.volume.leadsPerMonth), s: `${result.volume.wonDealsPerMonth} won/mo` },
-            { k: "Match rate", v: `${Math.round(result.matchRate.overallRate * 100)}%`, s: result.matchRate.isTrackingGap ? "tracking gap" : "healthy" },
-          ].map((s) => (
-            <div key={s.k} className="card p-4">
-              <p className="label">{s.k}</p>
-              <p className="mono mt-1 text-2xl font-bold tracking-tight">{s.v}</p>
-              <p className="mt-0.5 text-[12px] text-[var(--muted)]">{s.s}</p>
-            </div>
-          ))}
-        </div>
+        <div className="grid gap-9">
+          {/* 1 — Shadow ROAS, the opening shot */}
+          <ShadowRoasSection
+            rows={result.shadowRoas}
+            currency={cur}
+            blindnessRatio={result.valueSpread.blindnessRatio}
+          />
 
-        <div className="card mt-6 p-5">
-          <p className="text-[15px] font-bold">Cohort values (Day-0 bidding values)</p>
-          <div className="mt-3 overflow-x-auto">
-            <table className="w-full min-w-[560px] text-left text-[13.5px]">
-              <thead>
-                <tr className="border-b border-[var(--border)] text-[10.5px] uppercase tracking-wider text-[var(--muted)]">
-                  <th className="pb-2 pr-3 font-bold">Segment</th>
-                  <th className="pb-2 pr-3 text-right font-bold">Leads</th>
-                  <th className="pb-2 pr-3 text-right font-bold">Close rate</th>
-                  <th className="pb-2 pr-3 text-right font-bold">Median deal</th>
-                  <th className="pb-2 text-right font-bold">Expected value</th>
-                </tr>
-              </thead>
-              <tbody>
-                {result.cohortValues.map((c) => (
-                  <tr key={c.key} className="border-b border-[var(--border)] last:border-0">
-                    <td className="py-2 pr-3 font-semibold">{c.key}</td>
-                    <td className="mono py-2 pr-3 text-right text-[var(--muted)]">{c.sampleSize}</td>
-                    <td className="mono py-2 pr-3 text-right text-[var(--muted)]">
-                      {c.closeRate !== null ? `${Math.round(c.closeRate * 100)}%` : "—"}
-                    </td>
-                    <td className="mono py-2 pr-3 text-right text-[var(--muted)]">
-                      {c.medianWonAmount !== null ? `$${c.medianWonAmount.toLocaleString()}` : "—"}
-                    </td>
-                    <td className="mono py-2 text-right font-bold">
-                      {c.expectedValue !== null ? `$${c.expectedValue.toLocaleString()}` : "—"}
-                    </td>
-                  </tr>
+          {/* 2 — Stated vs actual */}
+          <StatedVsActual businessContext={businessContext} comparisons={comparisons} />
+
+          {/* 3 — Verdict */}
+          <VerdictBanner verdict={result.verdict} />
+
+          {/* 4 — Tracking gap */}
+          <TrackingGapSection match={result.matchRate} />
+
+          {/* 5 — Evidence */}
+          <CycleSection cycle={result.cycle} />
+          <SourceEconomicsSection sources={result.sources} currency={cur} />
+          <ValueSpreadSection spread={result.valueSpread} currency={cur} />
+          <DomainSection domain={result.domainDisparity} currency={cur} />
+          <DataQualitySection
+            gate={result.earlyGate}
+            trust={result.stageTrust}
+            excluded={result.excluded}
+          />
+
+          {/* 6 — Cohort values */}
+          <CohortValueSection
+            cohorts={result.cohortValues}
+            currency={cur}
+            cap={result.valueSpread.recommendedCap}
+          />
+
+          {/* 7 — Export */}
+          <section>
+            <SectionHead title="Send these to Google Ads" />
+            <div className="rounded-2xl border border-[var(--primary)]/30 bg-gradient-to-br from-[var(--primary-soft)] to-white p-5 sm:p-6">
+              <div className="grid gap-5 sm:grid-cols-[1fr_auto] sm:items-end">
+                <div>
+                  <p className="max-w-[68ch] text-[14px] text-[var(--muted)]">
+                    Exports your cohort table in Google&apos;s Click Conversion Import
+                    format. Fill the Click ID column from your own lead export, then
+                    upload it under Conversions → Uploads.
+                  </p>
+                  <label className="mt-4 block max-w-xs">
+                    <span className="label">Conversion action name</span>
+                    <input
+                      className="input mono mt-1"
+                      value={conversionName}
+                      onChange={(e) => setConversionName(e.target.value)}
+                    />
+                    <span className="mt-1 block text-[11.5px] text-[var(--muted)]">
+                      Must match the conversion action you created in Google Ads.
+                    </span>
+                  </label>
+                </div>
+                <button type="button" onClick={handleDownload} className="btn btn-primary">
+                  {downloaded ? "Downloaded ✓" : "Download CSV"} <ArrowIcon />
+                </button>
+              </div>
+
+              <div className="mt-5 grid gap-3 border-t border-[var(--primary)]/20 pt-5 sm:grid-cols-3">
+                {[
+                  { n: "1", t: "Download", d: "Your cohort values in Google's import format." },
+                  { n: "2", t: "Import in Google Ads", d: "Conversions → Uploads → upload the file." },
+                  { n: "3", t: "Smart Bidding adapts", d: "It optimizes toward revenue instead of form-fills." },
+                ].map((s) => (
+                  <div key={s.n} className="flex gap-3">
+                    <span className="mono flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-[var(--primary)] text-[12px] font-bold text-white">
+                      {s.n}
+                    </span>
+                    <div>
+                      <p className="text-[13px] font-bold">{s.t}</p>
+                      <p className="text-[12.5px] text-[var(--muted)]">{s.d}</p>
+                    </div>
+                  </div>
                 ))}
-              </tbody>
-            </table>
-          </div>
+              </div>
+            </div>
+          </section>
         </div>
 
-        <p className="mt-6 border-t border-[var(--border)] pt-5 text-[13px] text-[var(--muted)]">
-          Full report layout — shadow ROAS, stated-versus-actual, value spread, trust
-          warnings and the Google Ads export — is next.
-        </p>
+        <footer className="mt-10 border-t border-[var(--border)] pt-6">
+          <p className="max-w-[78ch] text-[12.5px] text-[var(--muted)]">
+            Every figure here is computed from the file you uploaded — cohort win rate ×
+            median segment deal size, capped at{" "}
+            {result.valueSpread.recommendedCap !== null
+              ? money(result.valueSpread.recommendedCap, cur)
+              : "the recommended cap"}
+            . Nothing is estimated, benchmarked against other accounts, or forecast.
+            These are descriptions of what already happened, not a performance guarantee.
+          </p>
+          <div className="mt-4 flex flex-wrap gap-2.5">
+            <button
+              type="button"
+              onClick={() => router.push("/diagnostic/mapping")}
+              className="btn btn-secondary"
+            >
+              Back to mapping
+            </button>
+          </div>
+        </footer>
       </main>
     </div>
   );

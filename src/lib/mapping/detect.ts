@@ -299,6 +299,79 @@ function buildReason(
   return parts.join(" · ") || "matched on header name";
 }
 
+/**
+ * Stage-timing columns are dynamic — one per stage — so they're detected
+ * separately from the fixed field list.
+ *
+ * Two shapes are recognized, because CRMs export one or the other:
+ *   duration  — "time_in_stage_qualified", "days_in_proposal" (how long spent)
+ *   entered   — "date_entered_qualified", "qualified_date"    (when reached)
+ *
+ * Durations feed the backfill trust check; entered-dates feed early-gate
+ * detection. Neither is inferred from the other.
+ */
+export interface StageTimingColumn {
+  column: string;
+  stage: string;
+  kind: "duration" | "entered";
+  /** For durations: the unit the values are in. */
+  unit?: "seconds" | "days";
+}
+
+const DURATION_PATTERNS = [
+  /^time[ _]in[ _]stage[ _](.+)$/i,
+  /^time[ _]in[ _](.+)$/i,
+  /^(?:days|hours|seconds)[ _]in[ _](?:stage[ _])?(.+)$/i,
+  /^(.+)[ _]duration$/i,
+];
+
+const ENTERED_PATTERNS = [
+  /^date[ _]entered[ _](.+)$/i,
+  /^entered[ _](.+)$/i,
+  /^(.+)[ _]entered[ _]date$/i,
+  /^(.+)[ _]stage[ _]date$/i,
+];
+
+function titleize(raw: string): string {
+  return raw
+    .replace(/[_\-.]+/g, " ")
+    .trim()
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+export function detectStageTimingColumns(
+  headers: string[],
+  rows: Record<string, string>[]
+): StageTimingColumn[] {
+  const out: StageTimingColumn[] = [];
+
+  for (const header of headers) {
+    const norm = header.toLowerCase().trim();
+
+    for (const re of DURATION_PATTERNS) {
+      const m = norm.match(re);
+      if (!m) continue;
+      const values = columnValues(rows, header);
+      // Must actually be numeric, or it's a name that merely looks like one.
+      if (shareMatching(values, looksNumeric) < 0.6) break;
+      const unit = /^(?:days|hours)[ _]in[ _]/i.test(norm) ? "days" : "seconds";
+      out.push({ column: header, stage: titleize(m[1]), kind: "duration", unit });
+      break;
+    }
+
+    for (const re of ENTERED_PATTERNS) {
+      const m = norm.match(re);
+      if (!m) continue;
+      const values = columnValues(rows, header);
+      if (shareMatching(values, looksLikeDate) < 0.5) break;
+      out.push({ column: header, stage: titleize(m[1]), kind: "entered" });
+      break;
+    }
+  }
+
+  return out;
+}
+
 export interface DetectionResult {
   fields: DetectedField[];
   /** Columns in the file that no field claimed. */

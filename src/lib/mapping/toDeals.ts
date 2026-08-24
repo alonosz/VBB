@@ -1,5 +1,5 @@
 import type { DealOutcome, ExcludedRow, MappedDeal } from "@/lib/analysis/types";
-import type { DetectedField, FieldKey } from "./detect";
+import type { DetectedField, FieldKey, StageTimingColumn } from "./detect";
 
 export interface CurrencyPolicy {
   /** The single currency every amount is reported in. */
@@ -75,6 +75,46 @@ export interface ToDealsOptions {
   currency?: CurrencyPolicy | null;
   /** Drop exact duplicate rows, keeping the first of each. */
   dropDuplicates?: boolean;
+  /** Per-stage timing columns, which drive the trust and early-gate checks. */
+  stageTiming?: StageTimingColumn[];
+}
+
+/**
+ * Builds the per-stage timing maps for one row. Durations are normalized to
+ * seconds; entered-dates become days since creation. A stage only appears
+ * when its value actually parsed — a blank cell means "we don't know when
+ * this happened", not "day zero".
+ */
+function stageTimingFor(
+  row: Record<string, string>,
+  createdAt: Date | null,
+  columns: StageTimingColumn[]
+): Pick<MappedDeal, "stageDurations" | "stageReachedAfterDays"> {
+  const durations: Record<string, number> = {};
+  const reached: Record<string, number> = {};
+
+  for (const c of columns) {
+    const raw = (row[c.column] ?? "").trim();
+    if (!raw) continue;
+
+    if (c.kind === "duration") {
+      const n = parseAmount(raw);
+      if (n === null || n < 0) continue;
+      durations[c.stage] = c.unit === "days" ? n * 86_400 : n;
+    } else {
+      if (!createdAt) continue;
+      const d = parseDate(raw);
+      if (!d) continue;
+      const days = (d.getTime() - createdAt.getTime()) / 86_400_000;
+      // A stage reached before the lead existed is bad data, not a negative.
+      if (days >= 0) reached[c.stage] = days;
+    }
+  }
+
+  return {
+    stageDurations: Object.keys(durations).length > 0 ? durations : undefined,
+    stageReachedAfterDays: Object.keys(reached).length > 0 ? reached : undefined,
+  };
 }
 
 /**
@@ -83,7 +123,7 @@ export interface ToDealsOptions {
  * disappears silently, and nothing is invented to fill a gap.
  */
 export function rowsToDeals(opts: ToDealsOptions): MappingResult {
-  const { rows, fields, currency = null, dropDuplicates = true } = opts;
+  const { rows, fields, currency = null, dropDuplicates = true, stageTiming = [] } = opts;
 
   const col = (key: FieldKey): string | null =>
     fields.find((f) => f.key === key)?.column ?? null;
@@ -166,6 +206,7 @@ export function rowsToDeals(opts: ToDealsOptions): MappingResult {
       employeeCount: employeeRaw,
       industry: cIndustry ? (row[cIndustry] ?? "").trim() || null : null,
       contactTitle: cTitle ? (row[cTitle] ?? "").trim() || null : null,
+      ...stageTimingFor(row, createdAt, stageTiming),
     });
   });
 

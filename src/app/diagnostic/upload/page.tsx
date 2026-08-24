@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Papa from "papaparse";
 import { useDiagnostic } from "@/context/DiagnosticContext";
 import { Stepper } from "@/components/diagnostic/Stepper";
-import { detectColumns, findFileIssues } from "@/lib/mapping/detect";
+import { detectColumns, detectStageTimingColumns, findFileIssues } from "@/lib/mapping/detect";
 import { generateDemoDeals, demoDealsToCsvRows } from "@/lib/fixtures/demoDataset";
 
 const MAX_BYTES = 25 * 1024 * 1024;
@@ -13,7 +13,7 @@ const MAX_ROWS = 100_000;
 
 export default function UploadPage() {
   const router = useRouter();
-  const { setFile, setFields, setIssues } = useDiagnostic();
+  const { setFile, setFields, setIssues, setStageTiming } = useDiagnostic();
   const inputRef = useRef<HTMLInputElement>(null);
 
   const [dragging, setDragging] = useState(false);
@@ -29,17 +29,23 @@ export default function UploadPage() {
       const matched = fields.filter((f) => f.column !== null).length;
       setLog((l) => [...l, "Sampled every column to detect types", `Matched ${matched} fields`]);
 
+      const stageTiming = detectStageTimingColumns(headers, rows);
+      if (stageTiming.length > 0) {
+        setLog((l) => [...l, `Found stage timing on ${stageTiming.length} column(s)`]);
+      }
+
       const issues = findFileIssues(rows, fields);
       setLog((l) => [...l, `Flagged ${issues.length} thing${issues.length === 1 ? "" : "s"} for review`]);
 
       setFile({ name, sizeBytes, headers, rows });
       setFields(fields);
       setIssues(issues);
+      setStageTiming(stageTiming);
 
       // Brief hold so the parse log is readable rather than a flash.
       setTimeout(() => router.push("/diagnostic/mapping"), 650);
     },
-    [router, setFields, setFile, setIssues]
+    [router, setFields, setFile, setIssues, setStageTiming]
   );
 
   const handleFile = useCallback(

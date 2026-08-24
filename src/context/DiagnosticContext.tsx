@@ -8,7 +8,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import type { DetectedField, FileIssue } from "@/lib/mapping/detect";
+import type { DetectedField, FileIssue, StageTimingColumn } from "@/lib/mapping/detect";
 import type { CurrencyPolicy } from "@/lib/mapping/toDeals";
 
 export interface UploadedFile {
@@ -31,6 +31,9 @@ interface DiagnosticState {
   issues: FileIssue[];
   setIssues: (i: FileIssue[]) => void;
 
+  stageTiming: StageTimingColumn[];
+  setStageTiming: (s: StageTimingColumn[]) => void;
+
   currency: CurrencyPolicy;
   setCurrency: (c: CurrencyPolicy) => void;
 
@@ -50,6 +53,7 @@ export function DiagnosticProvider({ children }: { children: ReactNode }) {
   const [file, setFile] = useState<UploadedFile | null>(null);
   const [fields, setFields] = useState<DetectedField[]>([]);
   const [issues, setIssues] = useState<FileIssue[]>([]);
+  const [stageTiming, setStageTiming] = useState<StageTimingColumn[]>([]);
   const [currency, setCurrency] = useState<CurrencyPolicy>(DEFAULT_CURRENCY);
 
   const reset = useCallback(() => {
@@ -57,6 +61,7 @@ export function DiagnosticProvider({ children }: { children: ReactNode }) {
     setFile(null);
     setFields([]);
     setIssues([]);
+    setStageTiming([]);
     setCurrency(DEFAULT_CURRENCY);
   }, []);
 
@@ -66,10 +71,11 @@ export function DiagnosticProvider({ children }: { children: ReactNode }) {
       file, setFile,
       fields, setFields,
       issues, setIssues,
+      stageTiming, setStageTiming,
       currency, setCurrency,
       reset,
     }),
-    [businessContext, file, fields, issues, currency, reset]
+    [businessContext, file, fields, issues, stageTiming, currency, reset]
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

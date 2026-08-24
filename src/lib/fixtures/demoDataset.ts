@@ -247,6 +247,11 @@ export function generateDemoDeals(opts: DemoOptions = {}): MappedDeal[] {
   return deals;
 }
 
+function isoDay(base: Date | null, offsetDays: number | undefined): string {
+  if (!base || offsetDays === undefined) return "";
+  return new Date(base.getTime() + offsetDays * 86_400_000).toISOString().slice(0, 10);
+}
+
 /** The demo CSV as the user would upload it — pre-mapping, with mixed currency. */
 export function demoDealsToCsvRows(deals: MappedDeal[]): Record<string, string>[] {
   return deals.map((d, i) => ({
@@ -259,7 +264,12 @@ export function demoDealsToCsvRows(deals: MappedDeal[]): Record<string, string>[
     deal_currency: i % 137 === 0 && i > 0 ? "GBP" : "USD",
     lead_source: d.source ?? "",
     pipeline_name: "Default",
+    // Durations feed the backfill trust check; entered-dates feed early-gate
+    // detection. A real export carries one or both, so the demo carries both.
     time_in_stage_qualified: String(d.stageDurations?.Qualified ?? ""),
+    time_in_stage_proposal: String(d.stageDurations?.Proposal ?? ""),
+    date_entered_qualified: isoDay(d.createdAt, d.stageReachedAfterDays?.Qualified),
+    date_entered_proposal: isoDay(d.createdAt, d.stageReachedAfterDays?.Proposal),
     owner_email: "rep@vbb-demo.com",
     contact_email: d.email ?? "",
     gclid_c: d.clickId ?? "",

@@ -5,10 +5,13 @@ import { useDiagnostic } from "@/context/DiagnosticContext";
 import { Stepper } from "@/components/diagnostic/Stepper";
 import { ArrowIcon } from "@/components/ArrowIcon";
 
+// Tuned to match the shape of the demo dataset, so the walkthrough surfaces
+// the one comparison that actually matters (cycle length) rather than a
+// spurious volume gap caused by the sample text disagreeing with the sample data.
 const EXAMPLE =
   "We sell workflow software to mid-market manufacturers, usually 200–1000 employees. " +
   "Our buyers are ops directors and plant managers. Sales cycle is usually about 2–3 months, " +
-  "longer for the bigger accounts. We get maybe 150–200 leads a month. Our best customers " +
+  "longer for the bigger accounts. We get maybe 80–100 leads a month. Our best customers " +
   "come through referrals and webinars — they close faster and stick around longer.";
 
 export default function IntakePage() {

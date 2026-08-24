@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   detectColumns,
+  detectStageTimingColumns,
   findFileIssues,
   looksLikeClickId,
   looksLikeDate,
@@ -217,6 +218,83 @@ describe("findFileIssues", () => {
     }));
     const { fields } = detectColumns(Object.keys(rows[0]), rows);
     expect(findFileIssues(rows, fields).some((i) => i.kind === "low_identifiers")).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Stage timing — feeds the trust check and early-gate detection
+// ---------------------------------------------------------------------------
+
+describe("detectStageTimingColumns", () => {
+  it("recognizes duration columns and their stage name", () => {
+    const rows = [{ time_in_stage_qualified: "86400", time_in_stage_proposal: "9" }];
+    const cols = detectStageTimingColumns(Object.keys(rows[0]), rows);
+    expect(cols).toHaveLength(2);
+    expect(cols[0]).toMatchObject({ stage: "Qualified", kind: "duration", unit: "seconds" });
+    expect(cols[1].stage).toBe("Proposal");
+  });
+
+  it("recognizes entered-date columns", () => {
+    const rows = [{ date_entered_qualified: "2026-01-05" }];
+    const cols = detectStageTimingColumns(Object.keys(rows[0]), rows);
+    expect(cols[0]).toMatchObject({ stage: "Qualified", kind: "entered" });
+  });
+
+  it("reads a days-based duration column in days, not seconds", () => {
+    const rows = [{ days_in_stage_proposal: "4" }];
+    const cols = detectStageTimingColumns(Object.keys(rows[0]), rows);
+    expect(cols[0].unit).toBe("days");
+  });
+
+  it("ignores a column that matches the name pattern but holds text", () => {
+    const rows = [{ time_in_stage_owner: "Alice" }, { time_in_stage_owner: "Bob" }];
+    expect(detectStageTimingColumns(Object.keys(rows[0]), rows)).toHaveLength(0);
+  });
+
+  it("finds both shapes in the generated demo export", () => {
+    const rows = demoDealsToCsvRows(generateDemoDeals({ count: 40 }));
+    const cols = detectStageTimingColumns(Object.keys(rows[0]), rows);
+    expect(cols.some((c) => c.kind === "duration")).toBe(true);
+    expect(cols.some((c) => c.kind === "entered")).toBe(true);
+  });
+});
+
+describe("rowsToDeals with stage timing", () => {
+  it("carries durations through as seconds and entered-dates as days since creation", () => {
+    const rows = [
+      {
+        created_at: "2026-01-01",
+        amount__c: "1000",
+        time_in_stage_qualified: "9",
+        date_entered_qualified: "2026-01-04",
+      },
+    ];
+    const { fields } = detectColumns(Object.keys(rows[0]), rows);
+    const stageTiming = detectStageTimingColumns(Object.keys(rows[0]), rows);
+    const { deals } = rowsToDeals({ rows, fields, stageTiming });
+
+    expect(deals[0].stageDurations).toEqual({ Qualified: 9 });
+    expect(deals[0].stageReachedAfterDays!.Qualified).toBeCloseTo(3, 5);
+  });
+
+  it("omits a stage rather than recording day zero when the cell is blank", () => {
+    const rows = [{ created_at: "2026-01-01", date_entered_qualified: "" }];
+    const { fields } = detectColumns(Object.keys(rows[0]), rows);
+    const stageTiming = [
+      { column: "date_entered_qualified", stage: "Qualified", kind: "entered" as const },
+    ];
+    const { deals } = rowsToDeals({ rows, fields, stageTiming });
+    expect(deals[0].stageReachedAfterDays).toBeUndefined();
+  });
+
+  it("drops a stage reached before the lead existed as bad data", () => {
+    const rows = [{ created_at: "2026-01-10", date_entered_qualified: "2026-01-01" }];
+    const { fields } = detectColumns(Object.keys(rows[0]), rows);
+    const stageTiming = [
+      { column: "date_entered_qualified", stage: "Qualified", kind: "entered" as const },
+    ];
+    const { deals } = rowsToDeals({ rows, fields, stageTiming });
+    expect(deals[0].stageReachedAfterDays).toBeUndefined();
   });
 });
 
