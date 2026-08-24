@@ -3,7 +3,51 @@
 Value-based bidding tool for lead-gen advertisers. Computes what leads are
 actually worth from CRM data and feeds those values to Google Ads.
 
-Next.js (App Router) · TypeScript · Tailwind · deploy target Vercel.
+Next.js (App Router) · TypeScript · Tailwind · Supabase · deploy target Vercel.
+
+---
+
+# Core principles — binding
+
+These constrain the domain logic. Violating them produces a product that looks
+right and bids wrong, so treat them as invariants, not preferences.
+
+## 1. Day-0 values drive bidding
+
+Google's autobidding **ignores value adjustments sent more than 7 days after
+the original conversion**. So:
+
+- The value sent at lead creation (Day-0) is what actually influences bidding.
+- Late outcomes never adjust a past conversion beyond day 7. They recalibrate
+  *tomorrow's* Day-0 cohort table instead — recalibration, not adjustment.
+- Never write logic that assumes a close 40 days later can move a bid. It can't.
+- Adjustments are emitted only when value change is **>20%** AND the original
+  conversion is **<7 days old**. Never emit deltas under 20%.
+
+## 2. Empirical over invented
+
+Every dollar figure shown to a user traces to *their own* historical data —
+cohort win rate × median segment deal size. There are **no hardcoded value
+guesses anywhere in the product**. If the data can't support a number, say so
+instead of producing one.
+
+## 3. Deterministic rules with visible guardrails
+
+No black-box automation and no per-client ML. Every computed figure must be
+explainable in one sentence to an advertiser, and the rule that produced it
+should be visible in the UI.
+
+## 4. Never invent data
+
+Missing is excluded, always with visible counts and reasons. Stage history is
+never trusted blindly — real CRMs are full of retroactive card-dragging that
+produces 9-second stage transitions.
+
+## 5. Cap outlier values
+
+Smart Bidding is distorted by outliers. Default cap is **3× median won amount**,
+always shown with its rationale and the count of deals it clips. The cap applies
+to every emitted value.
 
 ---
 
