@@ -1,5 +1,5 @@
 import Papa from "papaparse";
-import type { CohortValue } from "@/lib/analysis/types";
+import type { ValuedLead } from "@/lib/analysis/valueModel";
 
 /**
  * Google Ads Click Conversion Import.
@@ -47,57 +47,15 @@ export async function sha256Hex(input: string): Promise<string> {
     .join("");
 }
 
-export interface CohortExportOptions {
-  cohorts: CohortValue[];
+export interface ModelExportOptions {
+  /** Every lead, already priced by the value model. */
+  leads: ValuedLead[];
   conversionName: string;
   currencyCode: string;
-  /** Timestamp written on every row; defaults to now. */
-  conversionTime?: Date;
+  identifier: "clickId" | "email";
 }
 
-/**
- * Exports the cohort value table as a Google-Ads-shaped CSV.
- *
- * This is a template, not a live upload: the identifier column is left blank
- * for the user to fill from their own lead export, because we have cohort
- * values here, not individual leads. Cohorts with no expected value are
- * omitted rather than exported as zero — sending 0 tells Smart Bidding the
- * lead was worthless, which is a different claim from "we don't know yet".
- */
-export function buildCohortValueCsv(opts: CohortExportOptions): string {
-  const { cohorts, conversionName, currencyCode } = opts;
-  const time = formatConversionTime(opts.conversionTime ?? new Date());
-
-  const rows = cohorts
-    .filter((c) => c.expectedValue !== null && c.expectedValue > 0)
-    .map((c) => [
-      "", // Google Click ID — filled per lead from the user's own export
-      conversionName,
-      time,
-      c.expectedValue!.toFixed(2),
-      currencyCode,
-      c.key,
-      String(c.sampleSize),
-      c.closeRate !== null ? (c.closeRate * 100).toFixed(1) + "%" : "",
-    ]);
-
-  return Papa.unparse({
-    // The five Google columns first, then reference columns the user strips
-    // before uploading. Google ignores trailing columns it doesn't recognize,
-    // but they make the file readable while it's being filled in.
-    fields: [...GOOGLE_ADS_COLUMNS, "Segment (reference)", "Sample size", "Close rate"],
-    data: rows,
-  });
-}
-
-export interface LeadRow {
-  clickId: string | null;
-  email: string | null;
-  createdAt: Date | null;
-  value: number;
-}
-
-export interface LeadExportResult {
+export interface ModelExportResult {
   csv: string;
   included: number;
   skipped: number;
@@ -105,31 +63,33 @@ export interface LeadExportResult {
 }
 
 /**
- * Exports per-lead conversions. Rows without a usable identifier or timestamp
- * are skipped and counted — never emitted with a placeholder.
+ * Exports one row per lead, priced by the value model.
+ *
+ * This is the whole point of the product: an individual conversion carrying
+ * what that specific lead was worth. Leads without a usable identifier or a
+ * create date are skipped and counted — never emitted with a placeholder, and
+ * never emitted at zero, which would tell Google the lead was worthless rather
+ * than unmeasurable.
  */
-export async function buildLeadConversionCsv(
-  leads: LeadRow[],
-  opts: {
-    conversionName: string;
-    currencyCode: string;
-    identifier: "clickId" | "email";
-  }
-): Promise<LeadExportResult> {
+export async function buildValueModelCsv(
+  opts: ModelExportOptions
+): Promise<ModelExportResult> {
   const rows: string[][] = [];
   let skipped = 0;
 
-  for (const lead of leads) {
-    if (!lead.createdAt) {
+  for (const lead of opts.leads) {
+    const { deal, value } = lead;
+
+    if (!deal.createdAt || value <= 0) {
       skipped++;
       continue;
     }
 
     let id: string | null = null;
     if (opts.identifier === "clickId") {
-      id = lead.clickId?.trim() || null;
-    } else if (lead.email?.trim()) {
-      id = await sha256Hex(normalizeEmail(lead.email));
+      id = deal.clickId?.trim() || null;
+    } else if (deal.email?.trim()) {
+      id = await sha256Hex(normalizeEmail(deal.email));
     }
 
     if (!id) {
@@ -140,8 +100,8 @@ export async function buildLeadConversionCsv(
     rows.push([
       id,
       opts.conversionName,
-      formatConversionTime(lead.createdAt),
-      lead.value.toFixed(2),
+      formatConversionTime(deal.createdAt),
+      value.toFixed(2),
       opts.currencyCode,
     ]);
   }
@@ -159,7 +119,7 @@ export async function buildLeadConversionCsv(
       skipped > 0
         ? `${skipped.toLocaleString()} lead${skipped === 1 ? "" : "s"} had no ${
             opts.identifier === "clickId" ? "click ID" : "email address"
-          } or no create date`
+          }, no create date, or no value the model could price`
         : null,
   };
 }

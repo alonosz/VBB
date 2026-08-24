@@ -1,0 +1,417 @@
+import type { MappedDeal } from "./types";
+import { median, round } from "./helpers";
+import { applyCap } from "./valueSpread";
+import { buildFactorList, type FactorDefinition } from "./factors";
+
+/**
+ * The value model: what one lead is worth on the day it arrives.
+ *
+ * Built only from lead-intrinsic attributes — things knowable at form-fill
+ * time. The output is a short rule stack the advertiser can read, audit
+ * against their own data, and hand to Google.
+ */
+
+export const MIN_LEVEL_SAMPLE = 25;
+export const MIN_LIFT = 1.3;
+
+/**
+ * The furthest the whole stack may move a lead from the base value, in either
+ * direction.
+ *
+ * Each lift is measured marginally, against the overall baseline, but the
+ * factors overlap heavily — corporate email, company size and seniority
+ * largely describe the same "real business buyer". Multiplying four of them
+ * compounds that shared signal, and it compounds downward as hard as upward:
+ * unbounded, a free-webmail IC at a tiny logistics firm lands near 0.02x base,
+ * which tells Google the lead is worthless on evidence that does not support
+ * that claim.
+ *
+ * Bounding the product keeps the ordering between segments intact while
+ * refusing to state more confidence than marginal lifts can carry.
+ */
+export const MAX_STACK_DEVIATION = 8;
+
+export interface FactorLevel {
+  level: string;
+  /** Resolved deals (won + lost) backing this level. */
+  sampleSize: number;
+  won: number;
+  closeRate: number;
+  medianWonAmount: number | null;
+  expectedValue: number;
+  /** expectedValue / baseline. 1 means no signal. */
+  lift: number;
+  /** False when the level fell under the sample floor. */
+  usable: boolean;
+}
+
+export interface ModelFactor {
+  key: string;
+  label: string;
+  levels: FactorLevel[];
+  /** Strongest deviation from baseline in either direction. */
+  strongestLift: number;
+  included: boolean;
+  /** Populated when the factor was tested and dropped. */
+  droppedReason: string | null;
+}
+
+export interface RuleStackStep {
+  factorKey: string;
+  factorLabel: string;
+  level: string;
+  multiplier: number;
+  sampleSize: number;
+  closeRate: number;
+  medianWonAmount: number | null;
+}
+
+export interface ValueModel {
+  /** Overall expected value across all resolved leads. */
+  baseValue: number;
+  /** Rescales the stack so emitted values average back to reality. */
+  calibrationFactor: number;
+  cap: number | null;
+  factors: ModelFactor[];
+  includedFactors: ModelFactor[];
+  droppedFactors: ModelFactor[];
+  /** True when nothing survived and every lead gets the base value. */
+  isFlat: boolean;
+  /** Resolved deals the model was fitted on. */
+  fittedOn: number;
+  currencyCode: string;
+}
+
+export interface ValuedLead {
+  deal: MappedDeal;
+  /** Steps that fired for this lead, in factor order. */
+  steps: RuleStackStep[];
+  /** Product of the steps, before the deviation bound. */
+  stackMultiplier: number;
+  /** After the deviation bound. */
+  boundedMultiplier: number;
+  wasBounded: boolean;
+  rawValue: number;
+  /** After calibration and cap — what actually gets sent. */
+  value: number;
+  cappedFrom: number | null;
+}
+
+// ---------------------------------------------------------------------------
+// Fitting
+// ---------------------------------------------------------------------------
+
+function resolved(deals: MappedDeal[]): MappedDeal[] {
+  return deals.filter((d) => d.outcome === "won" || d.outcome === "lost");
+}
+
+/** Expected value of a set of deals: close rate × median won amount. */
+function expectedValueOf(deals: MappedDeal[]): { ev: number; closeRate: number; medianWon: number | null; won: number } {
+  const won = deals.filter((d) => d.outcome === "won");
+  const closeRate = deals.length > 0 ? won.length / deals.length : 0;
+  const amounts = won.map((d) => d.amount).filter((a): a is number => a !== null);
+  const medianWon = median(amounts);
+  return {
+    ev: medianWon === null ? 0 : closeRate * medianWon,
+    closeRate,
+    medianWon,
+    won: won.length,
+  };
+}
+
+function fitFactor(
+  factor: FactorDefinition,
+  pool: MappedDeal[],
+  baseline: number
+): ModelFactor {
+  const byLevel = new Map<string, MappedDeal[]>();
+  for (const deal of pool) {
+    const level = factor.levelOf(deal);
+    if (level === null) continue;
+    const bucket = byLevel.get(level);
+    if (bucket) bucket.push(deal);
+    else byLevel.set(level, [deal]);
+  }
+
+  const levels: FactorLevel[] = [];
+  for (const [level, group] of byLevel) {
+    const { ev, closeRate, medianWon, won } = expectedValueOf(group);
+    const usable = group.length >= MIN_LEVEL_SAMPLE;
+    levels.push({
+      level,
+      sampleSize: group.length,
+      won,
+      closeRate: round(closeRate, 4),
+      medianWonAmount: medianWon,
+      expectedValue: round(ev),
+      lift: baseline > 0 ? round(ev / baseline, 3) : 1,
+      usable,
+    });
+  }
+
+  levels.sort((a, b) => b.lift - a.lift);
+
+  const usableLevels = levels.filter((l) => l.usable);
+
+  // Two-sided: a level at 0.4x is as informative as one at 2.5x. Testing only
+  // the upside would discard "free webmail rarely converts", which is exactly
+  // the kind of signal worth pricing.
+  const strongestLift = usableLevels.reduce((best, l) => {
+    const deviation = l.lift > 0 ? Math.max(l.lift, 1 / l.lift) : 1;
+    return Math.max(best, deviation);
+  }, 1);
+
+  let droppedReason: string | null = null;
+  if (usableLevels.length === 0) {
+    droppedReason = `No level had ${MIN_LEVEL_SAMPLE}+ resolved deals behind it`;
+  } else if (usableLevels.length < 2) {
+    droppedReason = "Only one level had enough data, so there is nothing to compare against";
+  } else if (strongestLift < MIN_LIFT) {
+    droppedReason = `Strongest level moved value by only ${round(strongestLift, 2)}x — below the ${MIN_LIFT}x threshold, so it would add noise rather than signal`;
+  }
+
+  return {
+    key: factor.key,
+    label: factor.label,
+    levels,
+    strongestLift: round(strongestLift, 3),
+    included: droppedReason === null,
+    droppedReason,
+  };
+}
+
+export interface BuildValueModelOptions {
+  deals: MappedDeal[];
+  cap: number | null;
+  currencyCode: string;
+  /** Extra mapped columns to test as value signals. */
+  customSignalKeys?: string[];
+  /** User overrides, keyed "factorKey::level". */
+  overrides?: Record<string, number>;
+}
+
+export function buildValueModel(opts: BuildValueModelOptions): ValueModel {
+  const { cap, currencyCode, customSignalKeys = [] } = opts;
+  const pool = resolved(opts.deals);
+
+  const { ev: baseValue } = expectedValueOf(pool);
+
+  const factors = buildFactorList(customSignalKeys).map((f) =>
+    fitFactor(f, pool, baseValue)
+  );
+
+  const includedFactors = factors.filter((f) => f.included);
+  const droppedFactors = factors.filter((f) => !f.included);
+
+  const model: ValueModel = {
+    baseValue: round(baseValue),
+    calibrationFactor: 1,
+    cap,
+    factors,
+    includedFactors,
+    droppedFactors,
+    isFlat: includedFactors.length === 0 || baseValue <= 0,
+    fittedOn: pool.length,
+    currencyCode,
+  };
+
+  model.calibrationFactor = computeCalibration(model, pool, opts.overrides);
+  return model;
+}
+
+/**
+ * Multiplying marginal lifts double-counts correlated factors — a Director at
+ * a 500-person company almost certainly has a corporate email, so the same
+ * underlying "real business buyer" signal gets counted three times. Left
+ * uncorrected the stack inflates every value, and Smart Bidding overbids.
+ *
+ * Rather than assume independence, we rescale the whole stack by a single
+ * constant so the volume-weighted average of emitted values matches the
+ * expected value actually observed in the data. Relative ordering between
+ * segments is preserved; the portfolio can't drift from reality.
+ */
+function computeCalibration(
+  model: ValueModel,
+  pool: MappedDeal[],
+  overrides?: Record<string, number>
+): number {
+  if (model.isFlat || pool.length === 0) return 1;
+
+  let total = 0;
+  for (const deal of pool) {
+    total += rawValueFor(deal, model, overrides);
+  }
+  const meanRaw = total / pool.length;
+  if (meanRaw <= 0) return 1;
+
+  return round(model.baseValue / meanRaw, 6);
+}
+
+// ---------------------------------------------------------------------------
+// Applying
+// ---------------------------------------------------------------------------
+
+function multiplierFor(
+  factor: ModelFactor,
+  level: string,
+  overrides?: Record<string, number>
+): number | null {
+  const override = overrides?.[`${factor.key}::${level}`];
+  if (typeof override === "number" && Number.isFinite(override) && override > 0) {
+    return override;
+  }
+  const found = factor.levels.find((l) => l.level === level);
+  if (!found || !found.usable) return null;
+  return found.lift;
+}
+
+/** Product of every multiplier that fires, bounded to the deviation limit. */
+export function clampStack(product: number): number {
+  const lo = 1 / MAX_STACK_DEVIATION;
+  return Math.min(MAX_STACK_DEVIATION, Math.max(lo, product));
+}
+
+function rawValueFor(
+  deal: MappedDeal,
+  model: ValueModel,
+  overrides?: Record<string, number>
+): number {
+  const factorDefs = buildFactorList(
+    model.factors.filter((f) => !isCoreKey(f.key)).map((f) => f.key)
+  );
+
+  let product = 1;
+  for (const factor of model.includedFactors) {
+    const def = factorDefs.find((d) => d.key === factor.key);
+    if (!def) continue;
+    const level = def.levelOf(deal);
+    if (level === null) continue;
+    const mult = multiplierFor(factor, level, overrides);
+    if (mult === null) continue;
+    product *= mult;
+  }
+  return model.baseValue * clampStack(product);
+}
+
+const CORE_KEYS = new Set(["domainType", "employeeBand", "industry", "seniority"]);
+function isCoreKey(key: string): boolean {
+  return CORE_KEYS.has(key);
+}
+
+/**
+ * Values one lead, returning the steps that fired so the number can be traced
+ * back to the rows it came from.
+ */
+export function valueLead(
+  deal: MappedDeal,
+  model: ValueModel,
+  overrides?: Record<string, number>
+): ValuedLead {
+  const steps: RuleStackStep[] = [];
+  const factorDefs = buildFactorList(
+    model.factors.filter((f) => !isCoreKey(f.key)).map((f) => f.key)
+  );
+
+  let product = 1;
+
+  for (const factor of model.includedFactors) {
+    const def = factorDefs.find((d) => d.key === factor.key);
+    if (!def) continue;
+    const level = def.levelOf(deal);
+    if (level === null) continue;
+
+    const mult = multiplierFor(factor, level, overrides);
+    if (mult === null) continue;
+
+    const stats = factor.levels.find((l) => l.level === level)!;
+    steps.push({
+      factorKey: factor.key,
+      factorLabel: factor.label,
+      level,
+      multiplier: mult,
+      sampleSize: stats.sampleSize,
+      closeRate: stats.closeRate,
+      medianWonAmount: stats.medianWonAmount,
+    });
+    product *= mult;
+  }
+
+  const bounded = clampStack(product);
+  const value = model.baseValue * bounded;
+
+  const rawValue = round(value, 2);
+  const calibrated = round(value * model.calibrationFactor, 2);
+  const capped = applyCap(calibrated, model.cap);
+
+  return {
+    deal,
+    steps,
+    stackMultiplier: round(product, 3),
+    boundedMultiplier: round(bounded, 3),
+    wasBounded: round(bounded, 3) !== round(product, 3),
+    rawValue,
+    value: round(capped ?? calibrated, 2),
+    cappedFrom: capped !== null && capped < calibrated ? calibrated : null,
+  };
+}
+
+/** Values every lead, for previews and export. */
+export function valueAllLeads(
+  deals: MappedDeal[],
+  model: ValueModel,
+  overrides?: Record<string, number>
+): ValuedLead[] {
+  return deals.map((d) => valueLead(d, model, overrides));
+}
+
+/**
+ * The worked example shown in the UI: the highest-value combination the model
+ * can actually produce, with every multiplier traceable.
+ */
+export interface ExampleStack {
+  baseValue: number;
+  steps: RuleStackStep[];
+  stackMultiplier: number;
+  boundedMultiplier: number;
+  wasBounded: boolean;
+  calibrationFactor: number;
+  beforeCap: number;
+  cap: number | null;
+  finalValue: number;
+}
+
+export function bestCaseStack(model: ValueModel): ExampleStack {
+  const steps: RuleStackStep[] = [];
+  let product = 1;
+
+  for (const factor of model.includedFactors) {
+    const best = factor.levels.filter((l) => l.usable)[0];
+    if (!best) continue;
+    steps.push({
+      factorKey: factor.key,
+      factorLabel: factor.label,
+      level: best.level,
+      multiplier: best.lift,
+      sampleSize: best.sampleSize,
+      closeRate: best.closeRate,
+      medianWonAmount: best.medianWonAmount,
+    });
+    product *= best.lift;
+  }
+
+  const bounded = clampStack(product);
+  const beforeCap = round(model.baseValue * bounded * model.calibrationFactor, 2);
+  const final = applyCap(beforeCap, model.cap) ?? beforeCap;
+
+  return {
+    baseValue: model.baseValue,
+    steps,
+    stackMultiplier: round(product, 3),
+    boundedMultiplier: round(bounded, 3),
+    wasBounded: round(bounded, 3) !== round(product, 3),
+    calibrationFactor: model.calibrationFactor,
+    beforeCap,
+    cap: model.cap,
+    finalValue: round(final, 2),
+  };
+}

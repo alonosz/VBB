@@ -1,24 +1,52 @@
 import { describe, expect, it } from "vitest";
 import {
-  buildCohortValueCsv,
-  buildLeadConversionCsv,
+  buildValueModelCsv,
   formatConversionTime,
   normalizeEmail,
   sha256Hex,
   GOOGLE_ADS_COLUMNS,
 } from "./googleAds";
-import type { CohortValue } from "@/lib/analysis/types";
+import type { ValuedLead } from "@/lib/analysis/valueModel";
+import type { MappedDeal } from "@/lib/analysis/types";
 
-const COHORTS: CohortValue[] = [
-  { key: "Webinar · corporate", source: "Webinar", domainType: "corporate", sampleSize: 42, closeRate: 0.41, medianWonAmount: 8300, expectedValue: 3403, collapsedToSource: false },
-  { key: "Paid Social", source: "Paid Social", domainType: null, sampleSize: 128, closeRate: 0.11, medianWonAmount: 4300, expectedValue: 473, collapsedToSource: false },
-  { key: "Cold Outbound", source: "Cold Outbound", domainType: null, sampleSize: 27, closeRate: 0, medianWonAmount: null, expectedValue: null, collapsedToSource: false },
-];
+const WHEN = new Date("2026-05-01T09:07:05Z");
+
+function lead(p: {
+  id: string;
+  value: number;
+  clickId?: string | null;
+  email?: string | null;
+  createdAt?: Date | null;
+}): ValuedLead {
+  const deal: MappedDeal = {
+    id: p.id,
+    createdAt: p.createdAt === undefined ? WHEN : p.createdAt,
+    closedAt: null,
+    outcome: "open",
+    amount: null,
+    stage: null,
+    source: "Paid Search",
+    email: p.email ?? null,
+    clickId: p.clickId ?? null,
+  };
+  return {
+    deal,
+    steps: [],
+    stackMultiplier: 1,
+    boundedMultiplier: 1,
+    wasBounded: false,
+    rawValue: p.value,
+    value: p.value,
+    cappedFrom: null,
+  };
+}
+
+const BASE = { conversionName: "VBB Lead Value", currencyCode: "USD" } as const;
 
 describe("formatConversionTime", () => {
   it("emits Google's required format with an explicit offset", () => {
-    const t = formatConversionTime(new Date("2026-03-04T09:07:05Z"));
-    expect(t).toBe("2026-03-04 09:07:05+00:00");
+    expect(formatConversionTime(new Date("2026-03-04T09:07:05Z")))
+      .toBe("2026-03-04 09:07:05+00:00");
   });
 
   it("zero-pads every component", () => {
@@ -33,95 +61,102 @@ describe("email hashing", () => {
   });
 
   it("produces the known SHA-256 digest", async () => {
-    // Verifiable against any sha256 tool — guards against an encoding change.
     expect(await sha256Hex("alice@example.com")).toBe(
       "ff8d9819fc0e12bf0d24892e45987e249a28dce836a85cad60e28eaaa8c6d976"
     );
   });
 
   it("hashes the normalized form, so casing does not change the digest", async () => {
-    const a = await sha256Hex(normalizeEmail("Alice@Example.com"));
-    const b = await sha256Hex(normalizeEmail("alice@example.com"));
-    expect(a).toBe(b);
+    expect(await sha256Hex(normalizeEmail("Alice@Example.com")))
+      .toBe(await sha256Hex(normalizeEmail("alice@example.com")));
   });
 });
 
-describe("buildCohortValueCsv", () => {
-  const csv = buildCohortValueCsv({
-    cohorts: COHORTS,
-    conversionName: "VBB Lead Value",
-    currencyCode: "USD",
-    conversionTime: new Date("2026-08-24T12:00:00Z"),
-  });
-  const lines = csv.trim().split("\n");
-
-  it("leads with Google's exact column names in order", () => {
-    const header = lines[0].split(",");
-    expect(header.slice(0, 5)).toEqual([...GOOGLE_ADS_COLUMNS]);
+describe("buildValueModelCsv", () => {
+  it("uses Google's exact column names in order", async () => {
+    const r = await buildValueModelCsv({
+      leads: [lead({ id: "1", value: 1200, clickId: "Cj0abc" })],
+      identifier: "clickId",
+      ...BASE,
+    });
+    expect(r.csv.split(/\r?\n/)[0].split(",")).toEqual([...GOOGLE_ADS_COLUMNS]);
   });
 
-  it("writes one row per priced cohort", () => {
-    expect(lines).toHaveLength(3); // header + 2 priced cohorts
-  });
-
-  it("omits a cohort with no expected value rather than exporting zero", () => {
-    // Sending 0 tells Smart Bidding the lead was worthless, which is a
-    // different claim from "we don't know yet".
-    expect(csv).not.toMatch(/Cold Outbound/);
-  });
-
-  it("formats values to two decimals with the given currency", () => {
-    expect(lines[1]).toMatch(/3403\.00/);
-    expect(lines[1]).toMatch(/USD/);
-  });
-
-  it("carries the reference columns so the file is readable while filled in", () => {
-    expect(lines[0]).toMatch(/Segment \(reference\)/);
-    expect(lines[1]).toMatch(/Webinar/);
-  });
-});
-
-describe("buildLeadConversionCsv", () => {
-  const base = { conversionName: "VBB Lead Value", currencyCode: "USD" };
-
-  it("exports click-ID rows and skips leads without one", async () => {
-    const r = await buildLeadConversionCsv(
-      [
-        { clickId: "Cj0abc", email: null, createdAt: new Date("2026-05-01T00:00:00Z"), value: 1200 },
-        { clickId: null, email: "x@y.com", createdAt: new Date("2026-05-01T00:00:00Z"), value: 900 },
+  it("emits one row per lead carrying that lead's own value", async () => {
+    const r = await buildValueModelCsv({
+      leads: [
+        lead({ id: "1", value: 6270.83, clickId: "Cj0aaa" }),
+        lead({ id: "2", value: 118.4, clickId: "Cj0bbb" }),
       ],
-      { ...base, identifier: "clickId" }
-    );
+      identifier: "clickId",
+      ...BASE,
+    });
+    expect(r.included).toBe(2);
+    // Two leads, two different values — the point of the whole product.
+    expect(r.csv).toMatch(/6270\.83/);
+    expect(r.csv).toMatch(/118\.40/);
+  });
+
+  it("skips a lead with no click ID and says how many", async () => {
+    const r = await buildValueModelCsv({
+      leads: [
+        lead({ id: "1", value: 900, clickId: "Cj0abc" }),
+        lead({ id: "2", value: 900, clickId: null, email: "x@y.com" }),
+      ],
+      identifier: "clickId",
+      ...BASE,
+    });
     expect(r.included).toBe(1);
     expect(r.skipped).toBe(1);
     expect(r.skippedReason).toMatch(/click ID/);
-    expect(r.csv).toMatch(/Cj0abc/);
   });
 
   it("hashes emails and never writes one in the clear", async () => {
-    const r = await buildLeadConversionCsv(
-      [{ clickId: null, email: "alice@example.com", createdAt: new Date("2026-05-01T00:00:00Z"), value: 500 }],
-      { ...base, identifier: "email" }
-    );
+    const r = await buildValueModelCsv({
+      leads: [lead({ id: "1", value: 500, email: "alice@example.com" })],
+      identifier: "email",
+      ...BASE,
+    });
     expect(r.included).toBe(1);
     expect(r.csv).not.toMatch(/alice@example\.com/);
     expect(r.csv).toMatch(/ff8d9819fc0e12bf/);
-    expect(r.csv.split("\n")[0]).toMatch(/^Email,/);
+    expect(r.csv.split(/\r?\n/)[0]).toMatch(/^Email,/);
   });
 
   it("skips a lead with no create date rather than inventing a timestamp", async () => {
-    const r = await buildLeadConversionCsv(
-      [{ clickId: "Cj0abc", email: null, createdAt: null, value: 100 }],
-      { ...base, identifier: "clickId" }
-    );
+    const r = await buildValueModelCsv({
+      leads: [lead({ id: "1", value: 100, clickId: "Cj0abc", createdAt: null })],
+      identifier: "clickId",
+      ...BASE,
+    });
     expect(r.included).toBe(0);
     expect(r.skipped).toBe(1);
   });
 
+  it("skips a zero-valued lead rather than telling Google it was worthless", async () => {
+    const r = await buildValueModelCsv({
+      leads: [lead({ id: "1", value: 0, clickId: "Cj0abc" })],
+      identifier: "clickId",
+      ...BASE,
+    });
+    expect(r.included).toBe(0);
+    expect(r.csv).not.toMatch(/0\.00/);
+  });
+
   it("returns a header-only file with no reason when there is nothing to export", async () => {
-    const r = await buildLeadConversionCsv([], { ...base, identifier: "clickId" });
+    const r = await buildValueModelCsv({ leads: [], identifier: "clickId", ...BASE });
     expect(r.included).toBe(0);
     expect(r.skippedReason).toBeNull();
-    expect(r.csv.trim().split("\n")).toHaveLength(1);
+    expect(r.csv.trim().split(/\r?\n/)).toHaveLength(1);
+  });
+
+  it("stamps the conversion time from the lead's create date, not today", async () => {
+    const r = await buildValueModelCsv({
+      leads: [lead({ id: "1", value: 500, clickId: "Cj0abc" })],
+      identifier: "clickId",
+      ...BASE,
+    });
+    // Day-0 values attach to when the lead arrived.
+    expect(r.csv).toMatch(/2026-05-01 09:07:05\+00:00/);
   });
 });

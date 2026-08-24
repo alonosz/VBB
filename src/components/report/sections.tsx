@@ -1,7 +1,6 @@
 "use client";
 
 import type {
-  CohortValue,
   CycleLengthStats,
   DomainValueDisparity,
   EarlyGateResult,
@@ -726,99 +725,6 @@ export function DataQualitySection({
           )}
         </div>
       </div>
-    </section>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// 6. Cohort value table
-// ---------------------------------------------------------------------------
-
-export function CohortValueSection({
-  cohorts,
-  currency,
-  cap,
-}: {
-  cohorts: CohortValue[];
-  currency: string;
-  cap: number | null;
-}) {
-  const priced = cohorts.filter((c) => c.expectedValue !== null);
-  const max = Math.max(...priced.map((c) => c.expectedValue!), 1);
-
-  return (
-    <section>
-      <SectionHead title="Your Day-0 bidding values" note="Close rate × median deal, capped">
-        <p className="mt-1 max-w-[72ch] text-[13.5px] text-[var(--muted)]">
-          These become the values you send. When a new lead arrives with a known source
-          and email domain, it&apos;s priced from this table on day one — no waiting for
-          the deal to close, which is what keeps the value inside the window where it
-          still moves bidding.
-        </p>
-      </SectionHead>
-
-      <div className="card overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[640px] text-left text-[13.5px]">
-            <thead>
-              <tr className="bg-[#f8fafd] text-[10.5px] uppercase tracking-[.07em] text-[var(--muted)]">
-                <th className="px-4 py-2.5 font-bold">Segment</th>
-                <th className="px-4 py-2.5 text-right font-bold">Leads</th>
-                <th className="px-4 py-2.5 text-right font-bold">Close rate</th>
-                <th className="px-4 py-2.5 text-right font-bold">Median deal</th>
-                <th className="px-4 py-2.5 text-right font-bold">Day-0 value</th>
-                <th className="w-[90px] px-4 py-2.5" />
-              </tr>
-            </thead>
-            <tbody>
-              {cohorts.map((c) => (
-                <tr key={c.key} className="border-t border-[var(--border)] hover:bg-[#f8fafd]">
-                  <td className="px-4 py-2.5">
-                    <span className="font-semibold capitalize">{c.key}</span>
-                    {c.collapsedToSource && (
-                      <span
-                        className="ml-2 rounded-full bg-[#eef1f7] px-2 py-0.5 text-[10px] font-semibold text-[var(--muted)]"
-                        title="Too few leads to split this source by email domain, so it's priced at the source level."
-                      >
-                        source-level
-                      </span>
-                    )}
-                  </td>
-                  <td className="mono px-4 py-2.5 text-right text-[var(--muted)]">
-                    {c.sampleSize}
-                  </td>
-                  <td className="mono px-4 py-2.5 text-right text-[var(--muted)]">
-                    {c.closeRate !== null ? pct(c.closeRate) : "—"}
-                  </td>
-                  <td className="mono px-4 py-2.5 text-right text-[var(--muted)]">
-                    {c.medianWonAmount !== null ? money(c.medianWonAmount, currency) : "—"}
-                  </td>
-                  <td className="mono px-4 py-2.5 text-right font-bold">
-                    {c.expectedValue !== null ? money(c.expectedValue, currency) : "—"}
-                  </td>
-                  <td className="px-4 py-2.5">
-                    {c.expectedValue !== null && (
-                      <div className="h-1.5 overflow-hidden rounded-full bg-[#eef1f7]">
-                        <div
-                          className="h-full rounded-full bg-[var(--primary)]"
-                          style={{ width: `${(c.expectedValue / max) * 100}%` }}
-                        />
-                      </div>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <p className="mt-2.5 max-w-[78ch] text-[12px] text-[var(--muted)]">
-        Every value is capped at {cap !== null ? money(cap, currency) : "the recommended cap"}.
-        A cohort with no closed deals yet shows no value rather than zero — sending zero
-        would tell Google the lead was worthless, which is a different claim from
-        &ldquo;we don&apos;t know yet&rdquo;.
-      </p>
     </section>
   );
 }

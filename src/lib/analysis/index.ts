@@ -7,7 +7,7 @@ import { matchRateReadiness } from "./matchRate";
 import { valueSpreadAndCaps, DEFAULT_CAP_MULTIPLE } from "./valueSpread";
 import { volumeCheck } from "./volume";
 import { domainValueDisparity, icpFitCheck } from "./segments";
-import { cohortValueTable } from "./cohortValues";
+import { buildValueModel } from "./valueModel";
 import { determineVerdict } from "./verdict";
 
 export * from "./types";
@@ -19,7 +19,8 @@ export { matchRateReadiness, TRACKING_GAP_THRESHOLD } from "./matchRate";
 export { valueSpreadAndCaps, applyCap, DEFAULT_CAP_MULTIPLE } from "./valueSpread";
 export { volumeCheck } from "./volume";
 export { domainValueDisparity, icpFitCheck, extractIcpTraits } from "./segments";
-export { cohortValueTable, MIN_CELL_SIZE } from "./cohortValues";
+export * from "./valueModel";
+export * from "./factors";
 export { determineVerdict } from "./verdict";
 
 /**
@@ -28,7 +29,7 @@ export { determineVerdict } from "./verdict";
  * behind any number on screen.
  */
 export function runDiagnostic(input: AnalysisInput): DiagnosticResult {
-  const { deals, excluded, businessContext, currencyCode } = input;
+  const { deals, excluded, businessContext, currencyCode, customSignalKeys } = input;
   const now = input.now ?? new Date();
 
   const cycle = cycleLengthStats(deals);
@@ -40,7 +41,12 @@ export function runDiagnostic(input: AnalysisInput): DiagnosticResult {
   const volume = volumeCheck(deals, now);
   const domainDisparity = domainValueDisparity(deals);
   const icpFit = icpFitCheck(deals, businessContext);
-  const cohortValues = cohortValueTable(deals, valueSpread.recommendedCap);
+  const valueModel = buildValueModel({
+    deals,
+    cap: valueSpread.recommendedCap,
+    currencyCode,
+    customSignalKeys,
+  });
   const verdict = determineVerdict(cycle, volume, matchRate, earlyGate);
 
   return {
@@ -58,7 +64,7 @@ export function runDiagnostic(input: AnalysisInput): DiagnosticResult {
     volume,
     domainDisparity,
     icpFit,
-    cohortValues,
+    valueModel,
     verdict,
   };
 }

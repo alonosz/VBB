@@ -27,6 +27,11 @@ export interface MappedDeal {
   employeeCount?: number | null;
   industry?: string | null;
   contactTitle?: string | null;
+  /**
+   * Extra categorical columns the user mapped as value signals (budget band,
+   * timeline, use case…). Keyed by column name.
+   */
+  signals?: Record<string, string>;
 }
 
 /** A row dropped before analysis, always surfaced to the user. */
@@ -41,6 +46,8 @@ export interface AnalysisInput {
   /** Raw free text from the intake step. Never parsed into structure. */
   businessContext?: string;
   currencyCode: string;
+  /** Extra mapped columns to test as value signals. */
+  customSignalKeys?: string[];
   /** Reference point for "last 6 months" windows. Injected for testability. */
   now?: Date;
 }
@@ -219,24 +226,6 @@ export interface IcpFitResult {
 }
 
 // ---------------------------------------------------------------------------
-// (j) cohortValueTable
-// ---------------------------------------------------------------------------
-
-export interface CohortValue {
-  /** Human-readable segment key, e.g. "Webinar · corporate". */
-  key: string;
-  source: string;
-  domainType: DomainType | null;
-  sampleSize: number;
-  closeRate: number | null;
-  medianWonAmount: number | null;
-  /** closeRate × medianWonAmount, after the cap. This is the Day-0 bid value. */
-  expectedValue: number | null;
-  /** True when the source×domain split was too thin and we fell back. */
-  collapsedToSource: boolean;
-}
-
-// ---------------------------------------------------------------------------
 // (k) verdict
 // ---------------------------------------------------------------------------
 
@@ -269,6 +258,8 @@ export interface ShadowRoasRow {
 // Full result
 // ---------------------------------------------------------------------------
 
+import type { ValueModel } from "./valueModel";
+
 export interface DiagnosticResult {
   rowsAnalyzed: number;
   excluded: ExcludedRow[];
@@ -284,6 +275,7 @@ export interface DiagnosticResult {
   volume: VolumeCheck;
   domainDisparity: DomainValueDisparity;
   icpFit: IcpFitResult;
-  cohortValues: CohortValue[];
+  /** The Day-0 value model. Built only on lead-intrinsic attributes. */
+  valueModel: ValueModel;
   verdict: Verdict;
 }

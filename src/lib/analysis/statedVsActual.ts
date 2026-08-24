@@ -1,4 +1,4 @@
-import type { CohortValue, CycleLengthStats, IcpFitResult, SourceEconomics, VolumeCheck } from "./types";
+import type { CycleLengthStats, IcpFitResult, SourceEconomics, VolumeCheck } from "./types";
 import { round } from "./helpers";
 
 /**
@@ -158,7 +158,6 @@ export function buildComparisons(
   cycle: CycleLengthStats,
   volume: VolumeCheck,
   sources: SourceEconomics[],
-  cohorts: CohortValue[],
   icp: IcpFitResult
 ): { claims: StatedClaims; comparisons: Comparison[] } {
   const knownSources = sources.map((s) => s.source);
@@ -208,7 +207,7 @@ export function buildComparisons(
   }
 
   // --- Best sources ---
-  if (claims.namedSources.length > 0 && cohorts.length > 0) {
+  if (claims.namedSources.length > 0 && sources.length > 0) {
     const ranked = [...sources]
       .filter((s) => s.closeRate !== null && s.medianWonAmount !== null)
       .sort(

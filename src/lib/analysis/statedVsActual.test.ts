@@ -3,7 +3,6 @@ import { buildComparisons, extractStatedClaims } from "./statedVsActual";
 import { cycleLengthStats } from "./cycleLength";
 import { volumeCheck } from "./volume";
 import { sourceEconomics } from "./sourceEconomics";
-import { cohortValueTable } from "./cohortValues";
 import { SAME_DAY_CLOSES, LONG_CYCLE, TWO_SOURCES, NOW } from "@/lib/fixtures/edgeCases";
 import type { IcpFitResult } from "./types";
 
@@ -63,14 +62,13 @@ describe("extractStatedClaims", () => {
 
 describe("buildComparisons", () => {
   const sources = sourceEconomics(TWO_SOURCES);
-  const cohorts = cohortValueTable(TWO_SOURCES, null);
 
   it("flags a big gap between a stated 3-month cycle and a same-day reality", () => {
     const { comparisons } = buildComparisons(
       "Our sales cycle is about 3 months.",
       cycleLengthStats(SAME_DAY_CLOSES),
       volumeCheck(SAME_DAY_CLOSES, NOW),
-      sources, cohorts, NO_ICP
+      sources, NO_ICP
     );
     const cycle = comparisons.find((c) => c.label === "Sales cycle")!;
     expect(cycle.verdict).toBe("gap");
@@ -83,7 +81,7 @@ describe("buildComparisons", () => {
       "Deals take about 3 months to close.",
       cycleLengthStats(LONG_CYCLE),
       volumeCheck(LONG_CYCLE, NOW),
-      sources, cohorts, NO_ICP
+      sources, NO_ICP
     );
     expect(comparisons.find((c) => c.label === "Sales cycle")!.verdict).toBe("confirmed");
   });
@@ -93,7 +91,7 @@ describe("buildComparisons", () => {
       "Our best customers come from webinars.",
       cycleLengthStats(TWO_SOURCES),
       volumeCheck(TWO_SOURCES, NOW),
-      sources, cohorts, NO_ICP
+      sources, NO_ICP
     );
     const best = comparisons.find((c) => c.label === "Best sources")!;
     expect(best.verdict).toBe("confirmed");
@@ -105,7 +103,7 @@ describe("buildComparisons", () => {
       "Paid social is where our best leads come from.",
       cycleLengthStats(TWO_SOURCES),
       volumeCheck(TWO_SOURCES, NOW),
-      sources, cohorts, NO_ICP
+      sources, NO_ICP
     );
     expect(comparisons.find((c) => c.label === "Best sources")!.verdict).toBe("gap");
   });
@@ -115,7 +113,7 @@ describe("buildComparisons", () => {
       "We just want better results from Google.",
       cycleLengthStats(SAME_DAY_CLOSES),
       volumeCheck(SAME_DAY_CLOSES, NOW),
-      sources, cohorts, NO_ICP
+      sources, NO_ICP
     );
     expect(comparisons).toHaveLength(0);
   });
@@ -125,7 +123,7 @@ describe("buildComparisons", () => {
       undefined,
       cycleLengthStats(SAME_DAY_CLOSES),
       volumeCheck(SAME_DAY_CLOSES, NOW),
-      sources, cohorts, NO_ICP
+      sources, NO_ICP
     );
     expect(comparisons).toEqual([]);
   });
@@ -142,7 +140,7 @@ describe("buildComparisons", () => {
       "We sell to manufacturing companies with 200-1000 employees.",
       cycleLengthStats(SAME_DAY_CLOSES),
       volumeCheck(SAME_DAY_CLOSES, NOW),
-      sources, cohorts, icp
+      sources, icp
     );
     const fit = comparisons.find((c) => c.label === "Ideal customer fit")!;
     expect(fit.verdict).toBe("partial");

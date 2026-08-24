@@ -4,46 +4,54 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useDiagnostic } from "@/context/DiagnosticContext";
 import { Stepper } from "@/components/diagnostic/Stepper";
-import { ArrowIcon } from "@/components/ArrowIcon";
 import { rowsToDeals } from "@/lib/mapping/toDeals";
-import { runDiagnostic } from "@/lib/analysis";
+import { runDiagnostic, valueAllLeads, bestCaseStack } from "@/lib/analysis";
 import { buildComparisons } from "@/lib/analysis/statedVsActual";
-import { buildCohortValueCsv, downloadCsv } from "@/lib/export/googleAds";
+import { buildValueModelCsv, downloadCsv } from "@/lib/export/googleAds";
 import {
-  CohortValueSection,
+  AnalysisExpander,
+  AttributionNote,
+  DroppedFactorsSection,
+  HookPanel,
+  ValueModelPanel,
+  WiringPanel,
+} from "@/components/report/panels";
+import {
   CycleSection,
   DataQualitySection,
-  DomainSection,
   SectionHead,
-  ShadowRoasSection,
   SourceEconomicsSection,
   StatedVsActual,
-  TrackingGapSection,
-  ValueSpreadSection,
-  VerdictBanner,
-  money,
 } from "@/components/report/sections";
 
 export default function ReportPage() {
   const router = useRouter();
   const { file, fields, currency, businessContext, stageTiming } = useDiagnostic();
-  const [conversionName, setConversionName] = useState("VBB Lead Value");
-  const [downloaded, setDownloaded] = useState(false);
+  const [exportNote, setExportNote] = useState<string | null>(null);
 
   useEffect(() => {
     if (!file) router.replace("/diagnostic/upload");
   }, [file, router]);
 
-  const result = useMemo(() => {
+  const mapped = useMemo(() => {
     if (!file) return null;
-    const { deals, excluded } = rowsToDeals({ rows: file.rows, fields, currency, stageTiming });
+    return rowsToDeals({ rows: file.rows, fields, currency, stageTiming });
+  }, [file, fields, currency, stageTiming]);
+
+  const result = useMemo(() => {
+    if (!mapped) return null;
     return runDiagnostic({
-      deals,
-      excluded,
+      deals: mapped.deals,
+      excluded: mapped.excluded,
       businessContext,
       currencyCode: currency.reportingCurrency,
     });
-  }, [file, fields, currency, businessContext, stageTiming]);
+  }, [mapped, businessContext, currency.reportingCurrency]);
+
+  const valued = useMemo(() => {
+    if (!mapped || !result) return [];
+    return valueAllLeads(mapped.deals, result.valueModel);
+  }, [mapped, result]);
 
   const comparisons = useMemo(() => {
     if (!result) return [];
@@ -52,23 +60,41 @@ export default function ReportPage() {
       result.cycle,
       result.volume,
       result.sources,
-      result.cohortValues,
       result.icpFit
     ).comparisons;
   }, [result, businessContext]);
 
-  if (!file || !result) return null;
+  if (!file || !result || !mapped) return null;
 
   const cur = result.currencyCode;
+  const stack = bestCaseStack(result.valueModel);
 
-  function handleDownload() {
-    const csv = buildCohortValueCsv({
-      cohorts: result!.cohortValues,
-      conversionName,
+  // Prefer whichever identifier actually covers more leads. A click ID matches
+  // directly; a hashed email relies on Google finding the click itself.
+  const matchIdentifier: "clickId" | "email" =
+    result.matchRate.withClickId >= result.matchRate.withValidEmail ? "clickId" : "email";
+
+  // Spread of examples across the value range, so the table shows the model
+  // working rather than eight near-identical leads.
+  const examples = (() => {
+    const sorted = [...valued].filter((v) => v.value > 0).sort((a, b) => b.value - a.value);
+    if (sorted.length <= 8) return sorted;
+    const step = (sorted.length - 1) / 7;
+    return Array.from({ length: 8 }, (_, i) => sorted[Math.round(i * step)]);
+  })();
+
+  async function handleExport() {
+    const r = await buildValueModelCsv({
+      leads: valued,
+      conversionName: "VBB Lead Value",
       currencyCode: cur,
+      identifier: matchIdentifier,
     });
-    downloadCsv("vbb-cohort-values-google-ads.csv", csv);
-    setDownloaded(true);
+    downloadCsv("vbb-lead-values-google-ads.csv", r.csv);
+    setExportNote(
+      `${r.included.toLocaleString()} conversion${r.included === 1 ? "" : "s"} written` +
+        (r.skippedReason ? ` · ${r.skippedReason}` : "")
+    );
   }
 
   return (
@@ -76,122 +102,75 @@ export default function ReportPage() {
       <Stepper current="report" />
 
       <main className="mx-auto w-full max-w-5xl flex-1 px-6 py-10">
-        {/* Header */}
         <div className="mb-7">
-          <p className="label mb-2">Lead value diagnostic</p>
-          <h1 className="text-[clamp(26px,3.6vw,34px)] font-bold leading-tight tracking-tight text-balance">
-            What your leads are actually worth
-          </h1>
-          <p className="mono mt-2 text-[13px] text-[var(--muted)]">
-            {result.rowsAnalyzed.toLocaleString()} deals analyzed · {file.name}
+          <p className="mono text-[13px] text-[var(--muted)]">
+            {result.rowsAnalyzed.toLocaleString()} deals · {file.name}
             {result.excluded.length > 0 &&
               ` · ${result.excluded.length.toLocaleString()} excluded`}
           </p>
         </div>
 
-        <div className="grid gap-9">
-          {/* 1 — Shadow ROAS, the opening shot */}
-          <ShadowRoasSection
-            rows={result.shadowRoas}
+        <div className="grid gap-8">
+          <HookPanel spread={result.valueSpread} valued={valued} currency={cur} />
+
+          <ValueModelPanel
+            model={result.valueModel}
+            stack={stack}
+            spread={result.valueSpread}
+            examples={examples}
             currency={cur}
-            blindnessRatio={result.valueSpread.blindnessRatio}
           />
 
-          {/* 2 — Stated vs actual */}
-          <StatedVsActual businessContext={businessContext} comparisons={comparisons} />
+          <WiringPanel
+            match={result.matchRate}
+            volume={result.volume}
+            verdict={result.verdict}
+            onExport={handleExport}
+            exportLabel={`Download ${matchIdentifier === "clickId" ? "click-ID" : "hashed-email"} conversions`}
+            exportNote={exportNote}
+          >
+            <span className="text-[12.5px] text-[var(--muted)]">
+              Google&apos;s Click Conversion Import format · one row per lead
+            </span>
+          </WiringPanel>
 
-          {/* 3 — Verdict */}
-          <VerdictBanner verdict={result.verdict} />
-
-          {/* 4 — Tracking gap */}
-          <TrackingGapSection match={result.matchRate} />
-
-          {/* 5 — Evidence */}
-          <CycleSection cycle={result.cycle} />
-          <SourceEconomicsSection sources={result.sources} currency={cur} />
-          <ValueSpreadSection spread={result.valueSpread} currency={cur} />
-          <DomainSection domain={result.domainDisparity} currency={cur} />
-          <DataQualitySection
-            gate={result.earlyGate}
-            trust={result.stageTrust}
-            excluded={result.excluded}
-          />
-
-          {/* 6 — Cohort values */}
-          <CohortValueSection
-            cohorts={result.cohortValues}
-            currency={cur}
-            cap={result.valueSpread.recommendedCap}
-          />
-
-          {/* 7 — Export */}
-          <section>
-            <SectionHead title="Send these to Google Ads" />
-            <div className="rounded-2xl border border-[var(--primary)]/30 bg-gradient-to-br from-[var(--primary-soft)] to-white p-5 sm:p-6">
-              <div className="grid gap-5 sm:grid-cols-[1fr_auto] sm:items-end">
-                <div>
-                  <p className="max-w-[68ch] text-[14px] text-[var(--muted)]">
-                    Exports your cohort table in Google&apos;s Click Conversion Import
-                    format. Fill the Click ID column from your own lead export, then
-                    upload it under Conversions → Uploads.
-                  </p>
-                  <label className="mt-4 block max-w-xs">
-                    <span className="label">Conversion action name</span>
-                    <input
-                      className="input mono mt-1"
-                      value={conversionName}
-                      onChange={(e) => setConversionName(e.target.value)}
-                    />
-                    <span className="mt-1 block text-[11.5px] text-[var(--muted)]">
-                      Must match the conversion action you created in Google Ads.
-                    </span>
-                  </label>
-                </div>
-                <button type="button" onClick={handleDownload} className="btn btn-primary">
-                  {downloaded ? "Downloaded ✓" : "Download CSV"} <ArrowIcon />
-                </button>
-              </div>
-
-              <div className="mt-5 grid gap-3 border-t border-[var(--primary)]/20 pt-5 sm:grid-cols-3">
-                {[
-                  { n: "1", t: "Download", d: "Your cohort values in Google's import format." },
-                  { n: "2", t: "Import in Google Ads", d: "Conversions → Uploads → upload the file." },
-                  { n: "3", t: "Smart Bidding adapts", d: "It optimizes toward revenue instead of form-fills." },
-                ].map((s) => (
-                  <div key={s.n} className="flex gap-3">
-                    <span className="mono flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-[var(--primary)] text-[12px] font-bold text-white">
-                      {s.n}
-                    </span>
-                    <div>
-                      <p className="text-[13px] font-bold">{s.t}</p>
-                      <p className="text-[12.5px] text-[var(--muted)]">{s.d}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </section>
+          <AnalysisExpander>
+            <AttributionNote />
+            <StatedVsActual businessContext={businessContext} comparisons={comparisons} />
+            <CycleSection cycle={result.cycle} />
+            <section>
+              <SectionHead
+                title="Channel insight — not used in your value model"
+                note="For your own budget decisions"
+              >
+                <p className="mt-1 max-w-[70ch] text-[13.5px] text-[var(--muted)]">
+                  How each source performs is worth knowing, but it does not price a
+                  lead here. Google already knows which campaign produced the click.
+                </p>
+              </SectionHead>
+              <SourceEconomicsSection sources={result.sources} currency={cur} />
+            </section>
+            <DroppedFactorsSection model={result.valueModel} />
+            <DataQualitySection
+              gate={result.earlyGate}
+              trust={result.stageTrust}
+              excluded={result.excluded}
+            />
+          </AnalysisExpander>
         </div>
 
         <footer className="mt-10 border-t border-[var(--border)] pt-6">
           <p className="max-w-[78ch] text-[12.5px] text-[var(--muted)]">
-            Every figure here is computed from the file you uploaded — cohort win rate ×
-            median segment deal size, capped at{" "}
-            {result.valueSpread.recommendedCap !== null
-              ? money(result.valueSpread.recommendedCap, cur)
-              : "the recommended cap"}
-            . Nothing is estimated, benchmarked against other accounts, or forecast.
-            These are descriptions of what already happened, not a performance guarantee.
+            Every figure here is computed from the file you uploaded. Nothing is
+            estimated, benchmarked against other accounts, or forecast.
           </p>
-          <div className="mt-4 flex flex-wrap gap-2.5">
-            <button
-              type="button"
-              onClick={() => router.push("/diagnostic/mapping")}
-              className="btn btn-secondary"
-            >
-              Back to mapping
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={() => router.push("/diagnostic/mapping")}
+            className="btn btn-secondary mt-4"
+          >
+            Back to mapping
+          </button>
         </footer>
       </main>
     </div>

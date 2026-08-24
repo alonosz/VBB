@@ -12,9 +12,9 @@ import {
   domainValueDisparity,
   icpFitCheck,
   extractIcpTraits,
-  cohortValueTable,
   determineVerdict,
   runDiagnostic,
+  valueAllLeads,
 } from "./index";
 import type { DealOutcome } from "./types";
 import {
@@ -451,56 +451,6 @@ describe("icpFitCheck", () => {
 });
 
 // ---------------------------------------------------------------------------
-// (j) cohortValueTable
-// ---------------------------------------------------------------------------
-
-describe("cohortValueTable", () => {
-  it("prices each source at close rate times median won amount", () => {
-    const rows = cohortValueTable(TWO_SOURCES, null);
-    const webinar = rows.find((r) => r.source === "Webinar")!;
-    expect(webinar.expectedValue).toBe(5000); // 0.5 x 10,000
-    const social = rows.find((r) => r.source === "Paid Social")!;
-    expect(social.expectedValue).toBe(200); // 0.1 x 2,000
-  });
-
-  it("applies the cap to the segment median before multiplying", () => {
-    const rows = cohortValueTable(OUTLIER_AMONG_SMALL, 6000);
-    expect(rows[0].expectedValue).toBe(2000); // 1.0 x min(2000, 6000)
-  });
-
-  it("collapses to source-only when a domain cell is too thin", () => {
-    const rows = cohortValueTable(TWO_SOURCES, null);
-    // Each source here has only 10 deals, under the 15-row cell floor.
-    expect(rows.every((r) => r.domainType === null)).toBe(true);
-  });
-
-  it("splits by domain when every cell clears the floor", () => {
-    const deals = [
-      ...Array.from({ length: 20 }, (_, i) => ({
-        ...DOMAIN_SPLIT[0], id: `c-${i}`, source: "Paid Search",
-        email: `x${i}@acme.com`, outcome: (i < 10 ? "won" : "lost") as DealOutcome,
-        amount: i < 10 ? 8000 : null,
-      })),
-      ...Array.from({ length: 20 }, (_, i) => ({
-        ...DOMAIN_SPLIT[0], id: `f-${i}`, source: "Paid Search",
-        email: `y${i}@gmail.com`, outcome: (i < 4 ? "won" : "lost") as DealOutcome,
-        amount: i < 4 ? 3000 : null,
-      })),
-    ];
-    const rows = cohortValueTable(deals, null);
-    expect(rows).toHaveLength(2);
-    expect(rows.map((r) => r.domainType).sort()).toEqual(["corporate", "free"]);
-    expect(rows[0].expectedValue!).toBeGreaterThan(rows[1].expectedValue!);
-  });
-
-  it("returns a null value rather than zero when a cohort never closed", () => {
-    const rows = cohortValueTable(ZERO_CLOSE_RATE, null);
-    expect(rows[0].closeRate).toBe(0);
-    expect(rows[0].expectedValue).toBeNull();
-  });
-});
-
-// ---------------------------------------------------------------------------
 // (k) verdict
 // ---------------------------------------------------------------------------
 
@@ -564,7 +514,7 @@ describe("runDiagnostic", () => {
     const r = runDiagnostic({ deals: EMPTY, excluded: [], currencyCode: "USD", now: NOW });
     expect(r.rowsAnalyzed).toBe(0);
     expect(r.verdict.mode).toBe("NOT_YET");
-    expect(r.cohortValues).toEqual([]);
+    expect(r.valueModel.isFlat).toBe(true);
   });
 
   it("carries excluded rows through to the report", () => {
@@ -592,7 +542,7 @@ describe("runDiagnostic", () => {
     expect(r.sources.length).toBe(6);
     expect(r.cycle.sampleSize).toBeGreaterThan(0);
     expect(r.shadowRoas.length).toBe(6);
-    expect(r.cohortValues.length).toBeGreaterThan(0);
+    expect(r.valueModel.includedFactors.length).toBeGreaterThan(0);
 
     // The seeded outlier must trip the cap.
     expect(r.valueSpread.max).toBe(200_000);
@@ -617,12 +567,19 @@ describe("runDiagnostic", () => {
     expect(a[42].source).toBe(b[42].source);
   });
 
-  it("never emits a cohort value above the cap", () => {
+  it("never emits a lead value above the cap", () => {
     const deals = generateDemoDeals();
     const r = runDiagnostic({ deals, excluded: [], currencyCode: "USD", now: new Date("2026-08-24T00:00:00Z") });
     const cap = r.valueSpread.recommendedCap!;
-    for (const row of r.cohortValues) {
-      if (row.expectedValue !== null) expect(row.expectedValue).toBeLessThanOrEqual(cap);
+    for (const v of valueAllLeads(deals, r.valueModel)) {
+      expect(v.value).toBeLessThanOrEqual(cap);
     }
+  });
+
+  it("builds a value model with no source-derived factor", () => {
+    const deals = generateDemoDeals();
+    const r = runDiagnostic({ deals, excluded: [], currencyCode: "USD", now: new Date("2026-08-24T00:00:00Z") });
+    expect(r.valueModel.factors.map((f) => f.key)).not.toContain("source");
+    expect(r.valueModel.fittedOn).toBeGreaterThan(0);
   });
 });
