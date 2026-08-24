@@ -4,6 +4,12 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useDiagnostic } from "@/context/DiagnosticContext";
 
+/**
+ * Short commit SHA of the running build. Vercel injects the full SHA at build
+ * time; locally there is none, so it falls back to "dev".
+ */
+const BUILD_ID = (process.env.NEXT_PUBLIC_COMMIT_SHA ?? "dev").slice(0, 7);
+
 const STEPS = [
   { key: "intake", label: "Your business" },
   { key: "upload", label: "Upload" },
@@ -69,12 +75,20 @@ export function Stepper({ current }: { current: DiagnosticStep }) {
           type="button"
           onClick={() => {
             reset();
-            router.push("/");
+            router.push("/diagnostic");
           }}
           className="btn btn-ghost shrink-0 text-xs"
         >
           Start over
         </button>
+
+        {/* Build marker, so it is always obvious which version is deployed. */}
+        <span
+          className="mono shrink-0 text-[10.5px] text-[#b6bdcc]"
+          title="Deployed commit"
+        >
+          {BUILD_ID}
+        </span>
       </div>
     </header>
   );
