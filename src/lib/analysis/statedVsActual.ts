@@ -143,6 +143,43 @@ export function extractStatedClaims(
   };
 }
 
+/**
+ * The assistant reads the sentence; the regex reads the digits. Where the
+ * assistant produced a claim we use it, because it understood the sentence.
+ * Where it produced nothing we keep the regex, so the comparison still runs
+ * when the call did not.
+ */
+function mergeClaims(
+  regex: StatedClaims,
+  assisted: Partial<StatedClaims> | undefined,
+  knownSources: string[]
+): StatedClaims {
+  if (!assisted) return regex;
+
+  const cycleFromAssistant = assisted.cycleDaysMin != null;
+  const volumeFromAssistant = assisted.leadsPerMonthMin != null;
+
+  // Source names have to exist in the data to be comparable against it.
+  const assistedSources = (assisted.namedSources ?? [])
+    .map((claimed) =>
+      knownSources.find((s) => s.toLowerCase() === claimed.toLowerCase()) ??
+      knownSources.find((s) => s.toLowerCase().includes(claimed.toLowerCase().replace(/s$/, "")))
+    )
+    .filter((s): s is string => !!s);
+
+  return {
+    cycleDaysMin: cycleFromAssistant ? assisted.cycleDaysMin! : regex.cycleDaysMin,
+    cycleDaysMax: cycleFromAssistant
+      ? assisted.cycleDaysMax ?? assisted.cycleDaysMin!
+      : regex.cycleDaysMax,
+    leadsPerMonthMin: volumeFromAssistant ? assisted.leadsPerMonthMin! : regex.leadsPerMonthMin,
+    leadsPerMonthMax: volumeFromAssistant
+      ? assisted.leadsPerMonthMax ?? assisted.leadsPerMonthMin!
+      : regex.leadsPerMonthMax,
+    namedSources: assistedSources.length > 0 ? [...new Set(assistedSources)] : regex.namedSources,
+  };
+}
+
 function formatDayRange(min: number, max: number): string {
   const fmt = (d: number) =>
     d >= 60 ? `${Math.round(d / 30.44)} months` : d >= 14 ? `${Math.round(d / 7)} weeks` : `${Math.round(d)} days`;
@@ -158,10 +195,20 @@ export function buildComparisons(
   cycle: CycleLengthStats,
   volume: VolumeCheck,
   sources: SourceEconomics[],
-  icp: IcpFitResult
+  icp: IcpFitResult,
+  /**
+   * Claims read out of the intake text by the assistant. They replace the
+   * regex reading field by field — never partially, so a stated cycle always
+   * comes from one reader or the other, not a blend of the two.
+   */
+  assisted?: Partial<StatedClaims>
 ): { claims: StatedClaims; comparisons: Comparison[] } {
   const knownSources = sources.map((s) => s.source);
-  const claims = extractStatedClaims(businessContext, knownSources);
+  const claims = mergeClaims(
+    extractStatedClaims(businessContext, knownSources),
+    assisted,
+    knownSources
+  );
   const comparisons: Comparison[] = [];
 
   // --- Sales cycle ---

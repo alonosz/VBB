@@ -43,7 +43,34 @@ Missing is excluded, always with visible counts and reasons. Stage history is
 never trusted blindly — real CRMs are full of retroactive card-dragging that
 produces 9-second stage transitions.
 
-## 5. Cap outlier values
+## 5. The assistant proposes, the engine computes
+
+One LLM call runs, at upload, in `src/app/api/intake/route.ts`. Its job is to
+read the user's free-text description against a *description of each column*
+and propose (a) which column is which and (b) which claims the user made about
+their buyers. That is the whole remit.
+
+- It **never** returns a value, multiplier, score, weight or close rate. Every
+  figure in the product comes from the deterministic engine reading the user's
+  own rows. A model-supplied number would be an invented figure presented as
+  the user's own data — the exact failure principle 2 exists to prevent.
+- Its output is untrusted input. Everything passes through
+  `sanitizeProposal()`, which drops columns that aren't in the file, field keys
+  we don't have, duplicate claims and impossible numbers.
+- Candidate factors are **hypotheses to test**, never rules to apply. They clear
+  the same sample-size and lift thresholds as every other factor, and they are
+  reported whether they survive or not — a refuted claim is the most valuable
+  line in the report.
+- **No raw rows leave the browser.** `profileColumns()` sends header names,
+  value kinds, fill rates, cardinality, digit counts, and — for short
+  low-cardinality category columns only — a few labels. Never emails, names,
+  phone numbers, addresses, click IDs, deal amounts (not even as a range), or
+  free text. Any new field added to `ColumnProfile` must be checked against
+  this list.
+- The call never blocks. Every failure path returns a reason and the flow
+  continues on the header heuristics alone.
+
+## 6. Cap outlier values
 
 Smart Bidding is distorted by outliers. Default cap is **3× median won amount**,
 always shown with its rationale and the count of deals it clips. The cap applies
@@ -143,5 +170,12 @@ must support both themes (the viewer's theme is not ours to control).
 # Scope guardrails
 
 Not in scope unless explicitly requested: user accounts/auth, billing,
-LLM API calls, live Google Ads / Meta API calls, CRM OAuth beyond a named
-phase, multi-tenancy (though schemas carry `client_id` for later).
+live Google Ads / Meta API calls, CRM OAuth beyond a named phase,
+multi-tenancy (though schemas carry `client_id` for later).
+
+**LLM calls**: exactly one, the assisted intake described in principle 5. It is
+bounded to column mapping and claim extraction. Do not add a second LLM call,
+and do not widen this one to compute, rank, or value anything — that boundary
+is the product's credibility. Configuration is `ANTHROPIC_API_KEY` and an
+optional `VBB_INTAKE_MODEL`; with no key set the product runs unchanged on
+header heuristics.

@@ -77,6 +77,12 @@ export interface ToDealsOptions {
   dropDuplicates?: boolean;
   /** Per-stage timing columns, which drive the trust and early-gate checks. */
   stageTiming?: StageTimingColumn[];
+  /**
+   * Extra categorical columns to carry onto each deal as value signals. These
+   * come from the advertiser's own description of what makes a lead good, and
+   * the model tests them against the same thresholds as everything else.
+   */
+  signalColumns?: string[];
 }
 
 /**
@@ -123,7 +129,14 @@ function stageTimingFor(
  * disappears silently, and nothing is invented to fill a gap.
  */
 export function rowsToDeals(opts: ToDealsOptions): MappingResult {
-  const { rows, fields, currency = null, dropDuplicates = true, stageTiming = [] } = opts;
+  const {
+    rows,
+    fields,
+    currency = null,
+    dropDuplicates = true,
+    stageTiming = [],
+    signalColumns = [],
+  } = opts;
 
   const col = (key: FieldKey): string | null =>
     fields.find((f) => f.key === key)?.column ?? null;
@@ -190,6 +203,14 @@ export function rowsToDeals(opts: ToDealsOptions): MappingResult {
 
     const employeeRaw = cEmployees ? parseAmount(row[cEmployees]) : null;
 
+    // Only columns that actually hold a value on this row become signals — a
+    // blank cell is an unknown level, not a level called "".
+    const signals: Record<string, string> = {};
+    for (const c of signalColumns) {
+      const v = (row[c] ?? "").trim();
+      if (v) signals[c] = v;
+    }
+
     deals.push({
       id,
       createdAt,
@@ -206,6 +227,7 @@ export function rowsToDeals(opts: ToDealsOptions): MappingResult {
       employeeCount: employeeRaw,
       industry: cIndustry ? (row[cIndustry] ?? "").trim() || null : null,
       contactTitle: cTitle ? (row[cTitle] ?? "").trim() || null : null,
+      signals: Object.keys(signals).length > 0 ? signals : undefined,
       ...stageTimingFor(row, createdAt, stageTiming),
     });
   });

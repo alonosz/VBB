@@ -1,3 +1,5 @@
+import type { FactorHypothesis } from "./valueModel";
+
 // Domain types for the VBB diagnostic analysis engine.
 //
 // A MappedDeal is the normalized shape every analysis function consumes. The
@@ -48,6 +50,8 @@ export interface AnalysisInput {
   currencyCode: string;
   /** Extra mapped columns to test as value signals. */
   customSignalKeys?: string[];
+  /** Claims from the intake step, attached to the factor that can test them. */
+  hypotheses?: FactorHypothesis[];
   /** Reference point for "last 6 months" windows. Injected for testability. */
   now?: Date;
 }

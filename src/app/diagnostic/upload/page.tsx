@@ -7,13 +7,17 @@ import { useDiagnostic } from "@/context/DiagnosticContext";
 import { Stepper } from "@/components/diagnostic/Stepper";
 import { detectColumns, detectStageTimingColumns, findFileIssues } from "@/lib/mapping/detect";
 import { generateDemoDeals, demoDealsToCsvRows } from "@/lib/fixtures/demoDataset";
+import { requestIntakeProposal } from "@/lib/intake/client";
+import { applyProposal } from "@/lib/intake/merge";
+import { describeWhatIsSent } from "@/lib/intake/profile";
 
 const MAX_BYTES = 25 * 1024 * 1024;
 const MAX_ROWS = 100_000;
 
 export default function UploadPage() {
   const router = useRouter();
-  const { setFile, setFields, setIssues, setStageTiming } = useDiagnostic();
+  const { businessContext, setFile, setFields, setIssues, setStageTiming, setIntake } =
+    useDiagnostic();
   const inputRef = useRef<HTMLInputElement>(null);
 
   const [dragging, setDragging] = useState(false);
@@ -21,8 +25,16 @@ export default function UploadPage() {
   const [error, setError] = useState<string | null>(null);
   const [log, setLog] = useState<string[]>([]);
 
+  // The assisted read only happens when there is a description to read.
+  const assisted = businessContext.trim().length > 0;
+
   const ingest = useCallback(
-    (name: string, sizeBytes: number, headers: string[], rows: Record<string, string>[]) => {
+    async (
+      name: string,
+      sizeBytes: number,
+      headers: string[],
+      rows: Record<string, string>[]
+    ) => {
       setLog([`Read ${rows.length.toLocaleString()} rows across ${headers.length} columns`]);
 
       const { fields } = detectColumns(headers, rows);
@@ -38,14 +50,40 @@ export default function UploadPage() {
       setLog((l) => [...l, `Flagged ${issues.length} thing${issues.length === 1 ? "" : "s"} for review`]);
 
       setFile({ name, sizeBytes, headers, rows });
-      setFields(fields);
       setIssues(issues);
       setStageTiming(stageTiming);
+
+      // The assisted read runs against column descriptions only, and only when
+      // there is a description to read them against. Whatever it returns —
+      // including nothing — the heuristics above already stand on their own.
+      let finalFields = fields;
+      if (businessContext.trim()) {
+        setLog((l) => [...l, "Reading your description against these columns…"]);
+        const intake = await requestIntakeProposal({ businessContext, headers, rows });
+        setIntake(intake);
+
+        if (intake.status === "ready") {
+          const merged = applyProposal(fields, intake.proposal);
+          finalFields = merged.fields;
+          const sent = describeWhatIsSent(intake.sent);
+          setLog((l) => [
+            ...l.slice(0, -1),
+            `Described ${sent.columns} columns — values withheld on ${sent.withheld}`,
+            merged.applied.length > 0
+              ? `Your description placed ${merged.applied.length} more column${merged.applied.length === 1 ? "" : "s"}`
+              : "Your description agreed with the columns we matched",
+          ]);
+        } else {
+          setLog((l) => [...l.slice(0, -1), intake.reason ?? "Matched columns by name only"]);
+        }
+      }
+
+      setFields(finalFields);
 
       // Brief hold so the parse log is readable rather than a flash.
       setTimeout(() => router.push("/diagnostic/mapping"), 650);
     },
-    [router, setFields, setFile, setIssues, setStageTiming]
+    [businessContext, router, setFields, setFile, setIntake, setIssues, setStageTiming]
   );
 
   const handleFile = useCallback(
@@ -94,7 +132,7 @@ export default function UploadPage() {
             return;
           }
 
-          ingest(file.name, file.size, headers, rows);
+          void ingest(file.name, file.size, headers, rows);
         },
         error: (err) => {
           setParsing(false);
@@ -110,7 +148,10 @@ export default function UploadPage() {
     setParsing(true);
     setLog([]);
     const rows = demoDealsToCsvRows(generateDemoDeals());
-    setTimeout(() => ingest("demo_deals_export.csv", 248_000, Object.keys(rows[0]), rows), 350);
+    setTimeout(
+      () => void ingest("demo_deals_export.csv", 248_000, Object.keys(rows[0]), rows),
+      350
+    );
   }
 
   return (
@@ -168,7 +209,9 @@ export default function UploadPage() {
                 HubSpot, Salesforce, Pipedrive, Close, or a plain spreadsheet export
               </p>
               <p className="mt-4 inline-flex items-center gap-2 rounded-full border border-[var(--border)] bg-[#f8fafd] px-3.5 py-1.5 text-xs text-[var(--muted)]">
-                Parsed in your browser — the file never leaves your machine
+                {assisted
+                  ? "Parsed in your browser — your rows stay on your machine"
+                  : "Parsed in your browser — the file never leaves your machine"}
               </p>
             </div>
             <input
@@ -182,6 +225,41 @@ export default function UploadPage() {
                 if (f) handleFile(f);
               }}
             />
+
+            {assisted && (
+              <details className="mt-4 rounded-xl border border-[var(--border)] bg-white px-4 py-3">
+                <summary className="cursor-pointer text-[13px] font-semibold">
+                  What we send to match your description to your columns
+                </summary>
+                <div className="mt-2.5 space-y-1.5 text-[13px] text-[var(--muted)]">
+                  <p className="max-w-[70ch]">
+                    To line up what you wrote in step 1 with what is in this file, we
+                    send a description of each column — its name, whether it holds
+                    dates, numbers or categories, how full it is, and how many
+                    distinct values it has.
+                  </p>
+                  <p className="max-w-[70ch]">
+                    For short category columns like Stage or Industry we include a few
+                    of the labels. We do not send email addresses, names, phone
+                    numbers, click IDs, deal amounts, free-text notes, or any row from
+                    your file.
+                  </p>
+                  <p className="max-w-[70ch]">
+                    It proposes which column is which and writes down the claims you
+                    made. Every figure in your report is computed here, from your own
+                    rows.{" "}
+                    <button
+                      type="button"
+                      onClick={() => router.push("/diagnostic")}
+                      className="font-semibold text-[var(--primary)] underline underline-offset-[3px]"
+                    >
+                      Clear your description
+                    </button>{" "}
+                    to skip this entirely.
+                  </p>
+                </div>
+              </details>
+            )}
 
             {error && (
               <p className="mt-4 rounded-xl border border-[var(--danger)]/30 bg-red-50 px-4 py-3 text-sm text-[var(--danger)]">

@@ -397,3 +397,24 @@ describe("rowsToDeals", () => {
     expect(excluded).toEqual([]);
   });
 });
+
+describe("rowsToDeals signal columns", () => {
+  const { fields } = detectColumns(HEADERS, HUBSPOT_ROWS);
+
+  it("carries the columns the user pointed at onto each deal", () => {
+    const rows = [{ ...HUBSPOT_ROWS[0], budget_band: "50k+" }];
+    const { deals } = rowsToDeals({ rows, fields, signalColumns: ["budget_band"] });
+    expect(deals[0].signals).toEqual({ budget_band: "50k+" });
+  });
+
+  it("leaves a blank cell out rather than making it a level called nothing", () => {
+    const rows = [{ ...HUBSPOT_ROWS[0], budget_band: "   " }];
+    const { deals } = rowsToDeals({ rows, fields, signalColumns: ["budget_band"] });
+    expect(deals[0].signals).toBeUndefined();
+  });
+
+  it("carries nothing when no signal columns were asked for", () => {
+    const { deals } = rowsToDeals({ rows: HUBSPOT_ROWS, fields });
+    expect(deals[0].signals).toBeUndefined();
+  });
+});

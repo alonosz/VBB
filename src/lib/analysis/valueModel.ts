@@ -54,6 +54,15 @@ export interface ModelFactor {
   included: boolean;
   /** Populated when the factor was tested and dropped. */
   droppedReason: string | null;
+  /**
+   * The advertiser's own claim about this factor, when they made one. A
+   * hypothesis is reported whether it survives or not — being told "you said
+   * ops directors are your buyers, and the data does not bear that out" is
+   * worth more than a silent omission.
+   */
+  userClaim: string | null;
+  /** The levels they said were good, in their words. */
+  statedLevels: string[];
 }
 
 export interface RuleStackStep {
@@ -75,6 +84,8 @@ export interface ValueModel {
   factors: ModelFactor[];
   includedFactors: ModelFactor[];
   droppedFactors: ModelFactor[];
+  /** Dropped factors the advertiser had explicitly claimed mattered. */
+  refutedClaims: ModelFactor[];
   /** True when nothing survived and every lead gets the base value. */
   isFlat: boolean;
   /** Resolved deals the model was fitted on. */
@@ -119,10 +130,17 @@ function expectedValueOf(deals: MappedDeal[]): { ev: number; closeRate: number; 
   };
 }
 
+export interface FactorHypothesis {
+  factorKey: string;
+  claim: string;
+  statedLevels: string[];
+}
+
 function fitFactor(
   factor: FactorDefinition,
   pool: MappedDeal[],
-  baseline: number
+  baseline: number,
+  hypothesis: FactorHypothesis | null
 ): ModelFactor {
   const byLevel = new Map<string, MappedDeal[]>();
   for (const deal of pool) {
@@ -177,6 +195,8 @@ function fitFactor(
     strongestLift: round(strongestLift, 3),
     included: droppedReason === null,
     droppedReason,
+    userClaim: hypothesis?.claim ?? null,
+    statedLevels: hypothesis?.statedLevels ?? [],
   };
 }
 
@@ -188,16 +208,19 @@ export interface BuildValueModelOptions {
   customSignalKeys?: string[];
   /** User overrides, keyed "factorKey::level". */
   overrides?: Record<string, number>;
+  /** Claims from the intake step, attached to the factor that can test them. */
+  hypotheses?: FactorHypothesis[];
 }
 
 export function buildValueModel(opts: BuildValueModelOptions): ValueModel {
-  const { cap, currencyCode, customSignalKeys = [] } = opts;
+  const { cap, currencyCode, customSignalKeys = [], hypotheses = [] } = opts;
   const pool = resolved(opts.deals);
 
   const { ev: baseValue } = expectedValueOf(pool);
 
+  const claimFor = new Map(hypotheses.map((h) => [h.factorKey, h]));
   const factors = buildFactorList(customSignalKeys).map((f) =>
-    fitFactor(f, pool, baseValue)
+    fitFactor(f, pool, baseValue, claimFor.get(f.key) ?? null)
   );
 
   const includedFactors = factors.filter((f) => f.included);
@@ -210,6 +233,7 @@ export function buildValueModel(opts: BuildValueModelOptions): ValueModel {
     factors,
     includedFactors,
     droppedFactors,
+    refutedClaims: droppedFactors.filter((f) => f.userClaim !== null),
     isFlat: includedFactors.length === 0 || baseValue <= 0,
     fittedOn: pool.length,
     currencyCode,

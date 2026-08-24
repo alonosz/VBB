@@ -29,7 +29,7 @@ export { determineVerdict } from "./verdict";
  * behind any number on screen.
  */
 export function runDiagnostic(input: AnalysisInput): DiagnosticResult {
-  const { deals, excluded, businessContext, currencyCode, customSignalKeys } = input;
+  const { deals, excluded, businessContext, currencyCode, customSignalKeys, hypotheses } = input;
   const now = input.now ?? new Date();
 
   const cycle = cycleLengthStats(deals);
@@ -46,6 +46,7 @@ export function runDiagnostic(input: AnalysisInput): DiagnosticResult {
     cap: valueSpread.recommendedCap,
     currencyCode,
     customSignalKeys,
+    hypotheses,
   });
   const verdict = determineVerdict(cycle, volume, matchRate, earlyGate);
 

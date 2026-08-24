@@ -10,6 +10,7 @@ import {
 } from "react";
 import type { DetectedField, FileIssue, StageTimingColumn } from "@/lib/mapping/detect";
 import type { CurrencyPolicy } from "@/lib/mapping/toDeals";
+import type { IntakeResult } from "@/lib/intake/client";
 
 export interface UploadedFile {
   name: string;
@@ -37,6 +38,10 @@ interface DiagnosticState {
   currency: CurrencyPolicy;
   setCurrency: (c: CurrencyPolicy) => void;
 
+  /** What the assisted intake proposed, and whether it ran at all. */
+  intake: IntakeResult | null;
+  setIntake: (i: IntakeResult | null) => void;
+
   reset: () => void;
 }
 
@@ -55,6 +60,7 @@ export function DiagnosticProvider({ children }: { children: ReactNode }) {
   const [issues, setIssues] = useState<FileIssue[]>([]);
   const [stageTiming, setStageTiming] = useState<StageTimingColumn[]>([]);
   const [currency, setCurrency] = useState<CurrencyPolicy>(DEFAULT_CURRENCY);
+  const [intake, setIntake] = useState<IntakeResult | null>(null);
 
   const reset = useCallback(() => {
     setBusinessContext("");
@@ -63,6 +69,7 @@ export function DiagnosticProvider({ children }: { children: ReactNode }) {
     setIssues([]);
     setStageTiming([]);
     setCurrency(DEFAULT_CURRENCY);
+    setIntake(null);
   }, []);
 
   const value = useMemo(
@@ -73,9 +80,10 @@ export function DiagnosticProvider({ children }: { children: ReactNode }) {
       issues, setIssues,
       stageTiming, setStageTiming,
       currency, setCurrency,
+      intake, setIntake,
       reset,
     }),
-    [businessContext, file, fields, issues, stageTiming, currency, reset]
+    [businessContext, file, fields, issues, stageTiming, currency, intake, reset]
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

@@ -463,3 +463,97 @@ describe("provenance", () => {
     expect(stack.baseValue).toBe(model.baseValue);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Hypotheses from the intake step
+// ---------------------------------------------------------------------------
+
+describe("claims from the intake step", () => {
+  const CLAIM = { factorKey: "seniority", claim: "our buyers are ops directors", statedLevels: ["Director"] };
+
+  it("reports a claim that the data refutes, rather than dropping it silently", () => {
+    // Directors and engineers close identically, so seniority carries no signal.
+    const deals = [
+      ...cohort("dir", 60, 18, 10_000, { contactTitle: "Director of Operations" }),
+      ...cohort("eng", 60, 18, 10_000, { contactTitle: "Process Engineer" }),
+    ];
+    const model = buildValueModel({
+      deals,
+      cap: null,
+      currencyCode: "USD",
+      hypotheses: [CLAIM],
+    });
+
+    const seniority = model.factors.find((f) => f.key === "seniority")!;
+    expect(seniority.included).toBe(false);
+    expect(seniority.userClaim).toBe(CLAIM.claim);
+    expect(seniority.statedLevels).toEqual(["Director"]);
+    expect(model.refutedClaims.map((f) => f.key)).toContain("seniority");
+  });
+
+  it("keeps the claim attached to a factor the data confirms", () => {
+    const deals = [
+      ...cohort("dir", 60, 36, 20_000, { contactTitle: "Director of Operations" }),
+      ...cohort("eng", 60, 6, 6_000, { contactTitle: "Process Engineer" }),
+    ];
+    const model = buildValueModel({
+      deals,
+      cap: null,
+      currencyCode: "USD",
+      hypotheses: [CLAIM],
+    });
+
+    const seniority = model.factors.find((f) => f.key === "seniority")!;
+    expect(seniority.included).toBe(true);
+    expect(seniority.userClaim).toBe(CLAIM.claim);
+    expect(model.refutedClaims).toEqual([]);
+  });
+
+  it("a claim never becomes a multiplier — the data does", () => {
+    const deals = [
+      ...cohort("dir", 60, 18, 10_000, { contactTitle: "Director of Operations" }),
+      ...cohort("eng", 60, 18, 10_000, { contactTitle: "Process Engineer" }),
+    ];
+    const claimed = buildValueModel({ deals, cap: null, currencyCode: "USD", hypotheses: [CLAIM] });
+    const unclaimed = buildValueModel({ deals, cap: null, currencyCode: "USD" });
+
+    const one = deals[0];
+    expect(valueLead(one, claimed).value).toBe(valueLead(one, unclaimed).value);
+  });
+
+  it("fits a custom signal column the user pointed us at", () => {
+    const deals = [
+      ...cohort("big", 60, 36, 20_000, { signals: { "Budget Band": "50k+" } }),
+      ...cohort("small", 60, 6, 6_000, { signals: { "Budget Band": "under 10k" } }),
+    ];
+    const model = buildValueModel({
+      deals,
+      cap: null,
+      currencyCode: "USD",
+      customSignalKeys: ["Budget Band"],
+      hypotheses: [{ factorKey: "Budget Band", claim: "big budgets close", statedLevels: ["50k+"] }],
+    });
+
+    const budget = model.includedFactors.find((f) => f.key === "Budget Band");
+    expect(budget).toBeDefined();
+    expect(budget!.userClaim).toBe("big budgets close");
+    // Still held to the same floor as everything else.
+    expect(budget!.levels.every((l) => l.sampleSize >= MIN_LEVEL_SAMPLE)).toBe(true);
+  });
+
+  it("drops a custom signal that does not clear the lift threshold, claim or no claim", () => {
+    const deals = [
+      ...cohort("a", 60, 18, 10_000, { signals: { "Budget Band": "50k+" } }),
+      ...cohort("b", 60, 18, 10_000, { signals: { "Budget Band": "under 10k" } }),
+    ];
+    const model = buildValueModel({
+      deals,
+      cap: null,
+      currencyCode: "USD",
+      customSignalKeys: ["Budget Band"],
+      hypotheses: [{ factorKey: "Budget Band", claim: "big budgets close", statedLevels: ["50k+"] }],
+    });
+    expect(model.includedFactors.find((f) => f.key === "Budget Band")).toBeUndefined();
+    expect(model.refutedClaims.map((f) => f.key)).toContain("Budget Band");
+  });
+});

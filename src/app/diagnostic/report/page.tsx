@@ -8,9 +8,11 @@ import { rowsToDeals } from "@/lib/mapping/toDeals";
 import { runDiagnostic, valueAllLeads, bestCaseStack } from "@/lib/analysis";
 import { buildComparisons } from "@/lib/analysis/statedVsActual";
 import { buildValueModelCsv, downloadCsv } from "@/lib/export/googleAds";
+import { resolveHypotheses } from "@/lib/intake/merge";
 import {
   AnalysisExpander,
   AttributionNote,
+  ClaimsTestedSection,
   DroppedFactorsSection,
   HookPanel,
   ValueModelPanel,
@@ -26,17 +28,33 @@ import {
 
 export default function ReportPage() {
   const router = useRouter();
-  const { file, fields, currency, businessContext, stageTiming } = useDiagnostic();
+  const { file, fields, currency, businessContext, stageTiming, intake } = useDiagnostic();
   const [exportNote, setExportNote] = useState<string | null>(null);
 
   useEffect(() => {
     if (!file) router.replace("/diagnostic/upload");
   }, [file, router]);
 
+  // Claims from the intake step become factors to test, never values. The
+  // engine still has to earn each one against the same thresholds.
+  const { hypotheses, customSignalKeys } = useMemo(
+    () =>
+      intake?.status === "ready"
+        ? resolveHypotheses(intake.proposal, fields)
+        : { hypotheses: [], customSignalKeys: [] },
+    [intake, fields]
+  );
+
   const mapped = useMemo(() => {
     if (!file) return null;
-    return rowsToDeals({ rows: file.rows, fields, currency, stageTiming });
-  }, [file, fields, currency, stageTiming]);
+    return rowsToDeals({
+      rows: file.rows,
+      fields,
+      currency,
+      stageTiming,
+      signalColumns: customSignalKeys,
+    });
+  }, [file, fields, currency, stageTiming, customSignalKeys]);
 
   const result = useMemo(() => {
     if (!mapped) return null;
@@ -45,8 +63,10 @@ export default function ReportPage() {
       excluded: mapped.excluded,
       businessContext,
       currencyCode: currency.reportingCurrency,
+      customSignalKeys,
+      hypotheses,
     });
-  }, [mapped, businessContext, currency.reportingCurrency]);
+  }, [mapped, businessContext, currency.reportingCurrency, customSignalKeys, hypotheses]);
 
   const valued = useMemo(() => {
     if (!mapped || !result) return [];
@@ -55,14 +75,24 @@ export default function ReportPage() {
 
   const comparisons = useMemo(() => {
     if (!result) return [];
+    const p = intake?.status === "ready" ? intake.proposal : null;
     return buildComparisons(
       businessContext,
       result.cycle,
       result.volume,
       result.sources,
-      result.icpFit
+      result.icpFit,
+      p
+        ? {
+            cycleDaysMin: p.statedCycleDaysMin,
+            cycleDaysMax: p.statedCycleDaysMax,
+            leadsPerMonthMin: p.statedLeadsPerMonthMin,
+            leadsPerMonthMax: p.statedLeadsPerMonthMax,
+            namedSources: p.statedSources,
+          }
+        : undefined
     ).comparisons;
-  }, [result, businessContext]);
+  }, [result, businessContext, intake]);
 
   if (!file || !result || !mapped) return null;
 
@@ -137,6 +167,7 @@ export default function ReportPage() {
           <AnalysisExpander>
             <AttributionNote />
             <StatedVsActual businessContext={businessContext} comparisons={comparisons} />
+            <ClaimsTestedSection model={result.valueModel} />
             <CycleSection cycle={result.cycle} />
             <section>
               <SectionHead

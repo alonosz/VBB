@@ -482,17 +482,98 @@ export function AnalysisExpander({ children }: { children: React.ReactNode }) {
 // ---------------------------------------------------------------------------
 
 export function DroppedFactorsSection({ model }: { model: ValueModel }) {
-  if (model.droppedFactors.length === 0) return null;
+  // Factors the advertiser explicitly claimed get their own section, where the
+  // claim is answered directly rather than listed as a technical rejection.
+  const dropped = model.droppedFactors.filter((f) => f.userClaim === null);
+  if (dropped.length === 0) return null;
   return (
     <section>
       <h3 className="mb-3 text-lg font-bold tracking-tight">Signals we tested and dropped</h3>
       <div className="grid gap-2">
-        {model.droppedFactors.map((f) => (
+        {dropped.map((f) => (
           <div key={f.key} className="rounded-xl border border-[var(--border)] bg-white px-4 py-3">
             <p className="text-[13.5px] font-semibold">{f.label}</p>
             <p className="mt-0.5 text-[13px] text-[var(--muted)]">{f.droppedReason}</p>
           </div>
         ))}
+      </div>
+    </section>
+  );
+}
+
+/**
+ * Answers the claims made at intake, one by one, whether or not they survived.
+ * A refuted claim is the most useful line in the report — it is the moment the
+ * advertiser learns their own data disagrees with them.
+ */
+export function ClaimsTestedSection({ model }: { model: ValueModel }) {
+  const claimed = model.factors.filter((f) => f.userClaim !== null);
+  if (claimed.length === 0) return null;
+
+  return (
+    <section>
+      <h3 className="mb-1 text-lg font-bold tracking-tight">What you said, tested</h3>
+      <p className="mb-3 max-w-[74ch] text-[13.5px] text-[var(--muted)]">
+        Each of these came from your description. We fitted it against your own
+        resolved deals under the same thresholds as everything else.
+      </p>
+      <div className="grid gap-2">
+        {claimed.map((f) => {
+          const best = f.levels.filter((l) => l.usable)[0];
+          return (
+            <div
+              key={f.key}
+              className={
+                "rounded-xl border bg-white px-4 py-3 " +
+                (f.included ? "border-[var(--accent)]/40" : "border-[var(--border)]")
+              }
+            >
+              <div className="flex flex-wrap items-baseline justify-between gap-2">
+                <p className="text-[13.5px] font-semibold">
+                  &ldquo;{f.userClaim}&rdquo;
+                </p>
+                <span
+                  className={
+                    "shrink-0 rounded-full px-2.5 py-1 text-[11px] font-bold tracking-wide " +
+                    (f.included
+                      ? "bg-emerald-50 text-emerald-700"
+                      : "bg-[#eef1f7] text-[var(--muted)]")
+                  }
+                >
+                  {f.included ? "In your model" : "Not in your model"}
+                </span>
+              </div>
+              <p className="mt-1 max-w-[74ch] text-[13px] text-[var(--muted)]">
+                {f.included && best ? (
+                  <>
+                    {f.label} holds up: <span className="mono">{best.level}</span> is worth{" "}
+                    <span className="mono">{best.lift}×</span> the average lead across{" "}
+                    <span className="mono">{best.sampleSize.toLocaleString()}</span>{" "}
+                    resolved deals, so it prices your leads.
+                  </>
+                ) : (
+                  <>
+                    {f.label} does not hold up in your data — {f.droppedReason}. We left
+                    it out rather than bid on it.
+                  </>
+                )}
+              </p>
+              {f.statedLevels.length > 0 && (
+                <p className="mt-1.5 text-[12px] text-[var(--muted)]">
+                  You named{" "}
+                  {f.statedLevels.map((l) => (
+                    <span
+                      key={l}
+                      className="mono mr-1 inline-block rounded-full border border-[var(--border)] bg-[#f8fafd] px-2 py-0.5 text-[11px]"
+                    >
+                      {l}
+                    </span>
+                  ))}
+                </p>
+              )}
+            </div>
+          );
+        })}
       </div>
     </section>
   );

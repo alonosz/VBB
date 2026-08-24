@@ -55,6 +55,13 @@ export interface DetectedField {
   reason: string | null;
   /** Distinct values found, for low-cardinality fields like stage. */
   sampleValues?: string[];
+  /**
+   * Where this mapping came from. Shown in the UI so a suggestion is never
+   * mistaken for something we measured.
+   */
+  source?: "heuristic" | "assistant" | "user";
+  /** Set when the assistant and the header heuristics disagreed. */
+  disagreement?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -67,11 +74,24 @@ function shareMatching(values: string[], test: (v: string) => boolean): number {
   return nonEmpty.filter(test).length / nonEmpty.length;
 }
 
+/**
+ * Date.parse is far too willing — it reads "demo-1042" as a date in the year
+ * 1042, which would let a record-ID column pass as a create date. A value has
+ * to look like a date before we ask whether it parses as one.
+ */
+const DATE_SHAPES = [
+  /^\d{4}[-/]\d{1,2}[-/]\d{1,2}([T ].*)?$/,        // 2026-01-04, 2026-01-04T09:00Z
+  /^\d{1,2}[-/.]\d{1,2}[-/.]\d{2,4}([T ].*)?$/,    // 04/01/2026
+  /^[A-Za-z]{3,9}\s+\d{1,2},?\s+\d{4}\b/,         // January 4, 2026
+  /^\d{1,2}\s+[A-Za-z]{3,9}\s+\d{4}\b/,           // 4 January 2026
+];
+
 export function looksLikeDate(v: string): boolean {
   const s = v.trim();
   if (!s) return false;
   // Reject bare integers — a year-like 2024 or an ID both parse as dates.
   if (/^\d+$/.test(s)) return false;
+  if (!DATE_SHAPES.some((re) => re.test(s))) return false;
   return !Number.isNaN(Date.parse(s));
 }
 
@@ -457,6 +477,7 @@ export function detectColumns(
         column: null,
         confidence: null,
         reason: null,
+        source: "heuristic",
       };
     }
     const values = columnValues(rows, match.column);
@@ -469,6 +490,7 @@ export function detectColumns(
       confidence: Math.min(0.99, Math.round(match.score * 100) / 100),
       reason: buildReason(spec, match.column, match.hScore, match.vScore, values),
       sampleValues: distinctValues(values),
+      source: "heuristic",
     };
   });
 

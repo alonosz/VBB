@@ -7,10 +7,27 @@ import { Stepper } from "@/components/diagnostic/Stepper";
 import { ArrowIcon } from "@/components/ArrowIcon";
 import type { DetectedField, FileIssue } from "@/lib/mapping/detect";
 import { rowsToDeals } from "@/lib/mapping/toDeals";
+import { resolveHypotheses } from "@/lib/intake/merge";
 
 const CURRENCIES = ["USD", "EUR", "GBP", "CAD", "AUD", "JPY", "INR", "BRL", "MXN", "NZD"];
 
 function ConfidenceBadge({ field }: { field: DetectedField }) {
+  // A suggestion read from a sentence has no measured confidence, and showing
+  // a percentage for one would be inventing a number.
+  if (field.column !== null && field.source === "assistant") {
+    return (
+      <span className="inline-flex whitespace-nowrap rounded-full bg-[var(--primary-soft)] px-2.5 py-1 text-[11px] font-bold tracking-wide text-[var(--primary)]">
+        From your description
+      </span>
+    );
+  }
+  if (field.column !== null && field.source === "user") {
+    return (
+      <span className="inline-flex whitespace-nowrap rounded-full bg-[#eef1f7] px-2.5 py-1 text-[11px] font-bold tracking-wide text-[var(--foreground)]">
+        Your choice
+      </span>
+    );
+  }
   if (field.column === null) {
     return (
       <span className="inline-flex whitespace-nowrap rounded-full bg-[#eef1f7] px-2.5 py-1 text-[11px] font-bold tracking-wide text-[var(--muted)]">
@@ -72,7 +89,8 @@ function IssueCard({ issue }: { issue: FileIssue }) {
 
 export default function MappingPage() {
   const router = useRouter();
-  const { file, fields, setFields, issues, currency, setCurrency, stageTiming } = useDiagnostic();
+  const { file, fields, setFields, issues, currency, setCurrency, stageTiming, intake } =
+    useDiagnostic();
 
   useEffect(() => {
     if (!file) router.replace("/diagnostic/upload");
@@ -80,10 +98,24 @@ export default function MappingPage() {
 
   const mixedCurrency = issues.find((i) => i.kind === "mixed_currency");
 
+  const { hypotheses, customSignalKeys } = useMemo(
+    () =>
+      intake?.status === "ready"
+        ? resolveHypotheses(intake.proposal, fields)
+        : { hypotheses: [], customSignalKeys: [] },
+    [intake, fields]
+  );
+
   const preview = useMemo(() => {
     if (!file) return { deals: [], excluded: [] };
-    return rowsToDeals({ rows: file.rows, fields, currency, stageTiming });
-  }, [file, fields, currency, stageTiming]);
+    return rowsToDeals({
+      rows: file.rows,
+      fields,
+      currency,
+      stageTiming,
+      signalColumns: customSignalKeys,
+    });
+  }, [file, fields, currency, stageTiming, customSignalKeys]);
 
   if (!file) return null;
 
@@ -101,6 +133,8 @@ export default function MappingPage() {
               // showing a confidence score for it would be dishonest.
               confidence: column === null ? null : 1,
               reason: column === null ? null : "You chose this column",
+              source: "user" as const,
+              disagreement: undefined,
             }
           : f
       )
@@ -180,6 +214,11 @@ export default function MappingPage() {
                 </select>
 
                 <div className="text-[12.5px] leading-snug text-[var(--muted)]">
+                  {field.disagreement && (
+                    <span className="mb-1 block rounded-lg bg-amber-50 px-2 py-1 text-[12px] text-amber-800">
+                      {field.disagreement}
+                    </span>
+                  )}
                   {field.reason ?? (
                     <span className="italic">
                       {field.required
@@ -311,6 +350,70 @@ export default function MappingPage() {
                   <IssueCard key={i} issue={issue} />
                 ))}
             </div>
+          </section>
+        )}
+
+        {/* ---- what your description added ---- */}
+        {intake && intake.status !== "skipped" && (
+          <section className="mt-8">
+            <div className="mb-3 flex flex-wrap items-baseline justify-between gap-3">
+              <h2 className="text-lg font-bold tracking-tight">From your description</h2>
+              <span className="text-[12.5px] text-[var(--muted)]">
+                Claims to test, not conclusions
+              </span>
+            </div>
+
+            {intake.status === "unavailable" ? (
+              <div className="card p-4">
+                <p className="text-[13.5px] text-[var(--muted)]">{intake.reason}</p>
+              </div>
+            ) : hypotheses.length === 0 ? (
+              <div className="card p-4">
+                <p className="max-w-[74ch] text-[13.5px] text-[var(--muted)]">
+                  Nothing in your description pointed at a column in this file that we
+                  could test. The model will be fitted on the lead attributes we found
+                  on their own.
+                </p>
+              </div>
+            ) : (
+              <div className="card p-4">
+                <p className="max-w-[74ch] text-[13.5px] text-[var(--muted)]">
+                  We&apos;ll test each of these against your own deals. Whether it holds
+                  up or not, the report says so.
+                </p>
+                <ul className="mt-3 grid gap-2">
+                  {hypotheses.map((h) => (
+                    <li
+                      key={h.factorKey}
+                      className="rounded-xl border border-[var(--border)] bg-[#f8fafd] px-3.5 py-2.5"
+                    >
+                      <p className="text-[13.5px] font-semibold">
+                        &ldquo;{h.claim}&rdquo;
+                      </p>
+                      <p className="mt-0.5 text-[12.5px] text-[var(--muted)]">
+                        Testing against{" "}
+                        <span className="mono rounded-full border border-[var(--border)] bg-white px-2 py-0.5 text-[11px]">
+                          {h.column}
+                        </span>
+                        {h.statedLevels.length > 0 && (
+                          <>
+                            {" · you named "}
+                            {h.statedLevels.map((l) => (
+                              <span
+                                key={l}
+                                className="mono mr-1 inline-block rounded-full border border-[var(--border)] bg-white px-2 py-0.5 text-[11px]"
+                              >
+                                {l}
+                              </span>
+                            ))}
+                          </>
+                        )}
+                      </p>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </section>
         )}
 

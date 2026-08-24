@@ -147,3 +147,51 @@ describe("buildComparisons", () => {
     expect(fit.note).toMatch(/hint rather than a finding/);
   });
 });
+
+describe("buildComparisons with assisted claims", () => {
+  const sources = sourceEconomics(TWO_SOURCES);
+
+  it("uses the assistant's reading of a cycle the regex could not parse", () => {
+    // "a couple of quarters" has no digits for the regex to find.
+    const text = "Deals usually take a couple of quarters.";
+    const withoutHelp = buildComparisons(
+      text, cycleLengthStats(LONG_CYCLE), volumeCheck(LONG_CYCLE, NOW), sources, NO_ICP
+    );
+    expect(withoutHelp.claims.cycleDaysMin).toBeNull();
+
+    const withHelp = buildComparisons(
+      text, cycleLengthStats(LONG_CYCLE), volumeCheck(LONG_CYCLE, NOW), sources, NO_ICP,
+      { cycleDaysMin: 180, cycleDaysMax: 180 }
+    );
+    expect(withHelp.claims.cycleDaysMin).toBe(180);
+    expect(withHelp.comparisons.find((c) => c.label === "Sales cycle")).toBeDefined();
+  });
+
+  it("keeps the regex reading for any claim the assistant did not make", () => {
+    const { claims } = buildComparisons(
+      "Sales cycle is about 2-3 months and we get 90 leads a month.",
+      cycleLengthStats(LONG_CYCLE), volumeCheck(LONG_CYCLE, NOW), sources, NO_ICP,
+      { cycleDaysMin: 45, cycleDaysMax: 60 }
+    );
+    expect(claims.cycleDaysMin).toBe(45);
+    expect(claims.leadsPerMonthMin).toBe(90);
+  });
+
+  it("drops a named source that is not in the data", () => {
+    const { claims } = buildComparisons(
+      "We do well from trade shows.",
+      cycleLengthStats(TWO_SOURCES), volumeCheck(TWO_SOURCES, NOW), sources, NO_ICP,
+      { namedSources: ["Trade Shows"] }
+    );
+    expect(claims.namedSources).toEqual([]);
+  });
+
+  it("matches a named source back to the label used in the file", () => {
+    const { claims } = buildComparisons(
+      "Webinars are our best channel.",
+      cycleLengthStats(TWO_SOURCES), volumeCheck(TWO_SOURCES, NOW), sources, NO_ICP,
+      { namedSources: ["webinar"] }
+    );
+    expect(claims.namedSources).toEqual(["Webinar"]);
+  });
+});
