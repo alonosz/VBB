@@ -64,6 +64,19 @@ const OTHER_TITLES = [
 
 const STAGES = ["New", "Qualified", "Proposal", "Closed Won", "Closed Lost"];
 
+const CLICK_ID_ALPHABET =
+  "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
+
+/** Builds a token shaped like a real Google click ID. */
+function makeClickId(rand: () => number, seed: number): string {
+  let out = "Cj0KCQiA";
+  const len = 58 + Math.floor(rand() * 24);
+  for (let i = 0; i < len; i++) {
+    out += CLICK_ID_ALPHABET[Math.floor(rand() * CLICK_ID_ALPHABET.length)];
+  }
+  return out + seed.toString(36);
+}
+
 export interface DemoOptions {
   count?: number;
   seed?: number;
@@ -202,7 +215,9 @@ export function generateDemoDeals(opts: DemoOptions = {}): MappedDeal[] {
       stage,
       source: profile.name,
       email,
-      clickId: hasClick ? `Cj0KCQiA${i}xDEMO` : null,
+      // Realistic length and alphabet: a real gclid is a ~60-90 char opaque
+      // token, and detection keys off that shape rather than the header alone.
+      clickId: hasClick ? makeClickId(rand, i) : null,
       stageDurations,
       stageReachedAfterDays,
       employeeCount,

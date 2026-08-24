@@ -1,0 +1,223 @@
+"use client";
+
+import { useCallback, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import Papa from "papaparse";
+import { useDiagnostic } from "@/context/DiagnosticContext";
+import { Stepper } from "@/components/diagnostic/Stepper";
+import { detectColumns, findFileIssues } from "@/lib/mapping/detect";
+import { generateDemoDeals, demoDealsToCsvRows } from "@/lib/fixtures/demoDataset";
+
+const MAX_BYTES = 25 * 1024 * 1024;
+const MAX_ROWS = 100_000;
+
+export default function UploadPage() {
+  const router = useRouter();
+  const { setFile, setFields, setIssues } = useDiagnostic();
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const [dragging, setDragging] = useState(false);
+  const [parsing, setParsing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [log, setLog] = useState<string[]>([]);
+
+  const ingest = useCallback(
+    (name: string, sizeBytes: number, headers: string[], rows: Record<string, string>[]) => {
+      setLog([`Read ${rows.length.toLocaleString()} rows across ${headers.length} columns`]);
+
+      const { fields } = detectColumns(headers, rows);
+      const matched = fields.filter((f) => f.column !== null).length;
+      setLog((l) => [...l, "Sampled every column to detect types", `Matched ${matched} fields`]);
+
+      const issues = findFileIssues(rows, fields);
+      setLog((l) => [...l, `Flagged ${issues.length} thing${issues.length === 1 ? "" : "s"} for review`]);
+
+      setFile({ name, sizeBytes, headers, rows });
+      setFields(fields);
+      setIssues(issues);
+
+      // Brief hold so the parse log is readable rather than a flash.
+      setTimeout(() => router.push("/diagnostic/mapping"), 650);
+    },
+    [router, setFields, setFile, setIssues]
+  );
+
+  const handleFile = useCallback(
+    (file: File) => {
+      setError(null);
+
+      if (file.size > MAX_BYTES) {
+        setError(
+          `That file is ${(file.size / 1024 / 1024).toFixed(1)} MB. Please upload a CSV under 25 MB, or export a shorter date range.`
+        );
+        return;
+      }
+
+      setParsing(true);
+      setLog([]);
+
+      Papa.parse<Record<string, string>>(file, {
+        header: true,
+        skipEmptyLines: true,
+        transformHeader: (h) => h.trim(),
+        complete: (results) => {
+          const headers = (results.meta.fields ?? []).filter(Boolean);
+
+          if (headers.length === 0) {
+            setParsing(false);
+            setError(
+              "No columns found. Make sure the first row of the file contains column headers."
+            );
+            return;
+          }
+
+          const rows = results.data.filter((r) =>
+            Object.values(r).some((v) => (v ?? "").toString().trim() !== "")
+          );
+
+          if (rows.length === 0) {
+            setParsing(false);
+            setError("No data rows found below the header row.");
+            return;
+          }
+          if (rows.length > MAX_ROWS) {
+            setParsing(false);
+            setError(
+              `That file has ${rows.length.toLocaleString()} rows, over the ${MAX_ROWS.toLocaleString()} limit. Export a shorter date range and try again.`
+            );
+            return;
+          }
+
+          ingest(file.name, file.size, headers, rows);
+        },
+        error: (err) => {
+          setParsing(false);
+          setError(`Could not read that CSV: ${err.message}`);
+        },
+      });
+    },
+    [ingest]
+  );
+
+  function loadDemo() {
+    setError(null);
+    setParsing(true);
+    setLog([]);
+    const rows = demoDealsToCsvRows(generateDemoDeals());
+    setTimeout(() => ingest("demo_deals_export.csv", 248_000, Object.keys(rows[0]), rows), 350);
+  }
+
+  return (
+    <div className="animate-page-in flex min-h-screen flex-col">
+      <Stepper current="upload" />
+      <main className="mx-auto w-full max-w-3xl flex-1 px-6 py-10">
+        <p className="label mb-2">Step 2 of 4</p>
+        <h1 className="text-3xl font-bold tracking-tight text-balance">
+          {parsing ? "Reading your file…" : "Upload your CRM deal export"}
+        </h1>
+        <p className="mt-2 max-w-2xl text-[15px] text-[var(--muted)]">
+          {parsing
+            ? "Parsing rows, sampling values, and matching columns against the fields the analysis needs."
+            : "A CSV of deals or opportunities — whatever your CRM exports. We'll work out which columns are which and tell you straight away if anything will cause trouble."}
+        </p>
+
+        {!parsing && (
+          <>
+            <div
+              role="button"
+              tabIndex={0}
+              onClick={() => inputRef.current?.click()}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  inputRef.current?.click();
+                }
+              }}
+              onDragOver={(e) => {
+                e.preventDefault();
+                setDragging(true);
+              }}
+              onDragLeave={() => setDragging(false)}
+              onDrop={(e) => {
+                e.preventDefault();
+                setDragging(false);
+                const f = e.dataTransfer.files?.[0];
+                if (f) handleFile(f);
+              }}
+              className={
+                "mt-7 cursor-pointer rounded-2xl border-2 border-dashed px-6 py-14 text-center transition-all " +
+                (dragging
+                  ? "border-[var(--primary)] bg-[var(--primary-soft)]"
+                  : "border-[var(--border)] bg-white hover:-translate-y-0.5 hover:border-[var(--primary)]/60 hover:bg-[var(--primary-soft)]/40")
+              }
+            >
+              <span className="mx-auto mb-4 flex h-13 w-13 items-center justify-center rounded-2xl bg-[var(--primary-soft)] p-3">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5" stroke="var(--primary)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                  <path d="M3.5 15v2.5A2.5 2.5 0 0 0 6 20h12a2.5 2.5 0 0 0 2.5-2.5V15" stroke="var(--primary)" strokeWidth="1.8" strokeLinecap="round" />
+                </svg>
+              </span>
+              <p className="text-[15px] font-semibold">Drop your CSV here, or click to browse</p>
+              <p className="mt-1 text-[13px] text-[var(--muted)]">
+                HubSpot, Salesforce, Pipedrive, Close, or a plain spreadsheet export
+              </p>
+              <p className="mt-4 inline-flex items-center gap-2 rounded-full border border-[var(--border)] bg-[#f8fafd] px-3.5 py-1.5 text-xs text-[var(--muted)]">
+                Parsed in your browser — the file never leaves your machine
+              </p>
+            </div>
+            <input
+              ref={inputRef}
+              type="file"
+              accept=".csv,text/csv"
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                e.target.value = "";
+                if (f) handleFile(f);
+              }}
+            />
+
+            {error && (
+              <p className="mt-4 rounded-xl border border-[var(--danger)]/30 bg-red-50 px-4 py-3 text-sm text-[var(--danger)]">
+                {error}
+              </p>
+            )}
+
+            <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
+              <p className="text-[13px] text-[var(--muted)]">
+                No export handy? Try it on a synthetic dataset first.
+              </p>
+              <button type="button" onClick={loadDemo} className="btn btn-secondary text-[13px]">
+                Use demo data
+              </button>
+            </div>
+          </>
+        )}
+
+        {parsing && (
+          <div className="mt-7">
+            <div className="card space-y-3.5 p-5">
+              {[0, 1, 2, 3].map((i) => (
+                <div key={i} className="grid grid-cols-[150px_1fr_92px] items-center gap-3.5">
+                  <div className="skeleton h-3" />
+                  <div className="skeleton h-8" />
+                  <div className="skeleton h-5" />
+                </div>
+              ))}
+            </div>
+            <div className="card mt-4 px-5 py-3.5">
+              {log.map((line, i) => (
+                <p
+                  key={i}
+                  className="animate-block-enter flex items-center gap-2.5 py-1 text-[13px] text-[var(--muted)]"
+                >
+                  <span className="font-bold text-[var(--accent)]">✓</span> {line}
+                </p>
+              ))}
+            </div>
+          </div>
+        )}
+      </main>
+    </div>
+  );
+}
