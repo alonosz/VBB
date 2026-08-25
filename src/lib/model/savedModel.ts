@@ -5,6 +5,7 @@ import type {
   ValueModel,
 } from "@/lib/analysis/valueModel";
 import { buildFactorList } from "@/lib/analysis/factors";
+import { effectiveMultiplier } from "@/lib/analysis/valueModel";
 import { round } from "@/lib/analysis/helpers";
 
 /**
@@ -84,6 +85,12 @@ export interface SaveOptions {
   deals: MappedDeal[];
   now?: Date;
   modelId?: string;
+  /**
+   * Multipliers the user typed over. Saving has to freeze what is on screen —
+   * saving the fitted numbers instead would hand back a model that prices
+   * leads differently from the one they just approved.
+   */
+  overrides?: Record<string, number>;
 }
 
 export function saveValueModel(model: ValueModel, opts: SaveOptions): SavedValueModel {
@@ -116,7 +123,7 @@ export function saveValueModel(model: ValueModel, opts: SaveOptions): SavedValue
         .filter((l) => l.usable)
         .map((l) => ({
           level: l.level,
-          multiplier: l.lift,
+          multiplier: effectiveMultiplier(f.key, l, opts.overrides),
           sampleSize: l.sampleSize,
           closeRate: l.closeRate,
           medianWonAmount: l.medianWonAmount,

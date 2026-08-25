@@ -1,9 +1,25 @@
 "use client";
 
 import { useState } from "react";
-import type { MatchRateReadiness, ValueSpread, Verdict, VolumeCheck } from "@/lib/analysis/types";
-import type { ModelFactor, ValueModel, ValuedLead, ExampleStack } from "@/lib/analysis/valueModel";
-import { MAX_STACK_DEVIATION } from "@/lib/analysis/valueModel";
+import type {
+  MappedDeal,
+  MatchRateReadiness,
+  ValueSpread,
+  Verdict,
+  VolumeCheck,
+} from "@/lib/analysis/types";
+import type {
+  FactorLevel,
+  ModelFactor,
+  ValueModel,
+  ValuedLead,
+  ExampleStack,
+} from "@/lib/analysis/valueModel";
+import {
+  MAX_STACK_DEVIATION,
+  effectiveMultiplier,
+  overrideKey,
+} from "@/lib/analysis/valueModel";
 
 export function money(n: number, currency = "USD", dp = 0): string {
   return new Intl.NumberFormat("en-US", {
@@ -101,12 +117,111 @@ export function HookPanel({
 // PANEL 2 — the value model
 // ---------------------------------------------------------------------------
 
+/**
+ * One multiplier, editable.
+ *
+ * Marketers do not trust a number they cannot argue with, so every multiplier
+ * is a field rather than a label — with the sample size, close rate and median
+ * deal behind it sitting right there, and a one-click way back to what we
+ * fitted.
+ */
+function MultiplierCell({
+  factorKey,
+  level,
+  overrides,
+  onOverride,
+}: {
+  factorKey: string;
+  level: FactorLevel;
+  overrides?: Record<string, number>;
+  onOverride?: (key: string, value: number | null) => void;
+}) {
+  const key = overrideKey(factorKey, level.level);
+  const current = effectiveMultiplier(factorKey, level, overrides);
+  const edited = current !== level.lift;
+
+  // What the field shows while it is being typed in. Without this, clearing the
+  // box to retype reads as "no value", the override drops, and the number
+  // snaps back under the user's cursor.
+  const [draft, setDraft] = useState<string | null>(null);
+
+  if (!onOverride) {
+    return (
+      <span
+        className={
+          "mono shrink-0 rounded-full px-2 py-0.5 text-[12px] font-bold " +
+          (current >= 1
+            ? "bg-[var(--primary-soft)] text-[var(--primary)]"
+            : "bg-[#f1f3f8] text-[var(--muted)]")
+        }
+      >
+        ×{current}
+      </span>
+    );
+  }
+
+  return (
+    <span className="flex shrink-0 items-center gap-1.5">
+      {edited && (
+        <button
+          type="button"
+          onClick={() => {
+            onOverride(key, null);
+            setDraft(null);
+          }}
+          title={`Reset to the fitted ×${level.lift}`}
+          className="text-[11px] font-semibold text-[var(--muted)] underline underline-offset-2 hover:text-[var(--foreground)]"
+        >
+          reset
+        </button>
+      )}
+      <span
+        className={
+          "mono flex items-center rounded-full border px-1.5 py-0.5 text-[12px] font-bold transition-colors " +
+          (edited
+            ? "border-[var(--warn)] bg-amber-50 text-amber-700"
+            : "border-transparent bg-[var(--primary-soft)] text-[var(--primary)]")
+        }
+      >
+        ×
+        <input
+          type="number"
+          step="0.01"
+          min="0.01"
+          aria-label={`Multiplier for ${level.level}`}
+          value={draft ?? String(current)}
+          onChange={(e) => {
+            const raw = e.target.value;
+            setDraft(raw);
+            const n = Number(raw);
+            if (raw.trim() !== "" && Number.isFinite(n) && n > 0) onOverride(key, n);
+          }}
+          onBlur={() => {
+            // An empty or nonsensical box on the way out means "use what you
+            // fitted", which is the safe reading of an abandoned edit.
+            const n = Number(draft);
+            if (draft !== null && (draft.trim() === "" || !Number.isFinite(n) || n <= 0)) {
+              onOverride(key, null);
+            }
+            setDraft(null);
+          }}
+          className="mono w-[4.2rem] bg-transparent text-[12px] font-bold outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none"
+        />
+      </span>
+    </span>
+  );
+}
+
 function FactorRow({
   factor,
   currency,
+  overrides,
+  onOverride,
 }: {
   factor: ModelFactor;
   currency: string;
+  overrides?: Record<string, number>;
+  onOverride?: (key: string, value: number | null) => void;
 }) {
   const usable = factor.levels.filter((l) => l.usable);
   const thin = factor.levels.filter((l) => !l.usable);
@@ -116,7 +231,7 @@ function FactorRow({
       <p className="text-[13px] font-bold">{factor.label}</p>
       <div className="mt-2 grid gap-1.5">
         {usable.map((l) => (
-          <div key={l.level} className="grid grid-cols-[1fr_auto] items-baseline gap-3">
+          <div key={l.level} className="grid grid-cols-[1fr_auto] items-center gap-3">
             <span className="flex flex-wrap items-baseline gap-x-2 text-[13px]">
               <span className="font-medium">{l.level}</span>
               <span className="mono text-[11.5px] text-[var(--muted)]">
@@ -124,16 +239,12 @@ function FactorRow({
                 {l.medianWonAmount !== null ? money(l.medianWonAmount, currency) : "—"} median
               </span>
             </span>
-            <span
-              className={
-                "mono shrink-0 rounded-full px-2 py-0.5 text-[12px] font-bold " +
-                (l.lift >= 1
-                  ? "bg-[var(--primary-soft)] text-[var(--primary)]"
-                  : "bg-[#f1f3f8] text-[var(--muted)]")
-              }
-            >
-              ×{l.lift}
-            </span>
+            <MultiplierCell
+              factorKey={factor.key}
+              level={l}
+              overrides={overrides}
+              onOverride={onOverride}
+            />
           </div>
         ))}
         {thin.length > 0 && (
@@ -154,13 +265,21 @@ export function ValueModelPanel({
   spread,
   examples,
   currency,
+  overrides,
+  onOverride,
+  onResetAll,
 }: {
   model: ValueModel;
   stack: ExampleStack;
   spread: ValueSpread;
   examples: ValuedLead[];
   currency: string;
+  overrides?: Record<string, number>;
+  onOverride?: (key: string, value: number | null) => void;
+  onResetAll?: () => void;
 }) {
+  const editCount = Object.keys(overrides ?? {}).length;
+
   return (
     <section>
       <div className="mb-3.5">
@@ -168,9 +287,32 @@ export function ValueModelPanel({
         <p className="mt-1 max-w-[72ch] text-[14px] text-[var(--muted)]">
           Built only from what is knowable the moment a lead arrives. Every multiplier
           comes from your own closed deals, and no number here is one you cannot trace
-          back to rows in your file.
+          back to rows in your file.{" "}
+          {onOverride && <>Disagree with one? Type over it — the table below updates as you go.</>}
         </p>
       </div>
+
+      {editCount > 0 && onResetAll && (
+        <div className="mb-3.5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[var(--warn)]/40 bg-amber-50/60 px-4 py-2.5">
+          <p className="text-[13px]">
+            <span className="font-semibold">
+              {editCount} multiplier{editCount === 1 ? "" : "s"} edited.
+            </span>{" "}
+            <span className="text-[var(--muted)]">
+              We rescaled the model to{" "}
+              <span className="mono">×{model.calibrationFactor}</span> so your leads still
+              average out to what your data actually shows.
+            </span>
+          </p>
+          <button
+            type="button"
+            onClick={onResetAll}
+            className="shrink-0 text-[12.5px] font-semibold text-[var(--primary)] underline underline-offset-[3px] hover:text-[var(--primary-hover)]"
+          >
+            Reset all to computed
+          </button>
+        </div>
+      )}
 
       {model.isFlat ? (
         <div className="rounded-2xl border border-amber-300/60 bg-amber-50/60 p-5">
@@ -231,6 +373,7 @@ export function ValueModelPanel({
               <div className="flex items-baseline justify-between gap-3 border-t border-dashed border-[var(--border)] pt-2">
                 <span className="text-[12.5px] text-[var(--muted)]">
                   Calibrated to your observed average
+                  {editCount > 0 && " (after your edits)"}
                 </span>
                 <span className="mono text-[13px] text-[var(--muted)]">
                   ×{stack.calibrationFactor}
@@ -269,7 +412,13 @@ export function ValueModelPanel({
             </p>
             <div className="mt-1">
               {model.includedFactors.map((f) => (
-                <FactorRow key={f.key} factor={f} currency={currency} />
+                <FactorRow
+                  key={f.key}
+                  factor={f}
+                  currency={currency}
+                  overrides={overrides}
+                  onOverride={onOverride}
+                />
               ))}
             </div>
           </div>
@@ -280,7 +429,7 @@ export function ValueModelPanel({
       {examples.length > 0 && (
         <div className="mt-4 overflow-hidden rounded-2xl border border-[var(--border)] bg-white">
           <p className="label px-4 pb-2 pt-4">
-            Applied to your leads
+            Applied to your leads{editCount > 0 && " · updated with your edits"}
           </p>
           <div className="overflow-x-auto">
             <table className="w-full min-w-[620px] text-left text-[13px]">
@@ -575,6 +724,114 @@ export function ClaimsTestedSection({ model }: { model: ValueModel }) {
           );
         })}
       </div>
+    </section>
+  );
+}
+
+/**
+ * Every deal the safety cap touched, named.
+ *
+ * The cap is the one place the product deliberately reports a number lower
+ * than the truth, so the deals it clipped and the amount it clipped them by
+ * have to be inspectable — otherwise it is exactly the kind of invisible
+ * adjustment the rest of the product refuses to make.
+ */
+export function ClippedOutliersSection({
+  deals,
+  valued,
+  spread,
+  currency,
+}: {
+  deals: MappedDeal[];
+  valued: ValuedLead[];
+  spread: ValueSpread;
+  currency: string;
+}) {
+  const cap = spread.recommendedCap;
+  if (cap === null) return null;
+
+  const clippedWon = deals
+    .filter((d) => d.outcome === "won" && d.amount !== null && d.amount > cap)
+    .sort((a, b) => (b.amount ?? 0) - (a.amount ?? 0));
+
+  const clippedSends = valued.filter((v) => v.cappedFrom !== null);
+
+  return (
+    <section>
+      <h3 className="mb-1 text-lg font-bold tracking-tight">What the safety cap clipped</h3>
+      <p className="mb-3 max-w-[74ch] text-[13.5px] text-[var(--muted)]">
+        The cap sits at{" "}
+        <span className="mono font-semibold text-[var(--foreground)]">
+          {money(cap, currency)}
+        </span>{" "}
+        — {spread.capMultiple}× your median won deal. It exists because Smart Bidding
+        chases the largest values it sees, so a single unusual deal would pull spend
+        toward whatever superficially resembled it.
+      </p>
+
+      {clippedWon.length === 0 && clippedSends.length === 0 ? (
+        <div className="rounded-xl border border-[var(--border)] bg-white px-4 py-3">
+          <p className="text-[13px] text-[var(--muted)]">
+            Nothing in this file was above the cap. It is doing no work here — it is
+            protection against the deal you have not closed yet.
+          </p>
+        </div>
+      ) : (
+        <div className="overflow-hidden rounded-xl border border-[var(--border)] bg-white">
+          <table className="w-full min-w-[480px] text-left text-[13px]">
+            <thead>
+              <tr className="bg-[#f8fafd] text-[10.5px] uppercase tracking-[.07em] text-[var(--muted)]">
+                <th className="px-4 py-2 font-bold">Deal</th>
+                <th className="px-4 py-2 font-bold">Closed for</th>
+                <th className="px-4 py-2 text-right font-bold">Counted as</th>
+                <th className="px-4 py-2 text-right font-bold">Difference</th>
+              </tr>
+            </thead>
+            <tbody>
+              {clippedWon.slice(0, 25).map((d) => (
+                <tr key={d.id} className="border-t border-[var(--border)]">
+                  <td className="mono px-4 py-2.5 text-[12px] text-[var(--muted)]">
+                    {d.email ?? d.id}
+                  </td>
+                  <td className="mono px-4 py-2.5 text-[13px] font-semibold">
+                    {money(d.amount!, currency)}
+                  </td>
+                  <td className="mono px-4 py-2.5 text-right text-[13px]">
+                    {money(cap, currency)}
+                  </td>
+                  <td className="mono px-4 py-2.5 text-right text-[13px] text-[var(--warn)]">
+                    −{money(d.amount! - cap, currency)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {clippedWon.length > 25 && (
+            <p className="border-t border-[var(--border)] px-4 py-2 text-[12.5px] text-[var(--muted)]">
+              Showing the 25 largest of{" "}
+              <span className="mono">{clippedWon.length.toLocaleString()}</span> clipped
+              deals.
+            </p>
+          )}
+        </div>
+      )}
+
+      <p className="mt-2.5 text-[12.5px] text-[var(--muted)]">
+        {clippedSends.length > 0 ? (
+          <>
+            The cap also clipped{" "}
+            <span className="mono font-semibold text-[var(--foreground)]">
+              {clippedSends.length.toLocaleString()}
+            </span>{" "}
+            of the values about to be sent to Google.
+          </>
+        ) : (
+          <>
+            No value about to be sent to Google reaches the cap — predicted values are
+            expectations at lead creation, so they sit well below closed-deal amounts.
+          </>
+        )}
+      </p>
     </section>
   );
 }

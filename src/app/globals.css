@@ -8,9 +8,9 @@
   --muted: #64708a;
 
   /* Brand — extracted from valuebasedbidding.com */
-  --primary: #2a5cff;
-  --primary-hover: #1c46e0;
-  --primary-soft: #eaf0ff;
+  --primary: #2a47f5;
+  --primary-hover: #1e35d6;
+  --primary-soft: #ebeefe;
   --navy: #0a0e1e;
   --navy-soft: #131a33;
 
@@ -75,7 +75,7 @@ body {
   }
 
   .btn-primary {
-    background: linear-gradient(135deg, var(--primary), #1947c7);
+    background: linear-gradient(135deg, var(--primary), #1730c4);
     color: white;
     box-shadow: 0 8px 20px -8px rgba(42, 92, 255, 0.55);
   }
@@ -149,7 +149,7 @@ body {
   }
 
   .gradient-navy {
-    background: linear-gradient(135deg, var(--navy) 0%, var(--navy-soft) 55%, #1b2a5e 100%);
+    background: linear-gradient(135deg, var(--navy) 0%, var(--navy-soft) 55%, #1c2461 100%);
   }
 
   .skeleton {

@@ -244,3 +244,31 @@ describe("currency", () => {
     expect(checkApplicability(saved, STRONG, "EUR").currencyMismatch).toMatch(/USD.*EUR/);
   });
 });
+
+describe("saving a model the user has edited", () => {
+  it("freezes what is on screen, not what was fitted", () => {
+    const model = fit(STRONG);
+    const overrides = { "domainType::Corporate email": 4.2 };
+    const saved = saveValueModel(model, { deals: STRONG, now: NOW, overrides });
+    const level = saved.factors
+      .find((f) => f.key === "domainType")!
+      .levels.find((l) => l.level === "Corporate email")!;
+    expect(level.multiplier).toBe(4.2);
+  });
+
+  it("keeps the fitted multiplier for levels the user left alone", () => {
+    const model = fit(STRONG);
+    const fitted = model.includedFactors
+      .find((f) => f.key === "domainType")!
+      .levels.find((l) => l.level === "Free webmail")!.lift;
+    const saved = saveValueModel(model, {
+      deals: STRONG,
+      now: NOW,
+      overrides: { "domainType::Corporate email": 4.2 },
+    });
+    expect(
+      saved.factors.find((f) => f.key === "domainType")!.levels
+        .find((l) => l.level === "Free webmail")!.multiplier
+    ).toBe(fitted);
+  });
+});

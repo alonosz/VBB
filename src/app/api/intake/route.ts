@@ -17,10 +17,16 @@ import type { ColumnProfile } from "@/lib/intake/profile";
  */
 
 export const runtime = "nodejs";
-export const maxDuration = 30;
+export const maxDuration = 15;
 
-const DEFAULT_MODEL = "claude-opus-5";
-const REQUEST_TIMEOUT_MS = 25_000;
+/**
+ * A fast model on purpose. The job is reading a short description against a
+ * list of column descriptions — it needs comprehension, not depth — and the
+ * flow only waits a few seconds for it, so latency matters more here than
+ * headroom. Override with VBB_INTAKE_MODEL if you want a stronger one.
+ */
+const DEFAULT_MODEL = "claude-haiku-4-5-20251001";
+const REQUEST_TIMEOUT_MS = 8_000;
 const MAX_CONTEXT_CHARS = 4_000;
 const MAX_COLUMNS = 120;
 

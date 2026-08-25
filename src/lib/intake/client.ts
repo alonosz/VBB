@@ -13,7 +13,7 @@ import {
  * that always lets the flow continue.
  */
 
-const CLIENT_TIMEOUT_MS = 28_000;
+const CLIENT_TIMEOUT_MS = 12_000;
 
 export interface IntakeRequest {
   businessContext: string;

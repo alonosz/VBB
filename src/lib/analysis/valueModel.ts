@@ -289,6 +289,43 @@ function multiplierFor(
   return found.lift;
 }
 
+/**
+ * Re-runs calibration after the user has edited multipliers.
+ *
+ * Calibration is the promise that the volume-weighted average of emitted
+ * values matches the expected value actually observed. Editing a multiplier
+ * without redoing it would quietly break that promise — the ordering between
+ * leads would follow the edit, but the portfolio would drift away from
+ * reality and Smart Bidding would over- or under-bid across the board.
+ *
+ * Every edited value therefore moves the calibration constant too, which is
+ * shown in the rule stack rather than hidden.
+ */
+export function withOverrides(
+  model: ValueModel,
+  deals: MappedDeal[],
+  overrides: Record<string, number>
+): ValueModel {
+  if (Object.keys(overrides).length === 0) return model;
+  const next: ValueModel = { ...model, calibrationFactor: 1 };
+  next.calibrationFactor = computeCalibration(next, resolved(deals), overrides);
+  return next;
+}
+
+/** The multiplier in force for a level: the user's edit, or what we fitted. */
+export function effectiveMultiplier(
+  factorKey: string,
+  level: FactorLevel,
+  overrides?: Record<string, number>
+): number {
+  const o = overrides?.[`${factorKey}::${level.level}`];
+  return typeof o === "number" && Number.isFinite(o) && o > 0 ? o : level.lift;
+}
+
+export function overrideKey(factorKey: string, level: string): string {
+  return `${factorKey}::${level}`;
+}
+
 /** Product of every multiplier that fires, bounded to the deviation limit. */
 export function clampStack(product: number): number {
   const lo = 1 / MAX_STACK_DEVIATION;
@@ -404,23 +441,37 @@ export interface ExampleStack {
   finalValue: number;
 }
 
-export function bestCaseStack(model: ValueModel): ExampleStack {
+export function bestCaseStack(
+  model: ValueModel,
+  overrides?: Record<string, number>
+): ExampleStack {
   const steps: RuleStackStep[] = [];
   let product = 1;
 
   for (const factor of model.includedFactors) {
-    const best = factor.levels.filter((l) => l.usable)[0];
+    // Sorted by fitted lift, but an edit can change which level is strongest,
+    // so the best case is chosen on the multiplier actually in force.
+    const best = factor.levels
+      .filter((l) => l.usable)
+      .reduce<FactorLevel | null>((top, l) => {
+        if (!top) return l;
+        return effectiveMultiplier(factor.key, l, overrides) >
+          effectiveMultiplier(factor.key, top, overrides)
+          ? l
+          : top;
+      }, null);
     if (!best) continue;
+    const multiplier = effectiveMultiplier(factor.key, best, overrides);
     steps.push({
       factorKey: factor.key,
       factorLabel: factor.label,
       level: best.level,
-      multiplier: best.lift,
+      multiplier,
       sampleSize: best.sampleSize,
       closeRate: best.closeRate,
       medianWonAmount: best.medianWonAmount,
     });
-    product *= best.lift;
+    product *= multiplier;
   }
 
   const bounded = clampStack(product);

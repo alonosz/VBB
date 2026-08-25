@@ -87,6 +87,84 @@ function IssueCard({ issue }: { issue: FileIssue }) {
   );
 }
 
+
+/**
+ * The first ten rows, as they came out of the file.
+ *
+ * Everything else on this screen is our reading of the data; this is the data.
+ * Mapped columns are marked so a wrong mapping is visible against real values
+ * rather than only against a header name.
+ */
+function RowPreview({
+  headers,
+  rows,
+  fields,
+}: {
+  headers: string[];
+  rows: Record<string, string>[];
+  fields: DetectedField[];
+}) {
+  const mappedTo = new Map<string, string>();
+  for (const f of fields) {
+    if (f.column) mappedTo.set(f.column, f.label);
+  }
+  const preview = rows.slice(0, 10);
+
+  return (
+    <details className="card mt-8 overflow-hidden">
+      <summary className="cursor-pointer px-4 py-3 text-[13.5px] font-semibold">
+        See the first 10 rows of your file
+        <span className="ml-2 font-normal text-[var(--muted)]">
+          the data itself, not our reading of it
+        </span>
+      </summary>
+      <div className="overflow-x-auto border-t border-[var(--border)]">
+        <table className="w-full text-left text-[12.5px]">
+          <thead>
+            <tr className="bg-[#f8fafd]">
+              {headers.map((h) => (
+                <th key={h} className="whitespace-nowrap px-3 py-2 align-bottom">
+                  <span className="mono block text-[11.5px] font-bold">{h}</span>
+                  {mappedTo.has(h) ? (
+                    <span className="mt-0.5 block text-[10px] font-bold uppercase tracking-[.06em] text-[var(--primary)]">
+                      {mappedTo.get(h)}
+                    </span>
+                  ) : (
+                    <span className="mt-0.5 block text-[10px] uppercase tracking-[.06em] text-[var(--muted)]">
+                      not used
+                    </span>
+                  )}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {preview.map((row, i) => (
+              <tr key={i} className="border-t border-[var(--border)]">
+                {headers.map((h) => (
+                  <td
+                    key={h}
+                    className={
+                      "mono max-w-[220px] truncate px-3 py-1.5 " +
+                      (mappedTo.has(h) ? "text-[var(--foreground)]" : "text-[var(--muted)]")
+                    }
+                    title={row[h] ?? ""}
+                  >
+                    {(row[h] ?? "").trim() || "—"}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p className="border-t border-[var(--border)] px-4 py-2 text-[12px] text-[var(--muted)]">
+        Showing 10 of {rows.length.toLocaleString()} rows. These stay in your browser.
+      </p>
+    </details>
+  );
+}
+
 export default function MappingPage() {
   const router = useRouter();
   const { file, fields, setFields, issues, currency, setCurrency, stageTiming, intake } =
@@ -253,6 +331,8 @@ export default function MappingPage() {
             </p>
           )}
         </section>
+
+        <RowPreview headers={file.headers} rows={file.rows} fields={fields} />
 
         {/* ---- currency ---- */}
         {mixedCurrency && (

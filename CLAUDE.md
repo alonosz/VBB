@@ -37,6 +37,12 @@ No black-box automation and no per-client ML. Every computed figure must be
 explainable in one sentence to an advertiser, and the rule that produced it
 should be visible in the UI.
 
+**Every multiplier is editable.** A marketer who cannot argue with a number does
+not trust it. Edits recalibrate the whole model (`withOverrides()`) so the
+portfolio average still matches observed E[V], the new calibration constant is
+shown rather than hidden, and one click restores what was fitted. Saving a model
+freezes what is on screen, edits included.
+
 ## 4. Never invent data
 
 Missing is excluded, always with visible counts and reasons. Stage history is
@@ -67,14 +73,20 @@ their buyers. That is the whole remit.
   phone numbers, addresses, click IDs, deal amounts (not even as a range), or
   free text. Any new field added to `ColumnProfile` must be checked against
   this list.
-- The call never blocks. Every failure path returns a reason and the flow
-  continues on the header heuristics alone.
+- The call never blocks. The flow waits `INTAKE_GRACE_MS` (3s) at most, then
+  moves on; the request keeps going and merges into the mapping when it lands,
+  respecting any column the user has already set by hand. Every failure path
+  returns a reason and the flow continues on the header heuristics alone.
+- Default model is a fast one (`claude-haiku-4-5-20251001`). The task is
+  comprehension, not depth, and latency is the constraint that matters.
 
 ## 6. Cap outlier values
 
 Smart Bidding is distorted by outliers. Default cap is **3× median won amount**,
 always shown with its rationale and the count of deals it clips. The cap applies
-to every emitted value.
+to every emitted value. Every clipped deal is listed by name in the audit table
+— the cap is the one place we deliberately report a number lower than the truth,
+so it has to be inspectable.
 
 ## 7. The model is an artifact, not a per-upload recomputation
 
@@ -111,9 +123,9 @@ the token, never a literal hex**, so a brand change is one file.
 
 | Token | Value | Use |
 |---|---|---|
-| `--primary` | `#2A5CFF` | Primary actions, data marks, active state, accents |
-| `--primary-hover` | `#1C46E0` | Hover on primary |
-| `--primary-soft` | `#EAF0FF` | Tinted backgrounds, icon chips, focus rings |
+| `--primary` | `#2A47F5` | Primary actions, data marks, active state, accents |
+| `--primary-hover` | `#1E35D6` | Hover on primary |
+| `--primary-soft` | `#EBEEFE` | Tinted backgrounds, icon chips, focus rings |
 | `--navy` | `#0A0E1E` | Emphasis surfaces — the hero/money-shot block, logo mark |
 | `--navy-soft` | `#131A33` | Second stop in navy gradients |
 | `--background` | `#F6F8FC` | Page ground |

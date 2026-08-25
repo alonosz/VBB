@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useDiagnostic } from "@/context/DiagnosticContext";
 import { Stepper } from "@/components/diagnostic/Stepper";
 import { rowsToDeals } from "@/lib/mapping/toDeals";
-import { runDiagnostic, valueAllLeads, bestCaseStack } from "@/lib/analysis";
+import { runDiagnostic, valueAllLeads, bestCaseStack, withOverrides } from "@/lib/analysis";
 import { buildComparisons } from "@/lib/analysis/statedVsActual";
 import { buildValueModelCsv, downloadCsv } from "@/lib/export/googleAds";
 import { resolveHypotheses } from "@/lib/intake/merge";
@@ -29,6 +29,7 @@ import {
   AnalysisExpander,
   AttributionNote,
   ClaimsTestedSection,
+  ClippedOutliersSection,
   DroppedFactorsSection,
   HookPanel,
   ValueModelPanel,
@@ -56,6 +57,10 @@ export default function ReportPage() {
   );
   const [source, setSource] = useState<"fresh" | "saved">(saved ? "saved" : "fresh");
   const [modelNotice, setModelNotice] = useState<string | null>(null);
+
+  // Multipliers the user has typed over, keyed "factorKey::level". A marketer
+  // who cannot argue with a number does not trust it.
+  const [overrides, setOverrides] = useState<Record<string, number>>({});
 
   useEffect(() => {
     if (!file) router.replace("/diagnostic/upload");
@@ -98,13 +103,16 @@ export default function ReportPage() {
   // otherwise today's fit.
   const activeModel = useMemo(() => {
     if (!result) return null;
-    return source === "saved" && saved ? savedModelToValueModel(saved) : result.valueModel;
-  }, [result, source, saved]);
+    const base = source === "saved" && saved ? savedModelToValueModel(saved) : result.valueModel;
+    // Editing a multiplier without redoing calibration would quietly break the
+    // promise that emitted values average back to what the data shows.
+    return mapped ? withOverrides(base, mapped.deals, overrides) : base;
+  }, [result, source, saved, mapped, overrides]);
 
   const valued = useMemo(() => {
     if (!mapped || !activeModel) return [];
-    return valueAllLeads(mapped.deals, activeModel);
-  }, [mapped, activeModel]);
+    return valueAllLeads(mapped.deals, activeModel, overrides);
+  }, [mapped, activeModel, overrides]);
 
   // Never applied automatically — it only answers whether the saved rules still
   // describe the business.
@@ -145,7 +153,7 @@ export default function ReportPage() {
   if (!file || !result || !mapped || !activeModel) return null;
 
   const cur = result.currencyCode;
-  const stack = bestCaseStack(activeModel);
+  const stack = bestCaseStack(activeModel, overrides);
 
   // Prefer whichever identifier actually covers more leads. A click ID matches
   // directly; a hashed email relies on Google finding the click itself.
@@ -179,9 +187,21 @@ export default function ReportPage() {
     );
   }
 
+  function handleOverride(key: string, value: number | null) {
+    setOverrides((prev) => {
+      const next = { ...prev };
+      if (value === null) delete next[key];
+      else next[key] = value;
+      return next;
+    });
+  }
+
   function handleSaveModel() {
     if (!mapped) return;
-    const s = saveValueModel(result!.valueModel, { deals: mapped.deals });
+    const s = saveValueModel(
+      withOverrides(result!.valueModel, mapped.deals, overrides),
+      { deals: mapped.deals, overrides }
+    );
     rememberModel(s);
     downloadModel(s);
     setSaved(s);
@@ -244,6 +264,9 @@ export default function ReportPage() {
             spread={result.valueSpread}
             examples={examples}
             currency={cur}
+            overrides={overrides}
+            onOverride={handleOverride}
+            onResetAll={() => setOverrides({})}
           />
 
           <WiringPanel
@@ -277,6 +300,12 @@ export default function ReportPage() {
               <SourceEconomicsSection sources={result.sources} currency={cur} />
             </section>
             <DroppedFactorsSection model={result.valueModel} />
+            <ClippedOutliersSection
+              deals={mapped.deals}
+              valued={valued}
+              spread={result.valueSpread}
+              currency={cur}
+            />
             <DataQualitySection
               gate={result.earlyGate}
               trust={result.stageTrust}

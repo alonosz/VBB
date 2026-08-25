@@ -8,6 +8,8 @@ import {
   MIN_LEVEL_SAMPLE,
   MIN_LIFT,
   MAX_STACK_DEVIATION,
+  withOverrides,
+  effectiveMultiplier,
 } from "./valueModel";
 import { round } from "./helpers";
 import { parseSeniority, employeeBand } from "./factors";
@@ -555,5 +557,75 @@ describe("claims from the intake step", () => {
     });
     expect(model.includedFactors.find((f) => f.key === "Budget Band")).toBeUndefined();
     expect(model.refutedClaims.map((f) => f.key)).toContain("Budget Band");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Editing multipliers
+// ---------------------------------------------------------------------------
+
+describe("user-edited multipliers", () => {
+  const deals = [
+    ...cohort("corp", 80, 40, 20_000, { email: "a@acme.com" }),
+    ...cohort("free", 80, 8, 5_000, { email: "a@gmail.com" }),
+  ];
+  const model = buildValueModel({ deals, cap: null, currencyCode: "USD" });
+  const corporate = model.includedFactors
+    .find((f) => f.key === "domainType")!
+    .levels.find((l) => l.level === "Corporate email")!;
+
+  it("applies the edit in place of the fitted multiplier", () => {
+    const overrides = { "domainType::Corporate email": 5 };
+    const edited = withOverrides(model, deals, overrides);
+    const lead = deal({ id: "x", email: "someone@acme.com", outcome: "open" });
+    const step = valueLead(lead, edited, overrides).steps.find(
+      (s) => s.factorKey === "domainType"
+    )!;
+    expect(step.multiplier).toBe(5);
+    expect(corporate.lift).not.toBe(5);
+  });
+
+  it("keeps the portfolio calibrated after an edit, rather than letting it drift", () => {
+    const overrides = { "domainType::Corporate email": 5 };
+    const edited = withOverrides(model, deals, overrides);
+    const resolvedDeals = deals.filter((d) => d.outcome !== "open");
+    const mean =
+      valueAllLeads(resolvedDeals, edited, overrides).reduce((t, v) => t + v.value, 0) /
+      resolvedDeals.length;
+    expect(mean).toBeCloseTo(model.baseValue, 0);
+  });
+
+  it("moves the calibration factor, and does not pretend it is unchanged", () => {
+    const edited = withOverrides(model, deals, { "domainType::Corporate email": 5 });
+    expect(edited.calibrationFactor).not.toBe(model.calibrationFactor);
+  });
+
+  it("leaves the fitted model untouched, so reset really restores it", () => {
+    const before = model.calibrationFactor;
+    withOverrides(model, deals, { "domainType::Corporate email": 5 });
+    expect(model.calibrationFactor).toBe(before);
+    expect(valueLead(deals[0], model).value).toBe(
+      valueLead(deals[0], buildValueModel({ deals, cap: null, currencyCode: "USD" })).value
+    );
+  });
+
+  it("ignores an edit that is not a usable multiplier", () => {
+    for (const bad of [0, -2, Number.NaN]) {
+      expect(effectiveMultiplier("domainType", corporate, { "domainType::Corporate email": bad }))
+        .toBe(corporate.lift);
+    }
+  });
+
+  it("returns the fitted model unchanged when nothing is edited", () => {
+    expect(withOverrides(model, deals, {})).toBe(model);
+  });
+
+  it("re-picks the best case when an edit makes a different level strongest", () => {
+    const overrides = { "domainType::Free webmail": 9 };
+    const edited = withOverrides(model, deals, overrides);
+    const stack = bestCaseStack(edited, overrides);
+    const step = stack.steps.find((s) => s.factorKey === "domainType")!;
+    expect(step.level).toBe("Free webmail");
+    expect(step.multiplier).toBe(9);
   });
 });

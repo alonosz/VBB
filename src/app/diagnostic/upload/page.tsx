@@ -1,23 +1,19 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
 import Papa from "papaparse";
+import { useRouter } from "next/navigation";
 import { useDiagnostic } from "@/context/DiagnosticContext";
 import { Stepper } from "@/components/diagnostic/Stepper";
-import { detectColumns, detectStageTimingColumns, findFileIssues } from "@/lib/mapping/detect";
 import { generateDemoDeals, demoDealsToCsvRows } from "@/lib/fixtures/demoDataset";
-import { requestIntakeProposal } from "@/lib/intake/client";
-import { applyProposal } from "@/lib/intake/merge";
-import { describeWhatIsSent } from "@/lib/intake/profile";
+import { useIngest } from "@/lib/diagnostic/useIngest";
 
 const MAX_BYTES = 25 * 1024 * 1024;
 const MAX_ROWS = 100_000;
 
 export default function UploadPage() {
   const router = useRouter();
-  const { businessContext, setFile, setFields, setIssues, setStageTiming, setIntake } =
-    useDiagnostic();
+  const { businessContext } = useDiagnostic();
   const inputRef = useRef<HTMLInputElement>(null);
 
   const [dragging, setDragging] = useState(false);
@@ -28,63 +24,8 @@ export default function UploadPage() {
   // The assisted read only happens when there is a description to read.
   const assisted = businessContext.trim().length > 0;
 
-  const ingest = useCallback(
-    async (
-      name: string,
-      sizeBytes: number,
-      headers: string[],
-      rows: Record<string, string>[]
-    ) => {
-      setLog([`Read ${rows.length.toLocaleString()} rows across ${headers.length} columns`]);
-
-      const { fields } = detectColumns(headers, rows);
-      const matched = fields.filter((f) => f.column !== null).length;
-      setLog((l) => [...l, "Sampled every column to detect types", `Matched ${matched} fields`]);
-
-      const stageTiming = detectStageTimingColumns(headers, rows);
-      if (stageTiming.length > 0) {
-        setLog((l) => [...l, `Found stage timing on ${stageTiming.length} column(s)`]);
-      }
-
-      const issues = findFileIssues(rows, fields);
-      setLog((l) => [...l, `Flagged ${issues.length} thing${issues.length === 1 ? "" : "s"} for review`]);
-
-      setFile({ name, sizeBytes, headers, rows });
-      setIssues(issues);
-      setStageTiming(stageTiming);
-
-      // The assisted read runs against column descriptions only, and only when
-      // there is a description to read them against. Whatever it returns —
-      // including nothing — the heuristics above already stand on their own.
-      let finalFields = fields;
-      if (businessContext.trim()) {
-        setLog((l) => [...l, "Reading your description against these columns…"]);
-        const intake = await requestIntakeProposal({ businessContext, headers, rows });
-        setIntake(intake);
-
-        if (intake.status === "ready") {
-          const merged = applyProposal(fields, intake.proposal);
-          finalFields = merged.fields;
-          const sent = describeWhatIsSent(intake.sent);
-          setLog((l) => [
-            ...l.slice(0, -1),
-            `Described ${sent.columns} columns — values withheld on ${sent.withheld}`,
-            merged.applied.length > 0
-              ? `Your description placed ${merged.applied.length} more column${merged.applied.length === 1 ? "" : "s"}`
-              : "Your description agreed with the columns we matched",
-          ]);
-        } else {
-          setLog((l) => [...l.slice(0, -1), intake.reason ?? "Matched columns by name only"]);
-        }
-      }
-
-      setFields(finalFields);
-
-      // Brief hold so the parse log is readable rather than a flash.
-      setTimeout(() => router.push("/diagnostic/mapping"), 650);
-    },
-    [businessContext, router, setFields, setFile, setIntake, setIssues, setStageTiming]
-  );
+  const appendLog = useCallback((line: string) => setLog((l) => [...l, line]), []);
+  const ingest = useIngest(appendLog);
 
   const handleFile = useCallback(
     (file: File) => {
@@ -132,7 +73,8 @@ export default function UploadPage() {
             return;
           }
 
-          void ingest(file.name, file.size, headers, rows);
+          setLog([]);
+          void ingest({ name: file.name, sizeBytes: file.size, headers, rows });
         },
         error: (err) => {
           setParsing(false);
@@ -149,7 +91,13 @@ export default function UploadPage() {
     setLog([]);
     const rows = demoDealsToCsvRows(generateDemoDeals());
     setTimeout(
-      () => void ingest("demo_deals_export.csv", 248_000, Object.keys(rows[0]), rows),
+      () =>
+        void ingest({
+          name: "demo_deals_export.csv",
+          sizeBytes: 248_000,
+          headers: Object.keys(rows[0]),
+          rows,
+        }),
       350
     );
   }

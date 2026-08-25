@@ -2,6 +2,8 @@
 
 import {
   createContext,
+  type Dispatch,
+  type SetStateAction,
   useCallback,
   useContext,
   useMemo,
@@ -27,7 +29,12 @@ interface DiagnosticState {
   setFile: (f: UploadedFile | null) => void;
 
   fields: DetectedField[];
-  setFields: (f: DetectedField[]) => void;
+  /**
+   * Accepts an updater, because the assisted intake can land after the user is
+   * already editing the mapping — it has to merge into whatever is current
+   * rather than overwrite a snapshot taken before they touched it.
+   */
+  setFields: Dispatch<SetStateAction<DetectedField[]>>;
 
   issues: FileIssue[];
   setIssues: (i: FileIssue[]) => void;

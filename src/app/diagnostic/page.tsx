@@ -1,7 +1,10 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { useDiagnostic } from "@/context/DiagnosticContext";
+import { generateDemoDeals, demoDealsToCsvRows } from "@/lib/fixtures/demoDataset";
+import { useIngest } from "@/lib/diagnostic/useIngest";
 import { Stepper } from "@/components/diagnostic/Stepper";
 import { ArrowIcon } from "@/components/ArrowIcon";
 
@@ -17,6 +20,22 @@ const EXAMPLE =
 export default function IntakePage() {
   const router = useRouter();
   const { businessContext, setBusinessContext } = useDiagnostic();
+  const [loadingSample, setLoadingSample] = useState(false);
+  const ingest = useIngest();
+
+  async function trySample() {
+    setLoadingSample(true);
+    const description = businessContext.trim() || EXAMPLE;
+    if (!businessContext.trim()) setBusinessContext(EXAMPLE);
+    const rows = demoDealsToCsvRows(generateDemoDeals());
+    await ingest({
+      name: "sample_b2b_deals.csv",
+      sizeBytes: 248_000,
+      headers: Object.keys(rows[0]),
+      rows,
+      businessContext: description,
+    });
+  }
 
   return (
     <div className="animate-page-in flex min-h-screen flex-col">
@@ -71,6 +90,25 @@ export default function IntakePage() {
             className="btn btn-primary"
           >
             Continue to upload <ArrowIcon />
+          </button>
+        </div>
+
+        {/* No CSV to hand? Walk the whole thing on synthetic data instead. */}
+        <div className="card mt-8 flex flex-wrap items-center justify-between gap-4 p-5">
+          <div>
+            <p className="text-[14px] font-bold">No export handy?</p>
+            <p className="mt-0.5 max-w-[58ch] text-[13.5px] text-[var(--muted)]">
+              See the whole thing end to end on a synthetic B2B dataset — 500 deals, six
+              months, clearly labelled as sample data throughout.
+            </p>
+          </div>
+          <button
+            type="button"
+            disabled={loadingSample}
+            onClick={() => void trySample()}
+            className="btn btn-secondary shrink-0"
+          >
+            {loadingSample ? "Building 500 deals…" : "Try with sample B2B dataset"}
           </button>
         </div>
       </main>
