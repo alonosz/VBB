@@ -53,9 +53,9 @@ export default function IntakePage() {
 
         <div className="card mt-7 p-6">
           <label htmlFor="ctx" className="block max-w-[68ch] text-[15px] font-semibold leading-relaxed">
-            Tell us about your business and your ideal customer — sales cycle length,
-            monthly lead volume, and who your best customers typically are
-            (size, industry, title). A few sentences is enough.
+            Tell us about your business and your ideal customer — your sales cycle
+            length, typical lead volume, and who your best buyers are (size, industry,
+            title). A few sentences is plenty!
           </label>
           <textarea
             id="ctx"
@@ -108,7 +108,9 @@ export default function IntakePage() {
             onClick={() => void trySample()}
             className="btn btn-secondary shrink-0"
           >
-            {loadingSample ? "Building 500 deals…" : "Try with sample B2B dataset"}
+            {loadingSample
+              ? "Building 500 deals…"
+              : "Try with sample B2B dataset (500 synthetic deals)"}
           </button>
         </div>
       </main>

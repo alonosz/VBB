@@ -181,11 +181,11 @@ function fitFactor(
 
   let droppedReason: string | null = null;
   if (usableLevels.length === 0) {
-    droppedReason = `No level had ${MIN_LEVEL_SAMPLE}+ resolved deals behind it`;
+    droppedReason = `no level had ${MIN_LEVEL_SAMPLE}+ resolved deals behind it, which is too thin to price on`;
   } else if (usableLevels.length < 2) {
-    droppedReason = "Only one level had enough data, so there is nothing to compare against";
+    droppedReason = "only one level had enough data, so there is nothing to compare it against";
   } else if (strongestLift < MIN_LIFT) {
-    droppedReason = `Strongest level moved value by only ${round(strongestLift, 2)}x — below the ${MIN_LIFT}x threshold, so it would add noise rather than signal`;
+    droppedReason = `it showed only ${round(strongestLift, 2)}x lift in your data, below our ${MIN_LIFT}x threshold, so we dropped it to keep your signal clean`;
   }
 
   return {

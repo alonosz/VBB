@@ -289,12 +289,13 @@ export default function ReportPage() {
             <CycleSection cycle={result.cycle} />
             <section>
               <SectionHead
-                title="Channel insight — not used in your value model"
+                title="Channel insight — not used to price leads"
                 note="For your own budget decisions"
               >
                 <p className="mt-1 max-w-[70ch] text-[13.5px] text-[var(--muted)]">
-                  How each source performs is worth knowing, but it does not price a
-                  lead here. Google already knows which campaign produced the click.
+                  Attribution labels don&apos;t change what an individual ad click is
+                  worth, and Google already knows which campaign produced it. How each
+                  source performs is still worth knowing for where you put budget.
                 </p>
               </SectionHead>
               <SourceEconomicsSection sources={result.sources} currency={cur} />

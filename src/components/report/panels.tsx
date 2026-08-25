@@ -70,14 +70,18 @@ export function HookPanel({
       <h2 className="mt-3 max-w-[26ch] text-[clamp(24px,3.4vw,36px)] font-extrabold leading-[1.12] tracking-[-.025em] text-balance">
         Your leads range from{" "}
         <span className="mono">{money(spread.min, currency)}</span> to{" "}
-        <span className="mono">{money(spread.max, currency)}</span> in realised value
+        <span className="mono">{money(spread.max, currency)}</span> in real value
         {spread.blindnessRatio !== null && (
-          <> — <span className="text-[var(--primary)]">{spread.blindnessRatio}×</span></>
+          <>
+            {" ("}
+            <span className="text-[var(--primary)]">{spread.blindnessRatio}×</span>
+            {" spread)"}
+          </>
         )}
         .
       </h2>
       <p className="mt-2.5 max-w-[52ch] text-[15px] text-[var(--muted)]">
-        Google Ads currently counts every one of them as identical.
+        Google Ads currently treats every single one of them as identical.
       </p>
 
       {/* The realised range above is what deals turned out to be worth. This is
@@ -642,7 +646,9 @@ export function DroppedFactorsSection({ model }: { model: ValueModel }) {
         {dropped.map((f) => (
           <div key={f.key} className="rounded-xl border border-[var(--border)] bg-white px-4 py-3">
             <p className="text-[13.5px] font-semibold">{f.label}</p>
-            <p className="mt-0.5 text-[13px] text-[var(--muted)]">{f.droppedReason}</p>
+            <p className="mt-0.5 max-w-[74ch] text-[13px] text-[var(--muted)]">
+              We tested it and {f.droppedReason}.
+            </p>
           </div>
         ))}
       </div>
@@ -702,8 +708,8 @@ export function ClaimsTestedSection({ model }: { model: ValueModel }) {
                   </>
                 ) : (
                   <>
-                    {f.label} does not hold up in your data — {f.droppedReason}. We left
-                    it out rather than bid on it.
+                    {f.label} did not hold up — {f.droppedReason}. We left it out
+                    rather than bid on it.
                   </>
                 )}
               </p>

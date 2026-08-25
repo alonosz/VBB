@@ -188,7 +188,7 @@ describe("weak factor dropping", () => {
     const industry = model.factors.find((f) => f.key === "industry")!;
     expect(industry.strongestLift).toBeLessThan(MIN_LIFT);
     expect(industry.included).toBe(false);
-    expect(industry.droppedReason).toMatch(/below the 1\.3x threshold/);
+    expect(industry.droppedReason).toMatch(/below our 1\.3x threshold/);
   });
 
   it("keeps a factor whose signal is strongly negative", () => {
