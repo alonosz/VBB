@@ -206,6 +206,12 @@ Not in scope unless explicitly requested: user accounts/auth, billing,
 live Google Ads / Meta API calls, CRM OAuth beyond a named phase,
 multi-tenancy (though schemas carry `client_id` for later).
 
+**Server-side storage**: the feed tables only (`supabase/README.md`) — hashed
+identifiers, timestamps, values, currency, model id. Never CRM records, names,
+deal amounts or free text. The CHECK constraints enforce this rather than
+trusting anyone to remember it; re-run `./scripts/db-test.sh` after any
+migration that touches them.
+
 **LLM calls**: exactly one, the assisted intake described in principle 5. It is
 bounded to column mapping and claim extraction. Do not add a second LLM call,
 and do not widen this one to compute, rank, or value anything — that boundary
