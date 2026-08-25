@@ -212,6 +212,14 @@ deal amounts or free text. The CHECK constraints enforce this rather than
 trusting anyone to remember it; re-run `./scripts/db-test.sh` after any
 migration that touches them.
 
+**The feed emits nothing the platform will ignore.** `buildFeedRows()` sends a
+new conversion for a new lead, and an adjustment only when the value moved more
+than 20% *and* the conversion is under 7 days old. A later change is counted as
+`recalibrationOnly` and reported as what it is — input for the next refit, which
+prices tomorrow's leads. Emitting a late adjustment would tell the advertiser we
+moved a bid we did not move. The server cannot price anything: rows are built in
+the browser from the model on screen and posted finished.
+
 **LLM calls**: exactly one, the assisted intake described in principle 5. It is
 bounded to column mapping and claim extraction. Do not add a second LLM call,
 and do not widen this one to compute, rank, or value anything — that boundary

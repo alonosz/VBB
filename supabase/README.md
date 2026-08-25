@@ -52,6 +52,23 @@ It applies every migration and then asserts each guarantee the schema claims —
 including that an email address cannot be written to either identifier column.
 Run it after any migration that touches these tables.
 
+## The endpoints
+
+`POST /api/feeds` publishes: the browser prices the leads, applies the emit
+rules, and sends finished rows. The response carries the feed URL **once** —
+the token exists afterwards only as a hash here and in the advertiser's
+clipboard.
+
+`GET /v1/feeds/google-ads?key=<token>` is what Google fetches. It authorizes by
+hashing the presented token, rate limits to 10 fetches per 24 hours, logs every
+attempt with a hashed IP, and answers a wrong token, a revoked feed and a
+missing token identically — distinguishing them would confirm to a prober that
+a token was once real.
+
+Request handling lives in `src/lib/feed/handlers.ts`, separate from how the
+repository is obtained, so the whole cycle is driven against an in-memory
+repository in tests.
+
 ## Environment
 
 ```

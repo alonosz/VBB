@@ -495,6 +495,7 @@ export function WiringPanel({
   exportLabel,
   exportNote,
   children,
+  footer,
 }: {
   match: MatchRateReadiness;
   volume: VolumeCheck;
@@ -502,7 +503,10 @@ export function WiringPanel({
   onExport: () => void;
   exportLabel: string;
   exportNote: string | null;
+  /** Sits beside the download button. */
   children?: React.ReactNode;
+  /** Full-width block below it — the scheduled feed, which is the real answer. */
+  footer?: React.ReactNode;
 }) {
   const tone =
     verdict.mode === "MEASURED"
@@ -595,6 +599,7 @@ export function WiringPanel({
         {exportNote && (
           <p className="mono mt-2 text-[12px] text-[var(--muted)]">{exportNote}</p>
         )}
+        {footer}
       </div>
     </section>
   );
