@@ -76,6 +76,27 @@ Smart Bidding is distorted by outliers. Default cap is **3× median won amount**
 always shown with its rationale and the count of deals it clips. The cap applies
 to every emitted value.
 
+## 7. The model is an artifact, not a per-upload recomputation
+
+Refitting on every upload silently reprices yesterday's leads: a 30-day window
+one morning and a 90-day window the next produce different multipliers, and the
+same lead is worth two different amounts for no reason the advertiser can see.
+Google then learns from a moving target.
+
+- A model is **fitted, saved, and applied frozen** (`src/lib/model/savedModel.ts`).
+  The downloaded JSON is the artifact; the browser copy is convenience.
+- A saved model is untrusted input on the way back in — `loadSavedModel()`
+  validates it and refuses a broken one rather than pricing leads at zero.
+- Staleness is **measured, never assumed**. `compareToFresh()` reports what
+  refitting would change; `DRIFT_THRESHOLD` (20%) or any factor entering or
+  leaving the model calls for a refit. Nothing refits itself.
+- This is principle 1's recalibration made concrete: the saved model prices
+  today's Day-0 cohort, and a refit changes tomorrow's — never a past
+  conversion.
+- A saved rule whose column is not mapped this time is inert. Say so
+  (`checkApplicability()`); never let it fail silently. A model fitted in one
+  currency never prices a file reported in another.
+
 ---
 
 # Design language — binding

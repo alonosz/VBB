@@ -10,6 +10,22 @@ import { buildComparisons } from "@/lib/analysis/statedVsActual";
 import { buildValueModelCsv, downloadCsv } from "@/lib/export/googleAds";
 import { resolveHypotheses } from "@/lib/intake/merge";
 import {
+  checkApplicability,
+  compareToFresh,
+  savedModelToValueModel,
+  saveValueModel,
+  type SavedValueModel,
+} from "@/lib/model/savedModel";
+import {
+  downloadModel,
+  forgetModel,
+  modelFilename,
+  readModelFile,
+  recallModel,
+  rememberModel,
+} from "@/lib/model/storage";
+import { ModelSourcePanel } from "@/components/report/modelSource";
+import {
   AnalysisExpander,
   AttributionNote,
   ClaimsTestedSection,
@@ -30,6 +46,16 @@ export default function ReportPage() {
   const router = useRouter();
   const { file, fields, currency, businessContext, stageTiming, intake } = useDiagnostic();
   const [exportNote, setExportNote] = useState<string | null>(null);
+
+  // A saved model is the difference between a diagnostic and a daily loop: it
+  // stops the same lead being worth two different amounts on two days. Recalled
+  // during the first render rather than in an effect — this page renders
+  // nothing until a file is in context, so there is no server output to mismatch.
+  const [saved, setSaved] = useState<SavedValueModel | null>(() =>
+    typeof window === "undefined" ? null : recallModel()
+  );
+  const [source, setSource] = useState<"fresh" | "saved">(saved ? "saved" : "fresh");
+  const [modelNotice, setModelNotice] = useState<string | null>(null);
 
   useEffect(() => {
     if (!file) router.replace("/diagnostic/upload");
@@ -68,10 +94,32 @@ export default function ReportPage() {
     });
   }, [mapped, businessContext, currency.reportingCurrency, customSignalKeys, hypotheses]);
 
+  // What actually prices the leads: the frozen model when one is in use,
+  // otherwise today's fit.
+  const activeModel = useMemo(() => {
+    if (!result) return null;
+    return source === "saved" && saved ? savedModelToValueModel(saved) : result.valueModel;
+  }, [result, source, saved]);
+
   const valued = useMemo(() => {
-    if (!mapped || !result) return [];
-    return valueAllLeads(mapped.deals, result.valueModel);
-  }, [mapped, result]);
+    if (!mapped || !activeModel) return [];
+    return valueAllLeads(mapped.deals, activeModel);
+  }, [mapped, activeModel]);
+
+  // Never applied automatically — it only answers whether the saved rules still
+  // describe the business.
+  const drift = useMemo(
+    () => (result && saved ? compareToFresh(saved, result.valueModel) : null),
+    [result, saved]
+  );
+
+  const applicability = useMemo(
+    () =>
+      saved && mapped
+        ? checkApplicability(saved, mapped.deals, currency.reportingCurrency)
+        : null,
+    [saved, mapped, currency.reportingCurrency]
+  );
 
   const comparisons = useMemo(() => {
     if (!result) return [];
@@ -94,10 +142,10 @@ export default function ReportPage() {
     ).comparisons;
   }, [result, businessContext, intake]);
 
-  if (!file || !result || !mapped) return null;
+  if (!file || !result || !mapped || !activeModel) return null;
 
   const cur = result.currencyCode;
-  const stack = bestCaseStack(result.valueModel);
+  const stack = bestCaseStack(activeModel);
 
   // Prefer whichever identifier actually covers more leads. A click ID matches
   // directly; a hashed email relies on Google finding the click itself.
@@ -123,8 +171,41 @@ export default function ReportPage() {
     downloadCsv("vbb-lead-values-google-ads.csv", r.csv);
     setExportNote(
       `${r.included.toLocaleString()} conversion${r.included === 1 ? "" : "s"} written` +
+        // Which model produced these numbers is part of the record.
+        (source === "saved" && saved
+          ? ` · priced by your model saved ${saved.fittedAt.slice(0, 10)}`
+          : " · priced by a fresh fit on this file") +
         (r.skippedReason ? ` · ${r.skippedReason}` : "")
     );
+  }
+
+  function handleSaveModel() {
+    if (!mapped) return;
+    const s = saveValueModel(result!.valueModel, { deals: mapped.deals });
+    rememberModel(s);
+    downloadModel(s);
+    setSaved(s);
+    setSource("saved");
+    setModelNotice(`Saved as ${modelFilename(s)} and remembered in this browser.`);
+  }
+
+  async function handleLoadModel(f: File) {
+    const { model, error } = await readModelFile(f);
+    if (!model) {
+      setModelNotice(error);
+      return;
+    }
+    rememberModel(model);
+    setSaved(model);
+    setSource("saved");
+    setModelNotice(`Loaded the model fitted on ${model.fittedAt.slice(0, 10)}.`);
+  }
+
+  function handleForgetModel() {
+    forgetModel();
+    setSaved(null);
+    setSource("fresh");
+    setModelNotice("Saved model forgotten. These leads are priced on a fresh fit.");
   }
 
   return (
@@ -143,8 +224,22 @@ export default function ReportPage() {
         <div className="grid gap-8">
           <HookPanel spread={result.valueSpread} valued={valued} currency={cur} />
 
+          <ModelSourcePanel
+            saved={saved}
+            active={source}
+            drift={drift}
+            inert={applicability?.inert ?? []}
+            currencyMismatch={applicability?.currencyMismatch ?? null}
+            freshFittedOn={result.valueModel.fittedOn}
+            onSave={handleSaveModel}
+            onLoadFile={handleLoadModel}
+            onUse={setSource}
+            onForget={handleForgetModel}
+            notice={modelNotice}
+          />
+
           <ValueModelPanel
-            model={result.valueModel}
+            model={activeModel}
             stack={stack}
             spread={result.valueSpread}
             examples={examples}
