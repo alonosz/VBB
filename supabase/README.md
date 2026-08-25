@@ -29,6 +29,11 @@ the other's half.
 
 ## Applying
 
+Setting up a new project by hand: paste `supabase/setup.sql` into the Supabase
+SQL Editor and run it. That file is every migration concatenated in order, so
+it is one paste rather than one per migration. Regenerate it with
+`./scripts/build-setup-sql.sh` after adding a migration.
+
 With the Supabase CLI, against your project:
 
 ```bash
@@ -38,7 +43,7 @@ supabase db push
 Or directly, against any Postgres:
 
 ```bash
-psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f supabase/migrations/20260825120000_feeds.sql
+psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f supabase/setup.sql
 ```
 
 ## Verifying
