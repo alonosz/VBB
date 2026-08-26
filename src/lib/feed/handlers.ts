@@ -195,7 +195,11 @@ export async function publishFeed(
         ok: true,
         // Said once. After this it exists nowhere but the advertiser's
         // clipboard and a hash in our database.
-        feedUrl: `${origin}/v1/feeds/google-ads?key=${token}`,
+        //
+        // The token sits in the path and the URL ends in .csv because Google
+        // validates the extension off the end of the URL and rejects anything
+        // finishing in a query string.
+        feedUrl: `${origin}/v1/feeds/google-ads/${token}.csv`,
         tokenPrefix,
         rowsPublished,
         identifier,

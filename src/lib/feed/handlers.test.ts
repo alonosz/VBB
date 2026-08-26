@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { publishFeed, serveFeed, CONVERSION_NAME } from "./handlers";
 import { InMemoryFeedRepository } from "./repository";
+import { tokenFromFilename, tokenFromBasicAuth } from "@/app/v1/feeds/google-ads/[file]/route";
 import { isPublishableKey } from "./supabaseRepository";
 import { MAX_FETCHES_PER_DAY } from "./rateLimit";
 import { buildFeedRows } from "./publish";
@@ -42,7 +43,7 @@ async function publishedFeed(repo: InMemoryFeedRepository, count = 2) {
 }
 
 function tokenFrom(feedUrl: string): string {
-  return new URL(feedUrl).searchParams.get("key")!;
+  return new URL(feedUrl).pathname.split("/").pop()!.replace(/\.csv$/, "");
 }
 
 // ---------------------------------------------------------------------------
@@ -54,8 +55,10 @@ describe("publishFeed", () => {
     const { res, body } = await publishedFeed(new InMemoryFeedRepository());
     expect(res.status).toBe(200);
     expect(body.ok).toBe(true);
+    // Google validates the file extension off the end of the URL, so the feed
+    // URL has to finish in .csv rather than a query string.
     expect(String(body.feedUrl)).toMatch(
-      /^https:\/\/valuebasedbidding\.com\/v1\/feeds\/google-ads\?key=vbb_live_/
+      /^https:\/\/valuebasedbidding\.com\/v1\/feeds\/google-ads\/vbb_live_[A-Za-z0-9]+\.csv$/
     );
     expect(body.rowsPublished).toBe(2);
   });
@@ -270,5 +273,44 @@ describe("isPublishableKey", () => {
   it("does not choke on something that is not a key at all", () => {
     expect(isPublishableKey("")).toBe(false);
     expect(isPublishableKey("not.a.jwt")).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// The shapes Google Ads actually accepts
+// ---------------------------------------------------------------------------
+
+describe("reading the token off a Google Ads request", () => {
+  it("takes it from the filename, extension stripped", () => {
+    expect(tokenFromFilename("vbb_live_abc123.csv")).toBe("vbb_live_abc123");
+    expect(tokenFromFilename("vbb_live_abc123.CSV")).toBe("vbb_live_abc123");
+    expect(tokenFromFilename("vbb_live_abc123.tsv")).toBe("vbb_live_abc123");
+  });
+
+  it("copes with a filename that carries no extension", () => {
+    expect(tokenFromFilename("vbb_live_abc123")).toBe("vbb_live_abc123");
+  });
+
+  it("refuses an empty filename rather than treating it as a token", () => {
+    expect(tokenFromFilename(".csv")).toBeNull();
+    expect(tokenFromFilename("")).toBeNull();
+  });
+
+  it("takes it from the password Google's form asks for", () => {
+    // Google's HTTPS source requires a username and password; the token is
+    // accepted there so it need not sit in the URL.
+    const header = "Basic " + Buffer.from("anyone:vbb_live_abc123").toString("base64");
+    expect(tokenFromBasicAuth(header)).toBe("vbb_live_abc123");
+  });
+
+  it("keeps a password containing a colon intact", () => {
+    const header = "Basic " + Buffer.from("user:pa:ss:word").toString("base64");
+    expect(tokenFromBasicAuth(header)).toBe("pa:ss:word");
+  });
+
+  it("ignores anything that is not Basic auth", () => {
+    expect(tokenFromBasicAuth(null)).toBeNull();
+    expect(tokenFromBasicAuth("Bearer abc")).toBeNull();
+    expect(tokenFromBasicAuth("Basic !!!not-base64!!!")).toBeNull();
   });
 });

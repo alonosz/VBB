@@ -64,20 +64,24 @@ const SETUP_STEPS = [
 
 const SCHEDULE_STEPS = [
   {
-    title: "Go to Uploads",
-    body: "Goals → Conversions → Uploads. Then open the Schedules tab at the top, next to Uploads.",
+    title: "Start a conversion action",
+    body: 'Goals → Conversions → New conversion action. On the "Choose data sources to measure conversions" screen, tick Conversions offline.',
   },
   {
-    title: "Add a schedule",
-    body: "Click the blue + button. In the Source dropdown choose HTTPS.",
+    title: "Add HTTPS as the data source",
+    body: 'On "Add an offline data source", leave "Connect a new product" selected and pick HTTPS from the grid — it sits next to Google Sheets and SFTP. Tick the customer-data consent box, then Done, then Save and continue.',
   },
   {
-    title: "Paste your feed URL",
-    body: "Paste the whole URL including the key. Set Frequency to Daily and pick a time — early morning is fine, since values do not change hour to hour.",
+    title: "Paste the URL exactly as shown above",
+    body: "It has to end in .csv — Google checks the file extension off the end of the URL and rejects anything finishing in a query string.",
   },
   {
-    title: "Preview before you save",
-    body: "Preview makes Google fetch the file now and show you what it read. You want one row per lead, each with its own value, and no errors. If it reports an unknown conversion action, the name in step 3 above does not match.",
+    title: "Fill in the username and password",
+    body: "Google requires both. The username can be anything — your name is fine. For the password, paste your feed key again (the part between the last / and .csv). We accept it there as well as in the URL.",
+  },
+  {
+    title: "Map the fields, then review",
+    body: 'Google walks you through "Select data" and "Map fields". The column names in the file already match what it expects, so this should confirm rather than require choices.',
   },
   {
     title: "Save",
@@ -334,8 +338,15 @@ export default function ConnectPage() {
                 </ol>
 
                 <div className="mt-4 rounded-xl border border-[var(--border)] bg-[#f8fafd] px-4 py-3">
-                  <p className="text-[13px] font-semibold">If Preview shows errors</p>
+                  <p className="text-[13px] font-semibold">If Google shows an error</p>
                   <ul className="mt-1.5 grid gap-1 text-[13px] text-[var(--muted)]">
+                    <li>
+                      <span className="font-semibold text-[var(--foreground)]">
+                        Unable to read file format
+                      </span>{" "}
+                      — the URL was shortened or edited and no longer ends in{" "}
+                      <span className="mono">.csv</span>. Paste it again in full.
+                    </li>
                     <li>
                       <span className="font-semibold text-[var(--foreground)]">
                         Unknown conversion action

@@ -13,12 +13,23 @@
  * globals.css; replacing those three updates every use of the mark.
  */
 
-let gradientSeq = 0;
-
-export function LogoMark({ size = 28, className = "" }: { size?: number; className?: string }) {
-  // Two marks on one page must not share a gradient id, or the second inherits
-  // the first's stops in some renderers.
-  const id = `vbb-mark-${(gradientSeq = (gradientSeq + 1) % 1_000_000)}`;
+/**
+ * Every instance of the mark uses the same gradient, so they can share one id.
+ * A counter incremented during render would be a side effect, and useId is not
+ * available here because the mark renders inside server components. Callers
+ * needing a distinct id — an inlined mark in an exported SVG, say — can pass
+ * one.
+ */
+export function LogoMark({
+  size = 28,
+  className = "",
+  gradientId = "vbb-mark-gradient",
+}: {
+  size?: number;
+  className?: string;
+  gradientId?: string;
+}) {
+  const id = gradientId;
 
   return (
     <svg
