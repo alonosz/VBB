@@ -4,6 +4,7 @@ import path from "node:path";
 export default defineConfig({
   test: {
     environment: "node",
+    // Per-file "// @vitest-environment jsdom" opts the snippet tests into a DOM.
     include: ["src/**/*.test.ts"],
   },
   resolve: {
