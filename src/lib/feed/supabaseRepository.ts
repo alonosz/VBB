@@ -203,7 +203,34 @@ export function feedRepositoryFromEnv(): FeedRepository | null {
   const key =
     process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY;
   if (!url || !key) return null;
+
+  // The publishable key is the easy one to grab by mistake — it sits directly
+  // above the secret key in the dashboard. It would fail on every single query
+  // against tables with row-level security and no policies, which reads as
+  // "the database is broken" rather than "wrong key". Say which it is.
+  if (isPublishableKey(key)) {
+    console.error(
+      "Supabase is configured with a publishable key. That key cannot read the " +
+        "feed tables, because row-level security is on with no policies. Use the " +
+        "secret key (sb_secret_…), and keep it out of any NEXT_PUBLIC_ variable."
+    );
+    return null;
+  }
+
   return new SupabaseFeedRepository(
     createClient(url, key, { auth: { persistSession: false } })
   );
+}
+
+/** The publishable (formerly anon) key, under either naming. */
+export function isPublishableKey(key: string): boolean {
+  if (key.startsWith("sb_publishable_")) return true;
+  // Legacy anon keys are JWTs carrying their role in the payload.
+  const payload = key.split(".")[1];
+  if (!payload) return false;
+  try {
+    return JSON.parse(Buffer.from(payload, "base64").toString()).role === "anon";
+  } catch {
+    return false;
+  }
 }

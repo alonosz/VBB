@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { publishFeed, serveFeed, CONVERSION_NAME } from "./handlers";
 import { InMemoryFeedRepository } from "./repository";
+import { isPublishableKey } from "./supabaseRepository";
 import { MAX_FETCHES_PER_DAY } from "./rateLimit";
 import { buildFeedRows } from "./publish";
 import type { ValuedLead } from "@/lib/analysis/valueModel";
@@ -243,5 +244,31 @@ describe("serveFeed", () => {
     const { body } = await publishedFeed(repo);
     const res = await serveFeed(repo, { ...ctx, token: tokenFrom(String(body.feedUrl)) });
     expect(res.body).not.toMatch(/@/);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// The wrong key is the easy mistake
+// ---------------------------------------------------------------------------
+
+describe("isPublishableKey", () => {
+  it("spots the new publishable key", () => {
+    expect(isPublishableKey("sb_publishable_OIEstuz21ouO3LbYwyvZ8g_RjePq9yv")).toBe(true);
+  });
+
+  it("spots a legacy anon JWT by its role claim", () => {
+    const jwt = (role: string) =>
+      `header.${Buffer.from(JSON.stringify({ role })).toString("base64")}.sig`;
+    expect(isPublishableKey(jwt("anon"))).toBe(true);
+    expect(isPublishableKey(jwt("service_role"))).toBe(false);
+  });
+
+  it("lets a real secret key through", () => {
+    expect(isPublishableKey("sb_secret_exampleexampleexample")).toBe(false);
+  });
+
+  it("does not choke on something that is not a key at all", () => {
+    expect(isPublishableKey("")).toBe(false);
+    expect(isPublishableKey("not.a.jwt")).toBe(false);
   });
 });
