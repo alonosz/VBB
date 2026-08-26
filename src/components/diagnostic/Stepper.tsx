@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useDiagnostic } from "@/context/DiagnosticContext";
+import { LogoMark } from "@/components/brand/Logo";
 
 /**
  * Short commit SHA of the running build. Vercel injects the full SHA at build
@@ -35,14 +36,23 @@ export function Stepper({ current }: { current: DiagnosticStep }) {
   return (
     <header className="sticky top-0 z-30 border-b border-[var(--border)] bg-white/85 backdrop-blur-md">
       <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-4 px-6 py-3">
-        <Link href="/" className="flex shrink-0 items-center gap-2">
-          <span className="gradient-navy flex h-7 w-7 items-center justify-center rounded-lg text-sm font-bold text-white">
-            V
-          </span>
-          <span className="text-sm font-semibold tracking-tight">VBB Engine</span>
+        {/*
+          Mark only. The wordmark plus five steps overflows the bar well before
+          mobile widths, and the header is not where anyone learns the name.
+        */}
+        <Link href="/" className="shrink-0" aria-label="ValueBasedBidding — home">
+          <LogoMark size={26} />
         </Link>
 
-        <ol className="ml-auto flex flex-wrap items-center gap-1">
+        {/* Five pills do not fit a phone, and a 200px-tall header is worse than
+            not seeing every step name. Small screens get the same information
+            in one line. */}
+        <p className="ml-auto text-xs font-semibold text-[var(--muted)] md:hidden">
+          <span className="text-[var(--primary)]">Step {currentIdx + 1}</span> of{" "}
+          {STEPS.length} · {STEPS[currentIdx]?.label}
+        </p>
+
+        <ol className="ml-auto hidden flex-wrap items-center gap-1 md:flex">
           {STEPS.map((step, i) => {
             const state = i < currentIdx ? "done" : i === currentIdx ? "active" : "todo";
             return (
@@ -92,7 +102,7 @@ export function Stepper({ current }: { current: DiagnosticStep }) {
 
         {/* Build marker, so it is always obvious which version is deployed. */}
         <span
-          className="mono shrink-0 text-[10.5px] text-[#b6bdcc]"
+          className="mono hidden shrink-0 text-[10.5px] text-[#b6bdcc] sm:inline"
           title="Deployed commit"
         >
           {BUILD_ID}

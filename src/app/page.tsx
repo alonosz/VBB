@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ArrowIcon } from "@/components/ArrowIcon";
+import { Logo } from "@/components/brand/Logo";
 
 /**
  * What this is, before anyone is asked to do anything.
@@ -32,12 +33,7 @@ export default function Home() {
   return (
     <div className="animate-page-in flex min-h-screen flex-col">
       <main className="mx-auto w-full max-w-3xl flex-1 px-6 py-16">
-        <div className="flex items-center gap-2">
-          <span className="gradient-navy flex h-8 w-8 items-center justify-center rounded-lg text-sm font-bold text-white">
-            V
-          </span>
-          <span className="text-[15px] font-semibold tracking-tight">VBB Engine</span>
-        </div>
+        <Logo size={34} showDotCom />
 
         <h1 className="mt-8 max-w-[20ch] text-[clamp(30px,5vw,46px)] font-extrabold leading-[1.08] tracking-[-.03em] text-balance">
           Google Ads thinks all your leads are worth the same.

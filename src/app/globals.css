@@ -11,6 +11,12 @@
   --primary: #2a47f5;
   --primary-hover: #1e35d6;
   --primary-soft: #ebeefe;
+  /*
+   * The violet in the logo mark. Estimated from the artwork rather than taken
+   * from a brand file — swap it here when the real value is to hand and every
+   * use of the mark follows.
+   */
+  --brand-violet: #7b5cf0;
   --navy: #0a0e1e;
   --navy-soft: #131a33;
 
