@@ -191,10 +191,17 @@ export class SupabaseFeedRepository implements FeedRepository {
 /**
  * Returns null when Supabase is not configured, so every caller has to decide
  * what to say about that rather than crashing on a missing key.
+ *
+ * Supabase renamed its privileged key from `service_role` to a "secret key"
+ * (`sb_secret_…`); both are the same thing to us, and a project may have been
+ * set up under either name. Accepting both means nobody has to rename an
+ * environment variable to match a dashboard that changed after they read the
+ * instructions.
  */
 export function feedRepositoryFromEnv(): FeedRepository | null {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
+  const key =
+    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY;
   if (!url || !key) return null;
   return new SupabaseFeedRepository(
     createClient(url, key, { auth: { persistSession: false } })

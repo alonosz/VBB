@@ -77,10 +77,15 @@ repository in tests.
 ## Environment
 
 ```
-NEXT_PUBLIC_SUPABASE_URL=
-SUPABASE_SERVICE_ROLE_KEY=
+NEXT_PUBLIC_SUPABASE_URL=      # or SUPABASE_URL
+SUPABASE_SERVICE_ROLE_KEY=     # or SUPABASE_SECRET_KEY
 ```
 
-The service-role key is server-only and must never be exposed to the browser.
+Supabase now calls the privileged key a **secret key** (`sb_secret_…`) where it
+used to say `service_role`. They are the same thing here, and either variable
+name is accepted — the publishable key (`sb_publishable_…`) will not work,
+because row-level security is on with no policies.
+
+The privileged key is server-only and must never be exposed to the browser.
 With neither set, the diagnostic runs exactly as it does today and the feed
 endpoint reports that it is not configured.
