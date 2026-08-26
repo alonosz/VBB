@@ -188,23 +188,41 @@ export function generateDemoDeals(opts: DemoOptions = {}): MappedDeal[] {
       : outcome === "lost" ? "Closed Lost"
       : STAGES[Math.floor(rand() * 3)];
 
+
+    // Not every lead reaches every stage, and that is the point of a gate.
+    // A CRM leaves date_entered_<stage> empty for a stage a deal never got to,
+    // so a fixture that fills it for all of them makes the gate unpriceable —
+    // there is nothing to compare against. Won deals nearly always qualified;
+    // plenty of lost ones never did.
+    const reachedQualified = outcome === "won" ? rand() < 0.97 : rand() < 0.45;
+    const reachedProposal = reachedQualified && (outcome === "won" ? rand() < 0.9 : rand() < 0.4);
+
     // Only "Proposal" is backfilled, which is how real accounts look: a team
     // drags cards through one stage retroactively and lives the others
     // honestly. This lets the demo show both findings at once — an untrusted
     // stage AND a usable early gate in "Qualified".
     const backfilled = rand() < 0.42;
-    const stageDurations: Record<string, number> = {
+    const stageDurations: Record<string, number> = {};
+    if (reachedQualified) {
       // Honest durations: hours to days.
-      Qualified: Math.floor(rand() * 4 * 86400) + 3600,
-      Proposal: backfilled
+      stageDurations.Qualified = Math.floor(rand() * 4 * 86400) + 3600;
+    }
+    if (reachedProposal) {
+      stageDurations.Proposal = backfilled
         ? Math.floor(rand() * 50) + 3 // 3-53 seconds — nobody lived through this
-        : Math.floor(rand() * 9 * 86400) + 7200,
-    };
-    // "Qualified" is reached early for most deals — the intended proxy gate.
-    const stageReachedAfterDays: Record<string, number> = {
-      Qualified: rand() < 0.78 ? Math.floor(rand() * 7) : Math.floor(7 + rand() * 30),
-      Proposal: Math.floor(rand() * 40),
-    };
+        : Math.floor(rand() * 9 * 86400) + 7200;
+    }
+
+    // "Qualified" is reached early for most deals that reach it at all — the
+    // intended proxy gate.
+    const stageReachedAfterDays: Record<string, number> = {};
+    if (reachedQualified) {
+      stageReachedAfterDays.Qualified =
+        rand() < 0.78 ? Math.floor(rand() * 7) : Math.floor(7 + rand() * 30);
+    }
+    if (reachedProposal) {
+      stageReachedAfterDays.Proposal = Math.floor(rand() * 40);
+    }
 
     deals.push({
       id: `demo-${i + 1}`,

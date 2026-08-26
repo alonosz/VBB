@@ -31,6 +31,7 @@ import {
   AttributionNote,
   ClaimsTestedSection,
   ClippedOutliersSection,
+  EarlyGateSection,
   DroppedFactorsSection,
   HookPanel,
   ValueModelPanel,
@@ -280,6 +281,7 @@ export default function ReportPage() {
             <AttributionNote />
             <StatedVsActual businessContext={businessContext} comparisons={comparisons} />
             <ClaimsTestedSection model={result.valueModel} />
+            <EarlyGateSection gate={result.gate} currency={cur} />
             <CycleSection cycle={result.cycle} />
             <section>
               <SectionHead

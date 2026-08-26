@@ -1,5 +1,7 @@
 import type { ValuedLead } from "@/lib/analysis/valueModel";
 import { normalizeEmail, sha256Hex } from "@/lib/export/googleAds";
+import type { GateValue } from "@/lib/analysis/gateValue";
+import { gateStatusFor } from "@/lib/analysis/gateValue";
 import type { FeedIdentifier, FeedRow } from "./types";
 
 /**
@@ -29,6 +31,12 @@ export interface PublishOptions {
   identifier: FeedIdentifier;
   /** What this feed has already sent, so we know what actually changed. */
   previous?: FeedRow[];
+  /**
+   * The priced early gate, when the data supports one. A lead that has since
+   * reached it is worth more than its day-0 attributes said — and that is the
+   * only thing that ever makes a value move.
+   */
+  gate?: GateValue | null;
   now?: Date;
 }
 
@@ -49,6 +57,10 @@ export interface PublishResult {
   recalibrationOnly: number;
   /** Changes too small to be worth a row. */
   unchanged: number;
+  /** Leads whose value rose because they reached the gate in time. */
+  gateAdjustments: number;
+  /** Reached the gate, but after Google stopped listening. */
+  gateTooLate: number;
   skipped: SkipReason[];
 }
 
@@ -82,9 +94,28 @@ export async function buildFeedRows(opts: PublishOptions): Promise<PublishResult
   let adjustments = 0;
   let recalibrationOnly = 0;
   let unchanged = 0;
+  let gateAdjustments = 0;
+  let gateTooLate = 0;
+
+  const gate = opts.gate?.available ? opts.gate : null;
 
   for (const lead of opts.leads) {
-    const { deal, value } = lead;
+    const { deal } = lead;
+    let value = lead.value;
+
+    // The gate is the one thing that can move a lead's value after the fact.
+    // It only counts when it fired soon enough for Google to still act on it;
+    // otherwise the lead keeps its day-0 price and the miss is reported.
+    let gateFired = false;
+    if (gate?.multiplier) {
+      const status = gateStatusFor(deal, gate.stage, now);
+      if (status.reached && status.inTime) {
+        value = Math.round(value * gate.multiplier * 100) / 100;
+        gateFired = true;
+      } else if (status.reached) {
+        gateTooLate++;
+      }
+    }
 
     if (!deal.createdAt) {
       skip("no create date, so there is no conversion time to attach a value to");
@@ -147,6 +178,7 @@ export async function buildFeedRows(opts: PublishOptions): Promise<PublishResult
 
     rows.push({ ...base, kind: "adjustment" });
     adjustments++;
+    if (gateFired) gateAdjustments++;
   }
 
   return {
@@ -155,6 +187,8 @@ export async function buildFeedRows(opts: PublishOptions): Promise<PublishResult
     adjustments,
     recalibrationOnly,
     unchanged,
+    gateAdjustments,
+    gateTooLate,
     skipped: [...skips.entries()].map(([reason, count]) => ({ reason, count })),
   };
 }

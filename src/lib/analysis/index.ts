@@ -9,6 +9,7 @@ import { volumeCheck } from "./volume";
 import { domainValueDisparity, icpFitCheck } from "./segments";
 import { buildValueModel } from "./valueModel";
 import { determineVerdict } from "./verdict";
+import { gateValue } from "./gateValue";
 
 export * from "./types";
 export { cycleLengthStats } from "./cycleLength";
@@ -22,6 +23,7 @@ export { domainValueDisparity, icpFitCheck, extractIcpTraits } from "./segments"
 export * from "./valueModel";
 export * from "./factors";
 export { determineVerdict } from "./verdict";
+export * from "./gateValue";
 
 /**
  * Runs the full diagnostic. Every function here is pure, so the same input
@@ -49,6 +51,9 @@ export function runDiagnostic(input: AnalysisInput): DiagnosticResult {
     hypotheses,
   });
   const verdict = determineVerdict(cycle, volume, matchRate, earlyGate);
+  // What reaching the early gate is worth — the one signal that can sharpen a
+  // lead's value after it arrived, and only inside Google's window.
+  const gate = gateValue(deals, earlyGate);
 
   return {
     rowsAnalyzed: deals.length,
@@ -59,6 +64,7 @@ export function runDiagnostic(input: AnalysisInput): DiagnosticResult {
     cycle,
     stageTrust,
     earlyGate,
+    gate,
     sources,
     matchRate,
     valueSpread,

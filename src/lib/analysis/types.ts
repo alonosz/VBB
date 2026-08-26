@@ -1,4 +1,5 @@
 import type { FactorHypothesis } from "./valueModel";
+import type { GateValue } from "./gateValue";
 
 // Domain types for the VBB diagnostic analysis engine.
 //
@@ -273,6 +274,8 @@ export interface DiagnosticResult {
   cycle: CycleLengthStats;
   stageTrust: StageTrustResult;
   earlyGate: EarlyGateResult;
+  /** What reaching the early gate is worth, when the data supports pricing it. */
+  gate: GateValue;
   sources: SourceEconomics[];
   matchRate: MatchRateReadiness;
   valueSpread: ValueSpread;

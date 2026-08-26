@@ -16,6 +16,7 @@ import type {
   ValuedLead,
   ExampleStack,
 } from "@/lib/analysis/valueModel";
+import type { GateValue } from "@/lib/analysis/gateValue";
 import {
   MAX_STACK_DEVIATION,
   effectiveMultiplier,
@@ -832,6 +833,101 @@ export function ClippedOutliersSection({
           </>
         )}
       </p>
+    </section>
+  );
+}
+
+/**
+ * What a lead becomes worth once it proves itself.
+ *
+ * Every other number in the report is fixed the moment a lead arrives. This is
+ * the one that moves — and it only counts if it moves fast enough, so the
+ * window is stated alongside it rather than buried.
+ */
+export function EarlyGateSection({
+  gate,
+  currency,
+}: {
+  gate: GateValue;
+  currency: string;
+}) {
+  if (!gate.stage && !gate.unusableReason) return null;
+
+  return (
+    <section>
+      <h3 className="mb-1 text-lg font-bold tracking-tight">
+        When a lead proves itself
+      </h3>
+      <p className="mb-3 max-w-[74ch] text-[13.5px] text-[var(--muted)]">
+        Google stops accepting a new value for a conversion after 7 days. So the
+        only thing that can sharpen a lead&apos;s price is a milestone it hits
+        inside that week.
+      </p>
+
+      {gate.available ? (
+        <div className="rounded-xl border border-[var(--accent)]/40 bg-white px-4 py-3.5">
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <p className="text-[14px] font-bold">
+              Reaching <span className="mono">{gate.stage}</span> is worth{" "}
+              <span className="text-[var(--accent)]">×{gate.multiplier}</span>
+            </p>
+            <span className="mono text-[12px] text-[var(--muted)]">
+              {Math.round(gate.withinWindowRate * 100)}% get there in time
+            </span>
+          </div>
+          <p className="mt-1.5 max-w-[74ch] text-[13px] text-[var(--muted)]">
+            Leads that reach it close{" "}
+            <span className="mono font-semibold text-[var(--foreground)]">
+              {(gate.closeRateReached * 100).toFixed(1)}%
+            </span>{" "}
+            of the time against{" "}
+            <span className="mono font-semibold text-[var(--foreground)]">
+              {(gate.closeRateNotReached * 100).toFixed(1)}%
+            </span>{" "}
+            for those that don&apos;t, on{" "}
+            <span className="mono">{gate.reachedCount.toLocaleString()}</span> and{" "}
+            <span className="mono">{gate.notReachedCount.toLocaleString()}</span>{" "}
+            resolved deals
+            {gate.medianWonReached !== null && (
+              <>
+                {" "}
+                — median won deal {money(gate.medianWonReached, currency)}
+              </>
+            )}
+            .
+          </p>
+          {gate.wasBounded && gate.rawMultiplier !== null && (
+            <p className="mt-2 max-w-[74ch] text-[13px] text-[var(--muted)]">
+              Measured at{" "}
+              <span className="mono">×{gate.rawMultiplier}</span>, held to{" "}
+              <span className="mono">×{gate.multiplier}</span>. Leads that clear
+              this gate both qualify more often and were already priced up for
+              the attributes that got them there, so the full figure counts the
+              same signal twice.
+            </p>
+          )}
+          <p className="mt-2 max-w-[74ch] text-[13px] text-[var(--muted)]">
+            When a lead reaches it inside the window we send Google a higher
+            value for the conversion it already has. When it reaches it later,
+            we don&apos;t — Google would discard it, and telling you we moved a
+            bid we didn&apos;t move would be worse than saying nothing.
+          </p>
+        </div>
+      ) : (
+        <div className="rounded-xl border border-[var(--border)] bg-white px-4 py-3.5">
+          <p className="text-[13.5px] font-semibold">
+            Nothing in this file can sharpen a lead&apos;s value in time
+          </p>
+          <p className="mt-0.5 max-w-[74ch] text-[13px] text-[var(--muted)]">
+            {gate.unusableReason}
+          </p>
+          <p className="mt-2 max-w-[74ch] text-[13px] text-[var(--muted)]">
+            Every lead keeps the value it was given on arrival. That is not a
+            fault — it is what happens when a pipeline moves slower than the
+            week Google gives you.
+          </p>
+        </div>
+      )}
     </section>
   );
 }

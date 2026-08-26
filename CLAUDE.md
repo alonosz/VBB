@@ -88,7 +88,25 @@ to every emitted value. Every clipped deal is listed by name in the audit table
 — the cap is the one place we deliberately report a number lower than the truth,
 so it has to be inspectable.
 
-## 7. The model is an artifact, not a per-upload recomputation
+## 7. A value may only sharpen inside the window
+
+The day-0 stack prices what is knowable on arrival. One thing can change it
+afterwards: an **early gate** — a pipeline stage that reliably fires inside
+Google's 7 days (`gateValue()`). Reaching it in time emits an adjustment;
+reaching it later emits nothing and is counted as `gateTooLate`, because Google
+discards a late adjustment and reporting one would claim a bid we did not move.
+
+- The gate is measured against **the whole resolved population**, never against
+  leads that never reached it. Those barely close, so that denominator produces
+  multipliers in the dozens off arithmetic rather than evidence.
+- Bounded by `MAX_GATE_MULTIPLIER` (4) for the same reason the day-0 stack is
+  bounded: the gate overlaps the attributes that got the lead there, so
+  multiplying counts one signal twice. A clipped figure is always shown next to
+  the measured one.
+- A gate that fires too slowly is refused outright and said so, in the
+  advertiser's words. A slow pipeline is not a fault to hide.
+
+## 8. The model is an artifact, not a per-upload recomputation
 
 Refitting on every upload silently reprices yesterday's leads: a 30-day window
 one morning and a 90-day window the next produce different multipliers, and the

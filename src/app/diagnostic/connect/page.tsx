@@ -29,6 +29,11 @@ interface Published {
   feedUrl: string;
   rowsPublished: number;
   identifier: "clickId" | "email";
+  /** Leads sent at a higher value because they reached the gate in time. */
+  gateAdjustments: number;
+  /** Reached it, but after Google stopped listening. */
+  gateTooLate: number;
+  gateStage: string | null;
 }
 
 /**
@@ -118,6 +123,18 @@ export default function ConnectPage() {
     return rowsToDeals({ rows: file.rows, fields, currency, stageTiming, signalColumns: customSignalKeys });
   }, [file, fields, currency, stageTiming, customSignalKeys]);
 
+  const gate = useMemo(() => {
+    if (!mapped) return null;
+    return runDiagnostic({
+      deals: mapped.deals,
+      excluded: mapped.excluded,
+      businessContext,
+      currencyCode: currency.reportingCurrency,
+      customSignalKeys,
+      hypotheses,
+    }).gate;
+  }, [mapped, businessContext, currency.reportingCurrency, customSignalKeys, hypotheses]);
+
   const valued = useMemo(() => {
     if (!mapped) return [];
     const result = runDiagnostic({
@@ -145,11 +162,12 @@ export default function ConnectPage() {
     setError(null);
     try {
       const identifier = bestIdentifier(valued);
-      const { rows, skipped } = await buildFeedRows({
+      const { rows, skipped, gateAdjustments, gateTooLate } = await buildFeedRows({
         leads: valued,
         modelId,
         currencyCode: cur,
         identifier,
+        gate,
       });
       if (rows.length === 0) {
         setError(
@@ -172,7 +190,15 @@ export default function ConnectPage() {
       });
       const data = await res.json();
       if (!res.ok || !data.ok) setError(data.error ?? "The feed could not be published.");
-      else setFeed({ feedUrl: data.feedUrl, rowsPublished: data.rowsPublished, identifier: data.identifier });
+      else
+        setFeed({
+          feedUrl: data.feedUrl,
+          rowsPublished: data.rowsPublished,
+          identifier: data.identifier,
+          gateAdjustments,
+          gateTooLate,
+          gateStage: gate?.available ? gate.stage : null,
+        });
     } catch {
       setError("The feed could not be published. Nothing was sent.");
     } finally {
@@ -280,6 +306,31 @@ export default function ConnectPage() {
                     {copied ? "Copied" : "Copy"}
                   </button>
                 </div>
+                {feed.gateStage && (feed.gateAdjustments > 0 || feed.gateTooLate > 0) && (
+                  <p className="mt-2.5 max-w-[70ch] text-[12.5px] text-[var(--muted)]">
+                    {feed.gateAdjustments > 0 && (
+                      <>
+                        <span className="mono font-semibold text-[var(--accent)]">
+                          {feed.gateAdjustments.toLocaleString()}
+                        </span>{" "}
+                        {feed.gateAdjustments === 1 ? "lead" : "leads"} reached{" "}
+                        <span className="mono">{feed.gateStage}</span> in time and went
+                        up in value.{" "}
+                      </>
+                    )}
+                    {feed.gateTooLate > 0 && (
+                      <>
+                        <span className="mono font-semibold">
+                          {feed.gateTooLate.toLocaleString()}
+                        </span>{" "}
+                        reached it after Google&apos;s 7-day window, so{" "}
+                        {feed.gateTooLate === 1 ? "it kept its" : "they kept their"}{" "}
+                        original value — that outcome feeds the next refit instead.
+                      </>
+                    )}
+                  </p>
+                )}
+
                 <p className="mt-2.5 max-w-[70ch] text-[12.5px] text-[var(--muted)]">
                   <span className="font-semibold text-[var(--warn)]">Copy it now.</span>{" "}
                   The key is stored only as a hash, so we can&apos;t show it again — and

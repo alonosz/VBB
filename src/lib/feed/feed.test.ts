@@ -367,3 +367,83 @@ describe("bestIdentifier", () => {
     ])).toBe("email");
   });
 });
+
+// ---------------------------------------------------------------------------
+// The gate — the only thing that moves a lead's value after it arrived
+// ---------------------------------------------------------------------------
+
+describe("the early gate", () => {
+  const GATE = {
+    available: true, stage: "Qualified", multiplier: 3,
+    reachedCount: 60, notReachedCount: 60,
+    closeRateReached: 0.6, closeRateNotReached: 0.2,
+    medianWonReached: 10_000, withinWindowRate: 0.8,
+    rawMultiplier: 3, wasBounded: false, unusableReason: null,
+  };
+
+  function leadAt(ageDays: number, gateDays: number | null, value = 1000): ValuedLead {
+    const base = lead({ id: "1", value, clickId: "Cj0aaaaaaaaa", createdAt: day(ageDays) });
+    if (gateDays !== null) base.deal.stageReachedAfterDays = { Qualified: gateDays };
+    return base;
+  }
+
+  it("raises the value of a lead that reached the gate in time", async () => {
+    const previous = (await publish([leadAt(2, null)])).rows;
+    const r = await publish([leadAt(2, 1)], { previous, gate: GATE });
+    expect(r.gateAdjustments).toBe(1);
+    expect(r.adjustments).toBe(1);
+    // 1000 x 3, sent as an adjustment to the conversion already reported.
+    expect(r.rows[0].value).toBe(3000);
+    expect(r.rows[0].kind).toBe("adjustment");
+    expect(r.rows[0].rowKey).toBe(previous[0].rowKey);
+  });
+
+  it("prices a brand-new lead that already cleared the gate", async () => {
+    const r = await publish([leadAt(1, 0.5)], { gate: GATE });
+    expect(r.newConversions).toBe(1);
+    expect(r.rows[0].value).toBe(3000);
+    expect(r.rows[0].kind).toBe("conversion");
+  });
+
+  it("refuses to raise a lead that reached the gate too late", async () => {
+    // The demo happened on day 12. Google discards an adjustment that late, so
+    // sending one would claim a bid moved that did not.
+    const previous = (await publish([leadAt(20, null)])).rows;
+    const r = await publish([leadAt(20, 12)], { previous, gate: GATE });
+    expect(r.rows).toEqual([]);
+    expect(r.gateAdjustments).toBe(0);
+    expect(r.gateTooLate).toBe(1);
+  });
+
+  it("counts a late gate as recalibration input, not a lost opportunity", async () => {
+    const r = await publish([leadAt(30, 15)], { gate: GATE });
+    // Still a new lead, so it is sent — at its day-0 value, ungated.
+    expect(r.rows[0].value).toBe(1000);
+    expect(r.gateTooLate).toBe(1);
+  });
+
+  it("leaves a lead that never reached the gate at its day-0 value", async () => {
+    const r = await publish([leadAt(2, null)], { gate: GATE });
+    expect(r.rows[0].value).toBe(1000);
+    expect(r.gateTooLate).toBe(0);
+  });
+
+  it("ignores a gate the data refused to price", async () => {
+    const unusable = { ...GATE, available: false, multiplier: 1.1 };
+    const r = await publish([leadAt(2, 1)], { gate: unusable });
+    expect(r.rows[0].value).toBe(1000);
+  });
+
+  it("does nothing when there is no gate at all", async () => {
+    const r = await publish([leadAt(2, 1)], { gate: null });
+    expect(r.rows[0].value).toBe(1000);
+  });
+
+  it("still respects the 20% floor — a weak gate move is not worth a row", async () => {
+    const weak = { ...GATE, multiplier: 1.1 };
+    const previous = (await publish([leadAt(2, null)])).rows;
+    const r = await publish([leadAt(2, 1)], { previous, gate: weak });
+    expect(r.rows).toEqual([]);
+    expect(r.unchanged).toBe(1);
+  });
+});
