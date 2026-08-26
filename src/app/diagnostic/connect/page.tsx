@@ -13,6 +13,7 @@ import { recallModel } from "@/lib/model/storage";
 import { buildValueModelCsv, downloadCsv } from "@/lib/export/googleAds";
 import { bestIdentifier, buildFeedRows } from "@/lib/feed/publish";
 import { money } from "@/components/report/panels";
+import { CONVERSION_NAME } from "@/lib/feed/handlers";
 
 /**
  * The last stage: getting the values into Google Ads.
@@ -30,22 +31,57 @@ interface Published {
   identifier: "clickId" | "email";
 }
 
-const GOOGLE_STEPS = [
+/**
+ * Creating the conversion action comes first, and is the step people miss.
+ *
+ * Google matches an uploaded row to a conversion action by name. If no action
+ * called "VBB Lead Value" exists, the upload is accepted and every row is
+ * rejected — a failure that looks like nothing happening at all. So this is
+ * spelled out before the feed URL, not after it.
+ */
+const SETUP_STEPS = [
   {
-    title: "Open your conversion uploads",
-    body: "In Google Ads: Tools & Settings → Measurement → Conversions → the Uploads tab.",
+    title: "Open Conversions",
+    body: 'In Google Ads, click Goals in the left menu, then Conversions → Summary. On older accounts this is Tools & Settings → Measurement → Conversions.',
+  },
+  {
+    title: "Create a new conversion action",
+    body: 'Click + New conversion action, then choose Import → CRM, files or other data sources → Track conversions from clicks.',
+  },
+  {
+    title: `Name it exactly "${CONVERSION_NAME}"`,
+    body: "Case and spacing have to match — this is the name Google looks for in every row of your feed. A mismatch rejects the whole upload.",
+  },
+  {
+    title: "Set the value to vary per conversion",
+    body: 'Under Value, choose "Use different values for each conversion". Leave the default value blank. This is the setting that lets your model matter — the other options flatten every lead back to one number.',
+  },
+  {
+    title: "Check the rest, then save",
+    body: 'Count: "One". Click-through conversion window: 90 days, or longer if your cycle runs long. Set "Include in Conversions" to Yes so Smart Bidding actually optimises toward it.',
+  },
+];
+
+const SCHEDULE_STEPS = [
+  {
+    title: "Go to Uploads",
+    body: "Goals → Conversions → Uploads. Then open the Schedules tab at the top, next to Uploads.",
   },
   {
     title: "Add a schedule",
-    body: "Open the Schedules tab, click +, and choose HTTPS as the source.",
+    body: "Click the blue + button. In the Source dropdown choose HTTPS.",
   },
   {
     title: "Paste your feed URL",
-    body: "Then pick how often Google fetches it. Daily suits most accounts; twice daily if leads arrive around the clock.",
+    body: "Paste the whole URL including the key. Set Frequency to Daily and pick a time — early morning is fine, since values do not change hour to hour.",
   },
   {
-    title: "Preview, then save",
-    body: "Preview shows Google reading your file — one row per lead, each with its own value. Save, and nobody touches a file again.",
+    title: "Preview before you save",
+    body: "Preview makes Google fetch the file now and show you what it read. You want one row per lead, each with its own value, and no errors. If it reports an unknown conversion action, the name in step 3 above does not match.",
+  },
+  {
+    title: "Save",
+    body: "That is the last manual step. Google collects your values on schedule from here on, and republishing serves new leads through the same URL.",
   },
 ];
 
@@ -247,10 +283,23 @@ export default function ConnectPage() {
                 </p>
               </div>
 
-              <div className="mt-5 border-t border-[var(--border)] pt-5">
-                <p className="text-[14px] font-bold">Where it goes in Google Ads</p>
-                <ol className="mt-3 grid gap-3">
-                  {GOOGLE_STEPS.map((step, i) => (
+              <div className="mt-6 border-t border-[var(--border)] pt-5">
+                <p className="label">Do this once, first</p>
+                <p className="mt-1 text-[15px] font-bold">
+                  Create the conversion action in Google Ads
+                </p>
+                <p className="mt-1 max-w-[64ch] text-[13.5px] text-[var(--muted)]">
+                  Google matches each row in your feed to a conversion action{" "}
+                  <span className="font-semibold text-[var(--foreground)]">by name</span>.
+                  If it doesn&apos;t already have one called{" "}
+                  <span className="mono rounded bg-[#f1f3f8] px-1.5 py-0.5 text-[12.5px]">
+                    {CONVERSION_NAME}
+                  </span>
+                  , the upload succeeds and every row is thrown away — which looks
+                  exactly like nothing happening.
+                </p>
+                <ol className="mt-3.5 grid gap-3">
+                  {SETUP_STEPS.map((step, i) => (
                     <li key={step.title} className="flex gap-3">
                       <span className="mono mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[var(--primary-soft)] text-[12px] font-bold text-[var(--primary)]">
                         {i + 1}
@@ -264,6 +313,51 @@ export default function ConnectPage() {
                     </li>
                   ))}
                 </ol>
+              </div>
+
+              <div className="mt-6 border-t border-[var(--border)] pt-5">
+                <p className="label">Then point Google at your feed</p>
+                <ol className="mt-3 grid gap-3">
+                  {SCHEDULE_STEPS.map((step, i) => (
+                    <li key={step.title} className="flex gap-3">
+                      <span className="mono mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[var(--navy)] text-[12px] font-bold text-white">
+                        {i + 1}
+                      </span>
+                      <span>
+                        <span className="block text-[14px] font-semibold">{step.title}</span>
+                        <span className="mt-0.5 block max-w-[62ch] text-[13.5px] text-[var(--muted)]">
+                          {step.body}
+                        </span>
+                      </span>
+                    </li>
+                  ))}
+                </ol>
+
+                <div className="mt-4 rounded-xl border border-[var(--border)] bg-[#f8fafd] px-4 py-3">
+                  <p className="text-[13px] font-semibold">If Preview shows errors</p>
+                  <ul className="mt-1.5 grid gap-1 text-[13px] text-[var(--muted)]">
+                    <li>
+                      <span className="font-semibold text-[var(--foreground)]">
+                        Unknown conversion action
+                      </span>{" "}
+                      — the name doesn&apos;t match{" "}
+                      <span className="mono">{CONVERSION_NAME}</span> exactly.
+                    </li>
+                    <li>
+                      <span className="font-semibold text-[var(--foreground)]">
+                        No conversions found
+                      </span>{" "}
+                      — the clicks are older than your conversion window, or the account
+                      never saw them.
+                    </li>
+                    <li>
+                      <span className="font-semibold text-[var(--foreground)]">
+                        Every value is the same
+                      </span>{" "}
+                      — the action is not set to &ldquo;use different values&rdquo;.
+                    </li>
+                  </ul>
+                </div>
               </div>
             </>
           )}

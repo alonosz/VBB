@@ -47,10 +47,10 @@ export default function Home() {
 
         <div className="mt-8 flex flex-wrap items-center gap-4">
           <Link href="/diagnostic" className="btn btn-primary">
-            Start with your CRM export <ArrowIcon />
+            Train Google to hunt high-value revenue <ArrowIcon />
           </Link>
           <span className="text-[13.5px] text-[var(--muted)]">
-            About 5 minutes · no account needed
+            About 5 minutes · start from a CRM export · no account needed
           </span>
         </div>
 

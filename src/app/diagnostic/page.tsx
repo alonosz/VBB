@@ -68,46 +68,15 @@ export default function IntakePage() {
           the most useful thing in the report.
         </p>
 
+        {/* ---- the two claims worth asking for straight, first ---- */}
         <div className="card mt-7 p-6">
-          <label htmlFor="ctx" className="block max-w-[68ch] text-[15px] font-semibold leading-relaxed">
-            Tell us about your business and your ideal customer — your sales cycle
-            length, typical lead volume, and who your best buyers are (size, industry,
-            title). A few sentences is plenty!
-          </label>
-          <textarea
-            id="ctx"
-            rows={7}
-            value={businessContext}
-            onChange={(e) => setBusinessContext(e.target.value)}
-            placeholder="e.g. We sell workflow software to mid-market manufacturers. Our buyers are ops directors. Sales cycle runs about 2–3 months. We get 150–200 leads a month, and our best customers come from referrals…"
-            className="input mt-3.5 min-h-[150px] resize-y bg-[#f8fafd] p-3.5 text-[15px] leading-relaxed"
-          />
-          <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-            <button
-              type="button"
-              onClick={() => {
-              setBusinessContext(EXAMPLE);
-              setStatedCycleDays(75);
-              setStatedSizeBands(["100-1000"]);
-            }}
-              className="text-[13px] font-semibold text-[var(--primary)] underline underline-offset-[3px] hover:text-[var(--primary-hover)]"
-            >
-              Fill with example text
-            </button>
-            <span className="text-[13px] text-[var(--muted)]">
-              Free text — nothing here is parsed into a form or required.
-            </span>
-          </div>
-        </div>
-
-        {/* ---- the two claims worth asking for straight ---- */}
-        <div className="card mt-4 p-6">
           <p className="text-[15px] font-semibold">
-            Two things it helps to be specific about
+            Start with two numbers
           </p>
           <p className="mt-1 max-w-[62ch] text-[13.5px] text-[var(--muted)]">
-            Both optional. Neither changes what your leads are worth — we check them
-            against your data and tell you where the two disagree.
+            Both optional, and neither changes what your leads are worth. We hold them
+            against your data and show you where the two disagree — which is usually
+            the most useful page in the report.
           </p>
 
           {/* Sales cycle */}
@@ -196,6 +165,42 @@ export default function IntakePage() {
                 people.
               </p>
             )}
+          </div>
+        </div>
+
+        <div className="card mt-4 p-6">
+          <label htmlFor="ctx" className="block text-[15px] font-semibold">
+            Now describe your business and your ideal customer, in your own words
+          </label>
+          <p className="mt-1 max-w-[64ch] text-[13.5px] text-[var(--muted)]">
+            Who actually buys, and what a good lead looks like to you. AI reads it
+            against the columns in your file to work out which is which, and turns
+            what you claim about your buyers into things we test against your own
+            closed deals. It never decides what a lead is worth — your data does that.
+          </p>
+          <textarea
+            id="ctx"
+            rows={7}
+            value={businessContext}
+            onChange={(e) => setBusinessContext(e.target.value)}
+            placeholder="e.g. We sell workflow software to manufacturers. Our buyers are ops directors and plant managers — the ones with a budget line for downtime. Our best customers run more than one site…"
+            className="input mt-3.5 min-h-[150px] resize-y bg-[#f8fafd] p-3.5 text-[15px] leading-relaxed"
+          />
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+            <button
+              type="button"
+              onClick={() => {
+              setBusinessContext(EXAMPLE);
+              setStatedCycleDays(75);
+              setStatedSizeBands(["100-1000"]);
+            }}
+              className="text-[13px] font-semibold text-[var(--primary)] underline underline-offset-[3px] hover:text-[var(--primary-hover)]"
+            >
+              Fill with example text
+            </button>
+            <span className="text-[13px] text-[var(--muted)]">
+              Free text — nothing here is parsed into a form or required.
+            </span>
           </div>
         </div>
 

@@ -586,7 +586,7 @@ export function WiringPanel({
             Send these values to Google Ads <ArrowIcon />
           </button>
           <span className="text-[12.5px] text-[var(--muted)]">
-            One more step — it takes a couple of minutes
+            Takes a couple of minutes, once
           </span>
         </div>
       </div>

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useDiagnostic } from "@/context/DiagnosticContext";
 import { Stepper } from "@/components/diagnostic/Stepper";
+import { ArrowIcon } from "@/components/ArrowIcon";
 import { rowsToDeals } from "@/lib/mapping/toDeals";
 import { runDiagnostic, valueAllLeads, bestCaseStack, withOverrides } from "@/lib/analysis";
 import { buildComparisons } from "@/lib/analysis/statedVsActual";
@@ -228,6 +229,17 @@ export default function ReportPage() {
               ` · ${result.excluded.length.toLocaleString()} excluded`}
           </p>
         </div>
+
+        {/* The action belongs where the page starts, not two screens down.
+            Someone who already trusts the model should never have to scroll
+            past the whole analysis to act on it. */}
+        <button
+          type="button"
+          onClick={() => router.push("/diagnostic/connect")}
+          className="btn btn-primary mb-7 w-full justify-center sm:w-auto"
+        >
+          Send these values to Google Ads <ArrowIcon />
+        </button>
 
         <div className="grid gap-8">
           <HookPanel spread={result.valueSpread} valued={valued} currency={cur} />
