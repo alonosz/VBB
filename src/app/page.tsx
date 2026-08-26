@@ -33,7 +33,7 @@ export default function Home() {
   return (
     <div className="animate-page-in flex min-h-screen flex-col">
       <main className="mx-auto w-full max-w-3xl flex-1 px-6 py-16">
-        <Logo size={34} showDotCom />
+        <Logo size={44} showDotCom />
 
         <h1 className="mt-8 max-w-[20ch] text-[clamp(30px,5vw,46px)] font-extrabold leading-[1.08] tracking-[-.03em] text-balance">
           Google Ads thinks all your leads are worth the same.

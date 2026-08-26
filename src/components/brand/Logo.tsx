@@ -2,36 +2,54 @@
  * The ValueBasedBidding mark and wordmark.
  *
  * Drawn as SVG rather than shipped as an image so it stays sharp at any size,
- * inherits the brand tokens, and needs no network request in the app header.
+ * needs no network request in the app header, and can pick up the brand tokens.
  *
- * The violet in the mark is the one brand value not defined anywhere in code —
- * it is `--brand-violet` in globals.css, currently an estimate read off the
- * logo artwork. Replace that one token with the real hex and every use of the
- * mark updates.
+ * The mark is two overlapping leaf forms: a flat violet one behind, and a
+ * gradient blue "J" in front whose foot sweeps left and tapers to a point. The
+ * gradient is part of the identity — a flat fill reads as a different logo.
+ *
+ * Colours here were read off the artwork, not taken from a brand file. They
+ * live in `--brand-violet`, `--brand-mark-from` and `--brand-mark-to` in
+ * globals.css; replacing those three updates every use of the mark.
  */
 
+let gradientSeq = 0;
+
 export function LogoMark({ size = 28, className = "" }: { size?: number; className?: string }) {
+  // Two marks on one page must not share a gradient id, or the second inherits
+  // the first's stops in some renderers.
+  const id = `vbb-mark-${(gradientSeq = (gradientSeq + 1) % 1_000_000)}`;
+
   return (
     <svg
-      width={size}
+      width={(size * 30) / 48}
       height={size}
-      viewBox="0 0 44 46"
+      viewBox="0 0 30 48"
       fill="none"
       className={className}
       role="img"
       aria-label="ValueBasedBidding"
     >
-      {/*
-        Drawn as two round-capped strokes rather than filled outlines: the mark
-        is two bars of equal weight, one of which hooks, and a stroke keeps that
-        weight identical without hand-matching two sets of curves.
-      */}
-      <g strokeWidth="11" strokeLinecap="round" fill="none">
-        {/* The shorter violet bar, sitting left and finishing higher. */}
-        <path d="M9 9V26" stroke="var(--brand-violet)" />
-        {/* The blue J: a longer stem hooking left at the foot. */}
-        <path d="M29 9v14a10 10 0 0 1-10 10h-1" stroke="var(--primary)" />
-      </g>
+      <defs>
+        <linearGradient id={id} x1="27" y1="4" x2="6" y2="46" gradientUnits="userSpaceOnUse">
+          <stop stopColor="var(--brand-mark-from)" />
+          <stop offset="1" stopColor="var(--brand-mark-to)" />
+        </linearGradient>
+      </defs>
+
+      {/* The violet leaf behind: flat right edge where the blue overlaps it,
+          rounded away to the left. */}
+      <path
+        d="M13 12.5H8.6A6.6 6.6 0 0 0 2 19.1v13.3a6.6 6.6 0 0 0 6.6 6.6H13V12.5Z"
+        fill="var(--brand-violet)"
+      />
+
+      {/* The blue J in front: a rounded leaf tip at the top, then a foot that
+          sweeps left and tapers to a point rather than ending in a cap. */}
+      <path
+        d="M27 9.5C27 6.46 24.54 4 21.5 4h-3C15.46 4 13 6.46 13 9.5V30.6C13 38.4 9.3 43.4 4.6 47h3.8C18.7 47 27 38.7 27 28.4V9.5Z"
+        fill={`url(#${id})`}
+      />
     </svg>
   );
 }
@@ -51,14 +69,14 @@ export function Logo({
   className?: string;
 }) {
   return (
-    <span className={`flex items-center gap-2 ${className}`}>
+    <span className={`flex items-center gap-2.5 ${className}`}>
       <LogoMark size={size} />
       <span
-        className="font-extrabold tracking-[-.03em] text-[var(--primary)]"
-        style={{ fontSize: size * 0.62 }}
+        className="font-extrabold tracking-[-.035em] text-[var(--brand-wordmark)]"
+        style={{ fontSize: size * 0.56 }}
       >
         ValueBasedBidding
-        {showDotCom && <span className="font-bold">.com</span>}
+        {showDotCom && <span className="text-[var(--primary)]">.com</span>}
       </span>
     </span>
   );
