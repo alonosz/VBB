@@ -228,7 +228,7 @@ export default function MappingPage() {
     <div className="animate-page-in flex min-h-screen flex-col">
       <Stepper current="mapping" />
       <main className="mx-auto w-full max-w-5xl flex-1 px-6 py-10">
-        <p className="label mb-2">Step 3 of 4</p>
+        <p className="label mb-2">Step 3 of 5</p>
         <h1 className="text-3xl font-bold tracking-tight text-balance">
           Here&apos;s what we found in your file
         </h1>

@@ -8,6 +8,7 @@ import { rowsToDeals } from "@/lib/mapping/toDeals";
 import { runDiagnostic, valueAllLeads, bestCaseStack, withOverrides } from "@/lib/analysis";
 import { buildComparisons } from "@/lib/analysis/statedVsActual";
 import { resolveHypotheses } from "@/lib/intake/merge";
+import { describeSizeSelection, sizeFit } from "@/lib/analysis/statedProfile";
 import {
   checkApplicability,
   compareToFresh,
@@ -44,7 +45,10 @@ import {
 
 export default function ReportPage() {
   const router = useRouter();
-  const { file, fields, currency, businessContext, stageTiming, intake } = useDiagnostic();
+  const {
+    file, fields, currency, businessContext, stageTiming, intake,
+    statedCycleDays, statedSizeBands,
+  } = useDiagnostic();
 
   // A saved model is the difference between a diagnostic and a daily loop: it
   // stops the same lead being worth two different amounts on two days. Recalled
@@ -144,9 +148,14 @@ export default function ReportPage() {
             leadsPerMonthMax: p.statedLeadsPerMonthMax,
             namedSources: p.statedSources,
           }
-        : undefined
+        : undefined,
+      {
+        cycleDays: statedCycleDays,
+        sizeLabel: describeSizeSelection(statedSizeBands),
+        sizeFit: mapped ? sizeFit(mapped.deals, statedSizeBands) : undefined,
+      }
     ).comparisons;
-  }, [result, businessContext, intake]);
+  }, [result, businessContext, intake, statedCycleDays, statedSizeBands, mapped]);
 
   if (!file || !result || !mapped || !activeModel) return null;
 
@@ -212,6 +221,7 @@ export default function ReportPage() {
 
       <main className="mx-auto w-full max-w-5xl flex-1 px-6 py-10">
         <div className="mb-7">
+          <p className="label mb-2">Step 4 of 5</p>
           <p className="mono text-[13px] text-[var(--muted)]">
             {result.rowsAnalyzed.toLocaleString()} deals · {file.name}
             {result.excluded.length > 0 &&

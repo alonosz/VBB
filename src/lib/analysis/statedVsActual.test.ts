@@ -195,3 +195,64 @@ describe("buildComparisons with assisted claims", () => {
     expect(claims.namedSources).toEqual(["Webinar"]);
   });
 });
+
+describe("claims typed straight in", () => {
+  const sources = sourceEconomics(TWO_SOURCES);
+  const base = [
+    "Sales cycle is about 2-3 months.",
+    cycleLengthStats(LONG_CYCLE),
+    volumeCheck(LONG_CYCLE, NOW),
+    sources,
+    NO_ICP,
+  ] as const;
+
+  it("an explicit cycle outranks both the assistant and the regex", () => {
+    const { claims } = buildComparisons(
+      ...base,
+      { cycleDaysMin: 45, cycleDaysMax: 45 },
+      { cycleDays: 120 }
+    );
+    expect(claims.cycleDaysMin).toBe(120);
+    expect(claims.cycleDaysMax).toBe(120);
+  });
+
+  it("falls back to the parsed text when nothing was typed", () => {
+    const { claims } = buildComparisons(...base, undefined, { cycleDays: null });
+    expect(claims.cycleDaysMin).toBeCloseTo(60.9, 0);
+  });
+
+  it("ignores a nonsensical typed cycle rather than pricing on it", () => {
+    const { claims } = buildComparisons(...base, undefined, { cycleDays: -5 });
+    expect(claims.cycleDaysMin).toBeCloseTo(60.9, 0);
+  });
+
+  it("reports how much won revenue came from the size they named", () => {
+    const { comparisons } = buildComparisons(...base, undefined, {
+      sizeLabel: "100–1,000",
+      sizeFit: {
+        available: true, wonRevenueShare: 0.82, wonInside: 30,
+        wonOutside: 5, engineBands: ["201–1,000"], lowConfidence: false,
+      },
+    });
+    const size = comparisons.find((c) => c.label === "Customer size")!;
+    expect(size.verdict).toBe("confirmed");
+    expect(size.stated).toBe("100–1,000 people");
+    expect(size.actual).toBe("82%");
+  });
+
+  it("calls it a gap when most revenue came from outside the stated size", () => {
+    const { comparisons } = buildComparisons(...base, undefined, {
+      sizeLabel: "2–10",
+      sizeFit: {
+        available: true, wonRevenueShare: 0.15, wonInside: 2,
+        wonOutside: 40, engineBands: ["1–49"], lowConfidence: false,
+      },
+    });
+    expect(comparisons.find((c) => c.label === "Customer size")!.verdict).toBe("gap");
+  });
+
+  it("says nothing about size when no size was claimed", () => {
+    const { comparisons } = buildComparisons(...base, undefined, {});
+    expect(comparisons.find((c) => c.label === "Customer size")).toBeUndefined();
+  });
+});

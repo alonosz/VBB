@@ -106,7 +106,7 @@ export default function UploadPage() {
     <div className="animate-page-in flex min-h-screen flex-col">
       <Stepper current="upload" />
       <main className="mx-auto w-full max-w-3xl flex-1 px-6 py-10">
-        <p className="label mb-2">Step 2 of 4</p>
+        <p className="label mb-2">Step 2 of 5</p>
         <h1 className="text-3xl font-bold tracking-tight text-balance">
           {parsing ? "Reading your file…" : "Upload your CRM deal export"}
         </h1>

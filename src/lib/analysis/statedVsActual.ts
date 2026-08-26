@@ -1,5 +1,6 @@
 import type { CycleLengthStats, IcpFitResult, SourceEconomics, VolumeCheck } from "./types";
 import { round } from "./helpers";
+import type { SizeFitResult } from "./statedProfile";
 
 /**
  * Compares what the user said about their business against what their data
@@ -201,7 +202,13 @@ export function buildComparisons(
    * regex reading field by field — never partially, so a stated cycle always
    * comes from one reader or the other, not a blend of the two.
    */
-  assisted?: Partial<StatedClaims>
+  assisted?: Partial<StatedClaims>,
+  /**
+   * Claims typed straight into a field. They outrank both the assistant's
+   * reading and the regex, because they are not a reading of anything — the
+   * advertiser said them on purpose.
+   */
+  explicit?: { cycleDays?: number | null; sizeLabel?: string; sizeFit?: SizeFitResult }
 ): { claims: StatedClaims; comparisons: Comparison[] } {
   const knownSources = sources.map((s) => s.source);
   const claims = mergeClaims(
@@ -209,6 +216,10 @@ export function buildComparisons(
     assisted,
     knownSources
   );
+  if (typeof explicit?.cycleDays === "number" && explicit.cycleDays > 0) {
+    claims.cycleDaysMin = explicit.cycleDays;
+    claims.cycleDaysMax = explicit.cycleDays;
+  }
   const comparisons: Comparison[] = [];
 
   // --- Sales cycle ---
@@ -302,6 +313,26 @@ export function buildComparisons(
           : `Only ${pct}% of won revenue matches that profile — the rest came from customers you aren't deliberately bidding for.`) +
         (icp.lowConfidence
           ? " Based on a small number of deals, so treat it as a hint rather than a finding."
+          : ""),
+    });
+  }
+
+  // --- Customer size ---
+  const fit = explicit?.sizeFit;
+  if (fit?.available && fit.wonRevenueShare !== null && explicit?.sizeLabel) {
+    const pct = Math.round(fit.wonRevenueShare * 100);
+    const strong = pct >= 70;
+    comparisons.push({
+      label: "Customer size",
+      stated: `${explicit.sizeLabel} people`,
+      actual: `${pct}%`,
+      verdict: strong ? "confirmed" : pct >= 40 ? "partial" : "gap",
+      note:
+        (strong
+          ? `${pct}% of your won revenue came from companies that size. You are bidding for the right ones.`
+          : `Only ${pct}% of your won revenue came from companies that size — the rest came from customers outside the range you named.`) +
+        (fit.lowConfidence
+          ? " Based on few deals carrying a headcount, so treat it as a hint."
           : ""),
     });
   }

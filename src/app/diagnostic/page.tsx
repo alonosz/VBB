@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useDiagnostic } from "@/context/DiagnosticContext";
 import { generateDemoDeals, demoDealsToCsvRows } from "@/lib/fixtures/demoDataset";
+import { SIZE_BANDS, describeSizeSelection } from "@/lib/analysis/statedProfile";
 import { useIngest } from "@/lib/diagnostic/useIngest";
 import { Stepper } from "@/components/diagnostic/Stepper";
 import { ArrowIcon } from "@/components/ArrowIcon";
@@ -19,7 +20,23 @@ const EXAMPLE =
 
 export default function IntakePage() {
   const router = useRouter();
-  const { businessContext, setBusinessContext } = useDiagnostic();
+  const {
+    businessContext, setBusinessContext,
+    statedCycleDays, setStatedCycleDays,
+    statedSizeBands, setStatedSizeBands,
+  } = useDiagnostic();
+
+  function nudgeCycle(by: number) {
+    setStatedCycleDays(Math.max(1, Math.min(730, (statedCycleDays ?? 30) + by)));
+  }
+
+  function toggleBand(id: string) {
+    setStatedSizeBands(
+      statedSizeBands.includes(id)
+        ? statedSizeBands.filter((b) => b !== id)
+        : [...statedSizeBands, id]
+    );
+  }
   const [loadingSample, setLoadingSample] = useState(false);
   const ingest = useIngest();
 
@@ -41,12 +58,12 @@ export default function IntakePage() {
     <div className="animate-page-in flex min-h-screen flex-col">
       <Stepper current="intake" />
       <main className="mx-auto w-full max-w-3xl flex-1 px-6 py-10">
-        <p className="label mb-2">Step 1 of 4</p>
+        <p className="label mb-2">Step 1 of 5</p>
         <h1 className="text-3xl font-bold tracking-tight text-balance">
           Tell us about your business
         </h1>
         <p className="mt-2 max-w-2xl text-[15px] text-[var(--muted)]">
-          In your own words — no form to fill in. We&apos;ll hold this next to what your
+          Nothing here changes what your leads are worth — we hold it next to what your
           data actually says and show you where the two disagree. That gap is usually
           the most useful thing in the report.
         </p>
@@ -68,7 +85,11 @@ export default function IntakePage() {
           <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
             <button
               type="button"
-              onClick={() => setBusinessContext(EXAMPLE)}
+              onClick={() => {
+              setBusinessContext(EXAMPLE);
+              setStatedCycleDays(75);
+              setStatedSizeBands(["100-1000"]);
+            }}
               className="text-[13px] font-semibold text-[var(--primary)] underline underline-offset-[3px] hover:text-[var(--primary-hover)]"
             >
               Fill with example text
@@ -76,6 +97,105 @@ export default function IntakePage() {
             <span className="text-[13px] text-[var(--muted)]">
               Free text — nothing here is parsed into a form or required.
             </span>
+          </div>
+        </div>
+
+        {/* ---- the two claims worth asking for straight ---- */}
+        <div className="card mt-4 p-6">
+          <p className="text-[15px] font-semibold">
+            Two things it helps to be specific about
+          </p>
+          <p className="mt-1 max-w-[62ch] text-[13.5px] text-[var(--muted)]">
+            Both optional. Neither changes what your leads are worth — we check them
+            against your data and tell you where the two disagree.
+          </p>
+
+          {/* Sales cycle */}
+          <div className="mt-5">
+            <label htmlFor="cycle" className="block text-[14px] font-semibold">
+              Typical sales cycle
+            </label>
+            <p className="mt-0.5 text-[13px] text-[var(--muted)]">
+              From first contact to closed, for a deal that goes the distance.
+            </p>
+            <div className="mt-2.5 flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => nudgeCycle(-5)}
+                aria-label="Fewer days"
+                className="btn btn-secondary h-9 w-9 !px-0 text-[16px]"
+              >
+                −
+              </button>
+              <input
+                id="cycle"
+                type="number"
+                min={1}
+                max={730}
+                value={statedCycleDays ?? ""}
+                placeholder="30"
+                onChange={(e) => {
+                  const n = Number(e.target.value);
+                  setStatedCycleDays(e.target.value === "" || !Number.isFinite(n) ? null : n);
+                }}
+                className="input mono w-24 text-center text-[15px] font-bold"
+              />
+              <button
+                type="button"
+                onClick={() => nudgeCycle(5)}
+                aria-label="More days"
+                className="btn btn-secondary h-9 w-9 !px-0 text-[16px]"
+              >
+                +
+              </button>
+              <span className="text-[13.5px] text-[var(--muted)]">
+                days
+                {statedCycleDays !== null && statedCycleDays >= 60 && (
+                  <span className="ml-1.5 text-[var(--muted)]">
+                    (about {Math.round(statedCycleDays / 30.44)} months)
+                  </span>
+                )}
+              </span>
+            </div>
+          </div>
+
+          {/* Company size */}
+          <div className="mt-6 border-t border-[var(--border)] pt-5">
+            <p className="text-[14px] font-semibold">How big are your best customers?</p>
+            <p className="mt-0.5 text-[13px] text-[var(--muted)]">
+              Headcount. Pick as many as fit — most businesses sell to a range.
+            </p>
+            <div className="mt-2.5 flex flex-wrap gap-2">
+              {SIZE_BANDS.map((band) => {
+                const on = statedSizeBands.includes(band.id);
+                return (
+                  <button
+                    key={band.id}
+                    type="button"
+                    onClick={() => toggleBand(band.id)}
+                    aria-pressed={on}
+                    className={
+                      "rounded-full border px-3.5 py-1.5 text-[13px] font-semibold transition-colors " +
+                      (on
+                        ? "border-[var(--primary)] bg-[var(--primary-soft)] text-[var(--primary)]"
+                        : "border-[var(--border)] bg-white text-[var(--muted)] hover:border-[var(--primary)]/40")
+                    }
+                  >
+                    {band.label}
+                  </button>
+                );
+              })}
+            </div>
+            {statedSizeBands.length > 0 && (
+              <p className="mt-2.5 text-[13px] text-[var(--muted)]">
+                We&apos;ll check how much of your won revenue actually came from
+                companies of{" "}
+                <span className="mono font-semibold text-[var(--foreground)]">
+                  {describeSizeSelection(statedSizeBands)}
+                </span>{" "}
+                people.
+              </p>
+            )}
           </div>
         </div>
 

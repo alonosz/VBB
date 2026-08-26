@@ -25,6 +25,16 @@ interface DiagnosticState {
   businessContext: string;
   setBusinessContext: (v: string) => void;
 
+  /**
+   * Claims the advertiser made on purpose rather than in passing. Held to the
+   * same standard as anything in the free text: checked against the data,
+   * never fed into the value model.
+   */
+  statedCycleDays: number | null;
+  setStatedCycleDays: (v: number | null) => void;
+  statedSizeBands: string[];
+  setStatedSizeBands: (v: string[]) => void;
+
   file: UploadedFile | null;
   setFile: (f: UploadedFile | null) => void;
 
@@ -62,6 +72,8 @@ const Ctx = createContext<DiagnosticState | null>(null);
 
 export function DiagnosticProvider({ children }: { children: ReactNode }) {
   const [businessContext, setBusinessContext] = useState("");
+  const [statedCycleDays, setStatedCycleDays] = useState<number | null>(null);
+  const [statedSizeBands, setStatedSizeBands] = useState<string[]>([]);
   const [file, setFile] = useState<UploadedFile | null>(null);
   const [fields, setFields] = useState<DetectedField[]>([]);
   const [issues, setIssues] = useState<FileIssue[]>([]);
@@ -71,6 +83,8 @@ export function DiagnosticProvider({ children }: { children: ReactNode }) {
 
   const reset = useCallback(() => {
     setBusinessContext("");
+    setStatedCycleDays(null);
+    setStatedSizeBands([]);
     setFile(null);
     setFields([]);
     setIssues([]);
@@ -82,6 +96,8 @@ export function DiagnosticProvider({ children }: { children: ReactNode }) {
   const value = useMemo(
     () => ({
       businessContext, setBusinessContext,
+      statedCycleDays, setStatedCycleDays,
+      statedSizeBands, setStatedSizeBands,
       file, setFile,
       fields, setFields,
       issues, setIssues,
@@ -90,7 +106,7 @@ export function DiagnosticProvider({ children }: { children: ReactNode }) {
       intake, setIntake,
       reset,
     }),
-    [businessContext, file, fields, issues, stageTiming, currency, intake, reset]
+    [businessContext, statedCycleDays, statedSizeBands, file, fields, issues, stageTiming, currency, intake, reset]
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
