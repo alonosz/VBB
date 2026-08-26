@@ -1,6 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { publishFeed, serveFeed, CONVERSION_NAME } from "./handlers";
 import { InMemoryFeedRepository } from "./repository";
+import {
+  loadSavedModel,
+  savedModelToValueModel,
+  saveValueModel,
+} from "@/lib/model/savedModel";
+import { generateDemoDeals } from "@/lib/fixtures/demoDataset";
+import { runDiagnostic } from "@/lib/analysis";
+import { valueAllLeads, withOverrides } from "@/lib/analysis/valueModel";
 import { tokenFromFilename, tokenFromBasicAuth } from "@/app/v1/feeds/google-ads/[file]/route";
 import { isPublishableKey } from "./supabaseRepository";
 import { MAX_FETCHES_PER_DAY } from "./rateLimit";
@@ -40,6 +48,57 @@ async function publishedFeed(repo: InMemoryFeedRepository, count = 2) {
     ORIGIN
   );
   return { res, body: JSON.parse(res.body) as Record<string, string | number> };
+}
+
+
+/** A minimal SavedValueModel, shaped like what saveValueModel() produces. */
+function savedModel(over: Record<string, unknown> = {}): Record<string, unknown> {
+  return {
+    formatVersion: 1,
+    modelId: "model-1",
+    fittedAt: "2026-06-01T00:00:00.000Z",
+    fittedOn: 317,
+    window: { from: "2026-01-01", to: "2026-06-01" },
+    currencyCode: "USD",
+    baseValue: 1993.73,
+    calibrationFactor: 0.613169,
+    cap: 21150,
+    factors: [
+      {
+        key: "industry",
+        label: "Industry",
+        levels: [
+          { level: "Manufacturing", multiplier: 1.641, sampleSize: 121, closeRate: 0.322, medianWonAmount: 6800 },
+          { level: "Retail", multiplier: 0.69, sampleSize: 55, closeRate: 0.2, medianWonAmount: 3450 },
+        ],
+      },
+    ],
+    customSignalKeys: [],
+    claims: [],
+    ...over,
+  };
+}
+
+async function publishWithModel(
+  repo: InMemoryFeedRepository,
+  model: unknown
+) {
+  const { rows } = await buildFeedRows({
+    leads: [lead("0", 100, `Cj0${"a".repeat(9)}0`)],
+    modelId: "model-1", currencyCode: "USD", identifier: "clickId", now: NOW,
+  });
+  const res = await publishFeed(
+    repo,
+    {
+      modelId: "model-1",
+      currencyCode: "USD",
+      identifier: "clickId",
+      rows: rows.map((r) => ({ ...r, conversionTime: r.conversionTime.toISOString() })),
+      model,
+    },
+    ORIGIN
+  );
+  return { res, body: JSON.parse(res.body) as Record<string, unknown> };
 }
 
 function tokenFrom(feedUrl: string): string {
@@ -312,5 +371,150 @@ describe("reading the token off a Google Ads request", () => {
     expect(tokenFromBasicAuth(null)).toBeNull();
     expect(tokenFromBasicAuth("Bearer abc")).toBeNull();
     expect(tokenFromBasicAuth("Basic !!!not-base64!!!")).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// The saved model, so a scheduled run can price without a browser
+// ---------------------------------------------------------------------------
+
+describe("publishing the model that priced the rows", () => {
+  it("stores it, and reads it back through the validator", async () => {
+    const repo = new InMemoryFeedRepository();
+    const { body } = await publishWithModel(repo, savedModel());
+    expect(body.modelStored).toBe(true);
+
+    const loaded = await repo.modelFor(body.feedId as string);
+    expect(loaded.error).toBeNull();
+    expect(loaded.model?.modelId).toBe("model-1");
+    expect(loaded.model?.baseValue).toBe(1993.73);
+    // Provenance survives the round trip — a multiplier stays explainable.
+    expect(loaded.model?.factors[0].levels[0]).toMatchObject({
+      level: "Manufacturing",
+      multiplier: 1.641,
+      sampleSize: 121,
+    });
+  });
+
+  it("publishes without one, and says the feed cannot refresh itself", async () => {
+    const repo = new InMemoryFeedRepository();
+    const { res, body } = await publishedFeed(repo);
+    expect(res.status).toBe(200);
+    expect(body.modelStored).toBe(false);
+
+    const loaded = await repo.modelFor(body.feedId as string);
+    expect(loaded.model).toBeNull();
+    expect(loaded.error).toBe("This feed has no saved model.");
+  });
+
+  it("refuses a model that priced under a different id", async () => {
+    const { res, body } = await publishWithModel(
+      new InMemoryFeedRepository(),
+      savedModel({ modelId: "some-other-model" })
+    );
+    expect(res.status).toBe(400);
+    expect(body.error).toMatch(/does not match/i);
+  });
+
+  it("refuses a model fitted in another currency", async () => {
+    const { res, body } = await publishWithModel(
+      new InMemoryFeedRepository(),
+      savedModel({ currencyCode: "EUR" })
+    );
+    expect(res.status).toBe(400);
+    expect(body.error).toMatch(/EUR.*USD/);
+  });
+
+  it("refuses a model with no base value rather than pricing leads at zero", async () => {
+    const { res, body } = await publishWithModel(
+      new InMemoryFeedRepository(),
+      savedModel({ baseValue: 0 })
+    );
+    expect(res.status).toBe(400);
+    expect(body.error).toMatch(/base value/i);
+  });
+
+  it("refuses a contact detail smuggled into a level label", async () => {
+    const repo = new InMemoryFeedRepository();
+    const model = savedModel({
+      factors: [
+        {
+          key: "seniority",
+          label: "Seniority",
+          levels: [
+            { level: "dana.k@northridgefab.com", multiplier: 1.2, sampleSize: 30, closeRate: 0.3, medianWonAmount: 5000 },
+          ],
+        },
+      ],
+    });
+    // It parses fine — it is only a string. The storage guard is what refuses
+    // it, exactly as the database would.
+    const { body } = await publishWithModel(repo, model);
+    expect(body.modelStored).toBe(false);
+    expect(await repo.modelFor(body.feedId as string)).toMatchObject({ model: null });
+  });
+
+  it("a refit replaces the stored model rather than stacking another", async () => {
+    const repo = new InMemoryFeedRepository();
+    const { body } = await publishWithModel(repo, savedModel());
+    const feedId = body.feedId as string;
+
+    const refit = loadSavedModel(savedModel({ baseValue: 2400 })).model!;
+    await repo.saveModel(feedId, refit);
+
+    const loaded = await repo.modelFor(feedId);
+    expect(loaded.model?.baseValue).toBe(2400);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// The round trip that the nightly sync will depend on
+// ---------------------------------------------------------------------------
+
+describe("a real fitted model, stored and re-applied", () => {
+  it("survives the round trip and prices every lead identically", async () => {
+    const deals = generateDemoDeals();
+    const result = runDiagnostic({ deals, excluded: [], currencyCode: "USD" });
+    const applied = withOverrides(result.valueModel, deals, {});
+    const artifact = saveValueModel(applied, { deals, modelId: "model-1" });
+
+    // A model fitted on real-shaped data has to be storable as it comes out of
+    // the fitter. A fixture proves the plumbing; this proves the product.
+    const repo = new InMemoryFeedRepository();
+    const { res, body } = await publishWithModel(repo, artifact);
+    expect(res.status).toBe(200);
+    expect(body.modelStored).toBe(true);
+
+    const reloaded = await repo.modelFor(body.feedId as string);
+    expect(reloaded.error).toBeNull();
+
+    // The guarantee a scheduled run rests on: the same lead prices the same
+    // whether it goes through the model on screen or the one read back out of
+    // storage. If these ever diverge, Google learns from a moving target.
+    const before = valueAllLeads(deals, applied).map((v) => v.value);
+    const after = valueAllLeads(deals, savedModelToValueModel(reloaded.model!)).map((v) => v.value);
+    expect(after).toEqual(before);
+  });
+
+  it("carries the provenance that makes each multiplier explainable", async () => {
+    const deals = generateDemoDeals();
+    const result = runDiagnostic({ deals, excluded: [], currencyCode: "USD" });
+    const artifact = saveValueModel(withOverrides(result.valueModel, deals, {}), {
+      deals,
+      modelId: "model-1",
+    });
+
+    const repo = new InMemoryFeedRepository();
+    const { body } = await publishWithModel(repo, artifact);
+    const reloaded = await repo.modelFor(body.feedId as string);
+
+    const industry = reloaded.model!.factors.find((f) => f.key === "industry");
+    expect(industry).toBeDefined();
+    for (const level of industry!.levels) {
+      // Sample size and close rate are what turn a bare number into a sentence
+      // an advertiser can argue with, so they have to survive storage too.
+      expect(level.sampleSize).toBeGreaterThanOrEqual(25);
+      expect(level.closeRate).toBeGreaterThan(0);
+    }
   });
 });

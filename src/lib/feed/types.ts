@@ -6,6 +6,8 @@
  * the CRM data that produced the value stays in the browser.
  */
 
+import type { SavedValueModel } from "@/lib/model/savedModel";
+
 /**
  * Google's Click Conversion Import carries one identifier type per file, so a
  * feed picks one at publish and keeps it. Inferring it per row would produce a
@@ -93,5 +95,36 @@ export function assertStorableRow(row: FeedRow): void {
   }
   if (Number.isNaN(row.conversionTime.getTime())) {
     throw new Error("A feed row needs a real conversion time.");
+  }
+}
+
+/**
+ * The same refusal for a saved model, mirroring the feed_models CHECK
+ * constraints so the in-memory repository cannot accept a model Postgres would
+ * reject.
+ *
+ * The address check is the one that matters. Everything else in a saved model
+ * is an aggregate over at least a level's worth of deals; a level *label*,
+ * though, is a string from the advertiser's CRM, and a mismapped column could
+ * put a contact detail there. The database refuses it, so this does too.
+ */
+export function assertStorableModel(model: SavedValueModel): void {
+  if (!(model.baseValue > 0)) {
+    throw new Error("A saved model needs a base value above zero, or it prices every lead at nothing.");
+  }
+  if (!/^[A-Z]{3}$/.test(model.currencyCode)) {
+    throw new Error("A saved model needs an ISO currency code.");
+  }
+  if (model.formatVersion <= 0) {
+    throw new Error("A saved model needs a format version.");
+  }
+  const serialized = JSON.stringify(model);
+  if (serialized.includes("@")) {
+    throw new Error(
+      "A saved model must not contain an email address. A level label carrying one usually means a column was mapped to the wrong field."
+    );
+  }
+  if (serialized.length >= 262_144) {
+    throw new Error("That is too large to be a saved model.");
   }
 }

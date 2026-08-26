@@ -1,3 +1,5 @@
+import type { SavedValueModel } from "@/lib/model/savedModel";
+import { loadSavedModel } from "@/lib/model/savedModel";
 import { buildFeedCsv } from "./csv";
 import { checkRateLimit } from "./rateLimit";
 import type { FeedRepository } from "./repository";
@@ -107,6 +109,14 @@ export interface PublishBody {
   identifier?: unknown;
   label?: unknown;
   rows?: unknown;
+  /**
+   * The saved model that priced these rows. Optional, because a one-off
+   * publish is complete without it — the rows are what Google fetches. It is
+   * what a later scheduled run needs in order to price new leads the same way,
+   * so a feed published without one can be fetched but never refreshed on its
+   * own.
+   */
+  model?: unknown;
 }
 
 function bad(message: string, status = 400): HandlerResponse {
@@ -163,6 +173,23 @@ export async function publishFeed(
   if (!modelId) return bad("A feed has to say which model priced it.");
   if (!/^[A-Z]{3}$/.test(currencyCode)) return bad("A feed needs an ISO currency code.");
 
+  // Validated before anything is created, so a malformed model fails the
+  // request outright instead of leaving a feed that can never refresh itself.
+  let model: SavedValueModel | null = null;
+  if (body.model !== undefined && body.model !== null) {
+    const loaded = loadSavedModel(body.model);
+    if (!loaded.model) return bad(loaded.error ?? "That saved model could not be read.");
+    if (loaded.model.modelId !== modelId) {
+      return bad("The saved model does not match the model that priced these rows.");
+    }
+    if (loaded.model.currencyCode !== currencyCode) {
+      return bad(
+        `The saved model was fitted in ${loaded.model.currencyCode} and these rows are in ${currencyCode}.`
+      );
+    }
+    model = loaded.model;
+  }
+
   let rows: FeedRow[];
   try {
     rows = parseRows(body.rows, currencyCode, modelId);
@@ -188,6 +215,20 @@ export async function publishFeed(
 
     const rowsPublished = await repo.addRows(feed.id, rows);
 
+    // The rows are already safely stored and are what Google fetches, so a
+    // model that fails to store costs the feed its ability to refresh itself
+    // later — it does not cost the advertiser this publish. Say which happened
+    // rather than reporting a success that is only partly true.
+    let modelStored = false;
+    if (model) {
+      try {
+        await repo.saveModel(feed.id, model);
+        modelStored = true;
+      } catch (error) {
+        console.error("storing the model for a published feed failed:", error);
+      }
+    }
+
     return {
       status: 200,
       headers: JSON_HEADERS,
@@ -204,6 +245,7 @@ export async function publishFeed(
         rowsPublished,
         identifier,
         feedId: feed.id,
+        modelStored,
       }),
     };
   } catch (error) {

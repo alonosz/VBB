@@ -1,5 +1,8 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import type { LoadResult, SavedValueModel } from "@/lib/model/savedModel";
+import { loadSavedModel } from "@/lib/model/savedModel";
 import {
+  assertStorableModel,
   assertStorableRow,
   type FeedRecord,
   type FeedIdentifier,
@@ -153,6 +156,40 @@ export class SupabaseFeedRepository implements FeedRepository {
       kind: r.kind,
       rowKey: r.row_key,
     }));
+  }
+
+  async saveModel(feedId: string, model: SavedValueModel): Promise<void> {
+    // Checked here as well as in Postgres so the failure names the cause. The
+    // constraint would refuse it either way, but "violates check constraint
+    // feed_models_carries_no_addresses" is not something to show anyone.
+    assertStorableModel(model);
+
+    const { error } = await this.client.from("feed_models").upsert(
+      {
+        feed_id: feedId,
+        model_id: model.modelId,
+        format_version: model.formatVersion,
+        fitted_at: model.fittedAt,
+        currency_code: model.currencyCode,
+        model,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "feed_id" }
+    );
+
+    if (error) throw new Error(error.message);
+  }
+
+  async modelFor(feedId: string): Promise<LoadResult> {
+    const { data, error } = await this.client
+      .from("feed_models")
+      .select("model")
+      .eq("feed_id", feedId)
+      .maybeSingle();
+
+    if (error) throw new Error(error.message);
+    if (!data) return { model: null, error: "This feed has no saved model." };
+    return loadSavedModel((data as { model: unknown }).model);
   }
 
   async countFetchesSince(feedId: string, since: Date): Promise<number> {

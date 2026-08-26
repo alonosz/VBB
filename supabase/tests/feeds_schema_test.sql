@@ -151,6 +151,83 @@ begin
 end;
 $$;
 
+-- --- feed_models -----------------------------------------------------------
+
+-- A model small enough to read, shaped exactly like a SavedValueModel.
+select pg_temp.must_pass($$
+  insert into public.feed_models (feed_id, model_id, format_version, currency_code, model)
+  values (
+    '11111111-1111-1111-1111-111111111111', 'model-1', 1, 'USD',
+    '{"formatVersion":1,"modelId":"model-1","currencyCode":"USD","baseValue":1993.73,
+      "calibrationFactor":0.613169,"cap":21150,
+      "factors":[{"key":"industry","label":"Industry","levels":[
+        {"level":"Manufacturing","multiplier":1.641,"sampleSize":121,
+         "closeRate":0.322,"medianWonAmount":6800}]}]}'::jsonb
+  )$$,
+  'a well-formed saved model is stored');
+
+select pg_temp.must_fail($$
+  insert into public.feed_models (feed_id, model_id, format_version, currency_code, model)
+  values (
+    '11111111-1111-1111-1111-111111111111', 'model-2', 1, 'USD',
+    '{"formatVersion":1,"modelId":"model-2","currencyCode":"USD","baseValue":1000,
+      "factors":[{"key":"seniority","label":"Seniority","levels":[
+        {"level":"dana.k@northridgefab.com","multiplier":1.2}]}]}'::jsonb
+  )$$,
+  'AN EMAIL ADDRESS SMUGGLED INTO A LEVEL LABEL CANNOT BE STORED');
+
+select pg_temp.must_fail($$
+  insert into public.feed_models (feed_id, model_id, format_version, currency_code, model)
+  values (
+    '11111111-1111-1111-1111-111111111111', 'model-3', 1, 'USD',
+    '{"formatVersion":1,"modelId":"model-3","currencyCode":"USD","baseValue":0,
+      "factors":[]}'::jsonb
+  )$$,
+  'a model with no base value is rejected — it would price every lead at zero');
+
+select pg_temp.must_fail($$
+  insert into public.feed_models (feed_id, model_id, format_version, currency_code, model)
+  values (
+    '11111111-1111-1111-1111-111111111111', 'model-4', 1, 'USD',
+    '{"formatVersion":1,"modelId":"a-different-id","currencyCode":"USD",
+      "baseValue":1000,"factors":[]}'::jsonb
+  )$$,
+  'a document whose modelId disagrees with its column is rejected');
+
+select pg_temp.must_fail($$
+  insert into public.feed_models (feed_id, model_id, format_version, currency_code, model)
+  values (
+    '11111111-1111-1111-1111-111111111111', 'model-5', 1, 'EUR',
+    '{"formatVersion":1,"modelId":"model-5","currencyCode":"USD",
+      "baseValue":1000,"factors":[]}'::jsonb
+  )$$,
+  'a model whose currency disagrees with its column is rejected');
+
+do $$
+declare kept text;
+begin
+  -- Republishing after a refit replaces the current model rather than
+  -- accumulating one row per publish.
+  insert into public.feed_models (feed_id, model_id, format_version, currency_code, model)
+  values (
+    '11111111-1111-1111-1111-111111111111', 'model-refit', 1, 'USD',
+    '{"formatVersion":1,"modelId":"model-refit","currencyCode":"USD",
+      "baseValue":2100,"factors":[]}'::jsonb
+  )
+  on conflict (feed_id) do update
+    set model_id = excluded.model_id,
+        model = excluded.model,
+        updated_at = now();
+
+  select model_id into kept from public.feed_models
+   where feed_id = '11111111-1111-1111-1111-111111111111';
+  if kept <> 'model-refit' then
+    raise exception 'FAIL  a refit left % as the current model', kept;
+  end if;
+  raise notice 'PASS  a refit replaces the current model for a feed';
+end;
+$$;
+
 -- --- cascade --------------------------------------------------------------
 
 delete from public.feeds where id = '11111111-1111-1111-1111-111111111111';
@@ -160,11 +237,12 @@ declare leftover integer;
 begin
   select (select count(*) from public.feed_rows)
        + (select count(*) from public.feed_fetches)
+       + (select count(*) from public.feed_models)
     into leftover;
   if leftover <> 0 then
     raise exception 'FAIL  deleting a feed left % rows behind', leftover;
   end if;
-  raise notice 'PASS  revoking a feed takes its rows and its log with it';
+  raise notice 'PASS  revoking a feed takes its rows, its log and its model with it';
 end;
 $$;
 

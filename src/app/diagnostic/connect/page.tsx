@@ -8,7 +8,7 @@ import { ArrowIcon } from "@/components/ArrowIcon";
 import { rowsToDeals } from "@/lib/mapping/toDeals";
 import { runDiagnostic, valueAllLeads, withOverrides } from "@/lib/analysis";
 import { resolveHypotheses } from "@/lib/intake/merge";
-import { savedModelToValueModel } from "@/lib/model/savedModel";
+import { savedModelToValueModel, saveValueModel } from "@/lib/model/savedModel";
 import { recallModel } from "@/lib/model/storage";
 import { buildValueModelCsv, downloadCsv } from "@/lib/export/googleAds";
 import { bestIdentifier, buildFeedRows } from "@/lib/feed/publish";
@@ -34,6 +34,12 @@ interface Published {
   /** Reached it, but after Google stopped listening. */
   gateTooLate: number;
   gateStage: string | null;
+  /**
+   * Whether the rule stack that priced these rows was stored with the feed. A
+   * feed without it can still be fetched — it just cannot price new leads on
+   * its own later.
+   */
+  modelStored: boolean;
 }
 
 /**
@@ -135,8 +141,12 @@ export default function ConnectPage() {
     }).gate;
   }, [mapped, businessContext, currency.reportingCurrency, customSignalKeys, hypotheses]);
 
-  const valued = useMemo(() => {
-    if (!mapped) return [];
+  // Fixed for the life of the screen, so re-rendering cannot hand two halves
+  // of the same publish two different model ids.
+  const [freshModelId] = useState(() => `fresh-${new Date().toISOString().slice(0, 10)}`);
+
+  const { valued, artifact } = useMemo(() => {
+    if (!mapped) return { valued: [], artifact: null };
     const result = runDiagnostic({
       deals: mapped.deals,
       excluded: mapped.excluded,
@@ -146,15 +156,24 @@ export default function ConnectPage() {
       hypotheses,
     });
     const model = saved ? savedModelToValueModel(saved) : result.valueModel;
-    return valueAllLeads(mapped.deals, withOverrides(model, mapped.deals, {}));
-  }, [mapped, businessContext, currency.reportingCurrency, customSignalKeys, hypotheses, saved]);
+    const applied = withOverrides(model, mapped.deals, {});
+    return {
+      valued: valueAllLeads(mapped.deals, applied),
+      // Published alongside the rows so a scheduled run can price tomorrow's
+      // leads with the same stack. A model the advertiser already saved is
+      // already the artifact; a fresh fit is frozen here, under the same id the
+      // rows carry, so the two can never disagree about what priced them.
+      artifact:
+        saved ?? saveValueModel(applied, { deals: mapped.deals, modelId: freshModelId }),
+    };
+  }, [mapped, businessContext, currency.reportingCurrency, customSignalKeys, hypotheses, saved, freshModelId]);
 
   if (!file || !mapped) return null;
 
   const cur = currency.reportingCurrency;
   const priced = valued.filter((v) => v.value > 0);
   const values = priced.map((v) => v.value).sort((a, b) => a - b);
-  const modelId = saved?.modelId ?? `fresh-${new Date().toISOString().slice(0, 10)}`;
+  const modelId = saved?.modelId ?? freshModelId;
 
   async function publish() {
     if (!mapped) return;
@@ -186,6 +205,7 @@ export default function ConnectPage() {
           currencyCode: cur,
           identifier,
           rows: rows.map((r) => ({ ...r, conversionTime: r.conversionTime.toISOString() })),
+          model: artifact,
         }),
       });
       const data = await res.json();
@@ -198,6 +218,7 @@ export default function ConnectPage() {
           gateAdjustments,
           gateTooLate,
           gateStage: gate?.available ? gate.stage : null,
+          modelStored: data.modelStored === true,
         });
     } catch {
       setError("The feed could not be published. Nothing was sent.");
@@ -306,6 +327,14 @@ export default function ConnectPage() {
                     {copied ? "Copied" : "Copy"}
                   </button>
                 </div>
+                {!feed.modelStored && (
+                  <p className="mt-2.5 max-w-[70ch] rounded-lg border border-[var(--warn)]/40 bg-amber-50 px-3 py-2 text-[12.5px] text-[var(--foreground)]">
+                    Google will fetch these values normally, but the rule stack
+                    behind them was not stored with the feed. That only matters
+                    later: this feed cannot price new leads on its own, so
+                    refreshing it means coming back here with a new export.
+                  </p>
+                )}
                 {feed.gateStage && (feed.gateAdjustments > 0 || feed.gateTooLate > 0) && (
                   <p className="mt-2.5 max-w-[70ch] text-[12.5px] text-[var(--muted)]">
                     {feed.gateAdjustments > 0 && (

@@ -2,12 +2,21 @@
 
 The server side of VBB holds one thing: the finished rows Google fetches.
 
-No CRM records, no contact or company names, no deal amounts, no free text. A
-lead reaches this database as a hashed email or an ad click ID, a timestamp,
-and the value the advertiser approved sending — and nothing else. The value
-cannot be recomputed here, because the data needed to recompute it never
-arrives. That is deliberate: what Google receives is an artifact the advertiser
-published, not something derived behind them.
+No CRM records, no contact or company names, no individual deal amounts, no
+free text. A lead reaches this database as a hashed email or an ad click ID, a
+timestamp, and the value the advertiser approved sending — and nothing else.
+What Google receives is an artifact the advertiser published, not something
+derived behind them.
+
+One table sits slightly apart from that, and it is worth naming rather than
+burying. `feed_models` holds the frozen rule stack, so a scheduled run can
+price new leads with no browser in the loop. It therefore carries figures
+derived from deal amounts — each level's median won amount, the base value, the
+outlier cap. Those are aggregates over at least 25 resolved deals, never an
+individual deal, and the model cannot function without them: they are what
+makes a multiplier explainable ("Manufacturing, 121 deals, 32.2% close, median
+6,800") rather than a bare number. What must never be there is a person, and
+the constraint enforces it.
 
 The CHECK constraints are the privacy promise written down. An unhashed email
 address is not merely discouraged in this schema, it is unstorable — in either
@@ -20,6 +29,7 @@ identifier column.
 | `feeds` | One tokenized URL. The token is stored only as a SHA-256 hash, plus a prefix long enough to recognise it in a list and too short to use. |
 | `feed_rows` | The Google Ads Click Conversion Import rows: hashed email or click ID, conversion time, value, currency, and the model that priced it. |
 | `feed_fetches` | Every fetch attempt, with a hashed IP. Counting the last 24 hours *is* the rate limiter, so the limit and its audit trail are one fact. |
+| `feed_models` | The frozen `SavedValueModel` for a feed — multipliers, levels, calibration, cap. One current model per feed; a refit replaces it, and rows already sent keep the `model_id` that priced them. Re-read through `loadSavedModel()`, because a row in our own database is not more trustworthy than a file someone uploaded. |
 
 Row-level security is on with no policies, so no anon or authenticated client
 can reach any of it. Only the service role, used server-side by the feed route,

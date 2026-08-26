@@ -1,4 +1,7 @@
+import type { LoadResult, SavedValueModel } from "@/lib/model/savedModel";
+import { loadSavedModel } from "@/lib/model/savedModel";
 import {
+  assertStorableModel,
   assertStorableRow,
   type FeedRecord,
   type FeedRow,
@@ -20,6 +23,19 @@ export interface FeedRepository {
   /** Inserts rows, ignoring any that were already sent. Returns how many were new. */
   addRows(feedId: string, rows: FeedRow[]): Promise<number>;
   rowsFor(feedId: string): Promise<FeedRow[]>;
+  /**
+   * Freezes the model that priced this feed's rows, so a scheduled run can
+   * apply it with no browser in the loop. Republishing after a refit replaces
+   * it — the rows already sent keep the model_id that priced them.
+   */
+  saveModel(feedId: string, model: SavedValueModel): Promise<void>;
+  /**
+   * Reads it back through loadSavedModel(), because a row in our own database
+   * is not more trustworthy than a file someone uploaded. Returns the same
+   * {model, error} shape so a caller has to face a broken model rather than
+   * pricing leads at zero.
+   */
+  modelFor(feedId: string): Promise<LoadResult>;
   countFetchesSince(feedId: string, since: Date): Promise<number>;
   logFetch(feedId: string, entry: FetchLogEntry): Promise<void>;
   revokeFeed(feedId: string): Promise<void>;
@@ -33,6 +49,7 @@ export class InMemoryFeedRepository implements FeedRepository {
   private feeds = new Map<string, FeedRecord & { tokenHash: string }>();
   private rows = new Map<string, FeedRow[]>();
   private fetches = new Map<string, Date[]>();
+  private models = new Map<string, string>();
   /** Exposed so tests can assert what was logged, not just how much. */
   readonly log: { feedId: string; entry: FetchLogEntry; at: Date }[] = [];
 
@@ -90,6 +107,19 @@ export class InMemoryFeedRepository implements FeedRepository {
 
   async rowsFor(feedId: string): Promise<FeedRow[]> {
     return (this.rows.get(feedId) ?? []).map((r) => ({ ...r }));
+  }
+
+  async saveModel(feedId: string, model: SavedValueModel): Promise<void> {
+    if (!this.feeds.has(feedId)) throw new Error("No such feed.");
+    // The same guard the database applies.
+    assertStorableModel(model);
+    this.models.set(feedId, JSON.stringify(model));
+  }
+
+  async modelFor(feedId: string): Promise<LoadResult> {
+    const raw = this.models.get(feedId);
+    if (!raw) return { model: null, error: "This feed has no saved model." };
+    return loadSavedModel(JSON.parse(raw));
   }
 
   async countFetchesSince(feedId: string, since: Date): Promise<number> {
