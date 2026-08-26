@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { ArrowIcon } from "@/components/ArrowIcon";
 import type {
   MappedDeal,
   MatchRateReadiness,
@@ -491,22 +492,12 @@ export function WiringPanel({
   match,
   volume,
   verdict,
-  onExport,
-  exportLabel,
-  exportNote,
-  children,
-  footer,
+  onContinue,
 }: {
   match: MatchRateReadiness;
   volume: VolumeCheck;
   verdict: Verdict;
-  onExport: () => void;
-  exportLabel: string;
-  exportNote: string | null;
-  /** Sits beside the download button. */
-  children?: React.ReactNode;
-  /** Full-width block below it — the scheduled feed, which is the real answer. */
-  footer?: React.ReactNode;
+  onContinue: () => void;
 }) {
   const tone =
     verdict.mode === "MEASURED"
@@ -591,15 +582,13 @@ export function WiringPanel({
         )}
 
         <div className="mt-4 flex flex-wrap items-center gap-3">
-          <button type="button" onClick={onExport} className="btn btn-primary">
-            {exportLabel}
+          <button type="button" onClick={onContinue} className="btn btn-primary">
+            Send these values to Google Ads <ArrowIcon />
           </button>
-          {children}
+          <span className="text-[12.5px] text-[var(--muted)]">
+            One more step — it takes a couple of minutes
+          </span>
         </div>
-        {exportNote && (
-          <p className="mono mt-2 text-[12px] text-[var(--muted)]">{exportNote}</p>
-        )}
-        {footer}
       </div>
     </section>
   );

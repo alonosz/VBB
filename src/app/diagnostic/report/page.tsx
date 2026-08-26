@@ -7,7 +7,6 @@ import { Stepper } from "@/components/diagnostic/Stepper";
 import { rowsToDeals } from "@/lib/mapping/toDeals";
 import { runDiagnostic, valueAllLeads, bestCaseStack, withOverrides } from "@/lib/analysis";
 import { buildComparisons } from "@/lib/analysis/statedVsActual";
-import { buildValueModelCsv, downloadCsv } from "@/lib/export/googleAds";
 import { resolveHypotheses } from "@/lib/intake/merge";
 import {
   checkApplicability,
@@ -25,8 +24,6 @@ import {
   rememberModel,
 } from "@/lib/model/storage";
 import { ModelSourcePanel } from "@/components/report/modelSource";
-import { FeedSection, type PublishedFeed } from "@/components/report/feedPanel";
-import { buildFeedRows, bestIdentifier } from "@/lib/feed/publish";
 import {
   AnalysisExpander,
   AttributionNote,
@@ -48,7 +45,6 @@ import {
 export default function ReportPage() {
   const router = useRouter();
   const { file, fields, currency, businessContext, stageTiming, intake } = useDiagnostic();
-  const [exportNote, setExportNote] = useState<string | null>(null);
 
   // A saved model is the difference between a diagnostic and a daily loop: it
   // stops the same lead being worth two different amounts on two days. Recalled
@@ -63,11 +59,6 @@ export default function ReportPage() {
   // Multipliers the user has typed over, keyed "factorKey::level". A marketer
   // who cannot argue with a number does not trust it.
   const [overrides, setOverrides] = useState<Record<string, number>>({});
-
-  // Publishing turns the model on screen into a URL Google fetches by itself.
-  const [feed, setFeed] = useState<PublishedFeed | null>(null);
-  const [publishing, setPublishing] = useState(false);
-  const [feedError, setFeedError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!file) router.replace("/diagnostic/upload");
@@ -162,10 +153,6 @@ export default function ReportPage() {
   const cur = result.currencyCode;
   const stack = bestCaseStack(activeModel, overrides);
 
-  // Prefer whichever identifier actually covers more leads. A click ID matches
-  // directly; a hashed email relies on Google finding the click itself.
-  const matchIdentifier: "clickId" | "email" =
-    result.matchRate.withClickId >= result.matchRate.withValidEmail ? "clickId" : "email";
 
   // Spread of examples across the value range, so the table shows the model
   // working rather than eight near-identical leads.
@@ -176,23 +163,6 @@ export default function ReportPage() {
     return Array.from({ length: 8 }, (_, i) => sorted[Math.round(i * step)]);
   })();
 
-  async function handleExport() {
-    const r = await buildValueModelCsv({
-      leads: valued,
-      conversionName: "VBB Lead Value",
-      currencyCode: cur,
-      identifier: matchIdentifier,
-    });
-    downloadCsv("vbb-lead-values-google-ads.csv", r.csv);
-    setExportNote(
-      `${r.included.toLocaleString()} conversion${r.included === 1 ? "" : "s"} written` +
-        // Which model produced these numbers is part of the record.
-        (source === "saved" && saved
-          ? ` · priced by your model saved ${saved.fittedAt.slice(0, 10)}`
-          : " · priced by a fresh fit on this file") +
-        (r.skippedReason ? ` · ${r.skippedReason}` : "")
-    );
-  }
 
   function handleOverride(key: string, value: number | null) {
     setOverrides((prev) => {
@@ -228,61 +198,6 @@ export default function ReportPage() {
     setModelNotice(`Loaded the model fitted on ${model.fittedAt.slice(0, 10)}.`);
   }
 
-  async function handlePublishFeed() {
-    if (!mapped) return;
-    setPublishing(true);
-    setFeedError(null);
-    try {
-      const identifier = bestIdentifier(valued);
-      // The rows are built here, from the model on screen. The server cannot
-      // price anything — it never sees the CRM data.
-      const { rows, skipped } = await buildFeedRows({
-        leads: valued,
-        modelId: saved?.modelId ?? `fresh-${new Date().toISOString().slice(0, 10)}`,
-        currencyCode: cur,
-        identifier,
-      });
-
-      if (rows.length === 0) {
-        setFeedError(
-          skipped[0]?.reason
-            ? `Nothing to publish — every lead had ${skipped[0].reason}.`
-            : "Nothing to publish."
-        );
-        return;
-      }
-
-      const res = await fetch("/api/feeds", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          modelId: saved?.modelId ?? `fresh-${new Date().toISOString().slice(0, 10)}`,
-          modelFittedAt: saved?.fittedAt ?? null,
-          currencyCode: cur,
-          identifier,
-          rows: rows.map((r) => ({
-            ...r,
-            conversionTime: r.conversionTime.toISOString(),
-          })),
-        }),
-      });
-
-      const data = (await res.json()) as { ok?: boolean; error?: string } & PublishedFeed;
-      if (!res.ok || !data.ok) {
-        setFeedError(data.error ?? "The feed could not be published.");
-        return;
-      }
-      setFeed({
-        feedUrl: data.feedUrl,
-        rowsPublished: data.rowsPublished,
-        identifier: data.identifier,
-      });
-    } catch {
-      setFeedError("The feed could not be published. Nothing was sent.");
-    } finally {
-      setPublishing(false);
-    }
-  }
 
   function handleForgetModel() {
     forgetModel();
@@ -336,23 +251,8 @@ export default function ReportPage() {
             match={result.matchRate}
             volume={result.volume}
             verdict={result.verdict}
-            onExport={handleExport}
-            exportLabel={`Download ${matchIdentifier === "clickId" ? "click-ID" : "hashed-email"} conversions`}
-            exportNote={exportNote}
-            footer={
-              <FeedSection
-                published={feed}
-                publishing={publishing}
-                error={feedError}
-                onPublish={handlePublishFeed}
-                summary="Or let Google fetch them itself, on a schedule — no file to upload again."
-              />
-            }
-          >
-            <span className="text-[12.5px] text-[var(--muted)]">
-              Google&apos;s Click Conversion Import format · one row per lead
-            </span>
-          </WiringPanel>
+            onContinue={() => router.push("/diagnostic/connect")}
+          />
 
           <AnalysisExpander>
             <AttributionNote />

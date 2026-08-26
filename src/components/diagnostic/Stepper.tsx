@@ -10,11 +10,19 @@ import { useDiagnostic } from "@/context/DiagnosticContext";
  */
 const BUILD_ID = (process.env.NEXT_PUBLIC_COMMIT_SHA ?? "dev").slice(0, 7);
 
+/**
+ * The whole journey, not just the analysis half.
+ *
+ * The stepper used to stop at "Report", which quietly told people they were
+ * finished at the moment before the product actually does anything. Connecting
+ * the values to Google Ads is the last step and belongs on the map.
+ */
 const STEPS = [
   { key: "intake", label: "Your business" },
   { key: "upload", label: "Upload" },
   { key: "mapping", label: "Map columns" },
-  { key: "report", label: "Report" },
+  { key: "report", label: "Your model" },
+  { key: "connect", label: "Connect" },
 ] as const;
 
 export type DiagnosticStep = (typeof STEPS)[number]["key"];
