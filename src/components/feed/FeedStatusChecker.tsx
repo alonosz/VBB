@@ -49,6 +49,7 @@ export function FeedStatusChecker() {
   const [checking, setChecking] = useState(false);
   const [status, setStatus] = useState<Status | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [connecting, setConnecting] = useState(false);
 
   async function check() {
     setChecking(true);
@@ -67,6 +68,34 @@ export function FeedStatusChecker() {
       setError("We couldn't check that feed.");
     } finally {
       setChecking(false);
+    }
+  }
+
+  /**
+   * Starting a HubSpot connection.
+   *
+   * POSTed rather than linked, so the feed key never travels in a URL. The
+   * server hands back the authorize link and the browser follows it.
+   */
+  async function connectHubSpot() {
+    setConnecting(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/crm/hubspot/connect", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ url }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) {
+        setError(data.error ?? "We couldn't start the connection.");
+        setConnecting(false);
+        return;
+      }
+      window.location.href = data.authorizeUrl as string;
+    } catch {
+      setError("We couldn't start the connection.");
+      setConnecting(false);
     }
   }
 
@@ -172,6 +201,25 @@ export function FeedStatusChecker() {
                 </table>
               </div>
             )}
+
+            <div className="mt-5 border-t border-[var(--border)] pt-4">
+              <p className="text-[14px] font-bold">Stop exporting CSVs</p>
+              <p className="mt-0.5 max-w-[66ch] text-[13.5px] text-[var(--muted)]">
+                Connect HubSpot and this feed refreshes itself every night: we
+                read your new deals, price them with the model you already
+                saved, and add them for Google to collect. Read-only — nothing
+                in your CRM is changed, and no CRM record is stored.
+              </p>
+              <button
+                type="button"
+                onClick={() => void connectHubSpot()}
+                disabled={connecting}
+                className="btn btn-primary mt-3 text-[13.5px]"
+              >
+                {connecting ? "Opening HubSpot…" : "Connect HubSpot"}
+                {!connecting && <ArrowIcon />}
+              </button>
+            </div>
 
             {status.verdict === "collecting" && (
               <p className="mt-4 max-w-[70ch] rounded-xl border border-[var(--border)] bg-[#f8fafd] px-3.5 py-2.5 text-[13px] text-[var(--muted)]">
