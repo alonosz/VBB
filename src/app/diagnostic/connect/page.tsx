@@ -193,7 +193,8 @@ export default function ConnectPage() {
       // already the artifact; a fresh fit is frozen here, under the same id the
       // rows carry, so the two can never disagree about what priced them.
       artifact:
-        saved ?? saveValueModel(applied, { deals: mapped.deals, modelId: freshModelId }),
+        saved ??
+        saveValueModel(applied, { deals: mapped.deals, modelId: freshModelId, gate: result.gate }),
     };
   }, [mapped, businessContext, currency.reportingCurrency, customSignalKeys, hypotheses, saved, freshModelId]);
 

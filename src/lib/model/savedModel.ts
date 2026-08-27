@@ -7,6 +7,7 @@ import type {
 import { buildFactorList } from "@/lib/analysis/factors";
 import { effectiveMultiplier } from "@/lib/analysis/valueModel";
 import { round } from "@/lib/analysis/helpers";
+import type { GateValue } from "@/lib/analysis/gateValue";
 
 /**
  * A saved value model — fit once, applied unchanged.
@@ -51,6 +52,30 @@ export interface SavedFactor {
   levels: SavedFactorLevel[];
 }
 
+/**
+ * The frozen early gate.
+ *
+ * A scheduled run has to be able to apply the gate, and it must not refit to
+ * find one — refitting nightly is exactly what principle 8 forbids. So the
+ * gate is frozen with the rest of the stack.
+ *
+ * Added as an optional field rather than a new format version: a model saved
+ * before this simply has no gate, prices its day-0 stack exactly as it always
+ * did, and stays loadable. Bumping the version would have refused every model
+ * already saved, to add something they can live without.
+ */
+export interface SavedGate {
+  stage: string;
+  multiplier: number;
+  /** Provenance, so the gate stays as arguable as every other rule. */
+  reachedCount: number;
+  closeRateReached: number;
+  closeRateNotReached: number;
+  withinWindowRate: number;
+  rawMultiplier: number;
+  wasBounded: boolean;
+}
+
 export interface SavedValueModel {
   formatVersion: number;
   /** Stable across refits, so a lineage can be followed. */
@@ -65,6 +90,11 @@ export interface SavedValueModel {
   calibrationFactor: number;
   cap: number | null;
   factors: SavedFactor[];
+  /**
+   * Absent when the data supported no gate — which is the common case, and is
+   * not a defect. The day-0 stack prices the lead either way.
+   */
+  gate?: SavedGate | null;
   /** Columns that must be mapped again for the custom rules to fire. */
   customSignalKeys: string[];
   claims: FactorHypothesis[];
@@ -91,6 +121,11 @@ export interface SaveOptions {
    * leads differently from the one they just approved.
    */
   overrides?: Record<string, number>;
+  /**
+   * The priced gate, when the data supported one. Frozen with the stack so a
+   * scheduled run can apply it without refitting.
+   */
+  gate?: GateValue | null;
 }
 
 export function saveValueModel(model: ValueModel, opts: SaveOptions): SavedValueModel {
@@ -129,10 +164,26 @@ export function saveValueModel(model: ValueModel, opts: SaveOptions): SavedValue
           medianWonAmount: l.medianWonAmount,
         })),
     })),
+    gate: freezeGate(opts.gate),
     customSignalKeys: model.factors.map((f) => f.key).filter((k) => !CORE_KEYS.has(k)),
     claims: model.factors
       .filter((f) => f.userClaim !== null)
       .map((f) => ({ factorKey: f.key, claim: f.userClaim!, statedLevels: f.statedLevels })),
+  };
+}
+
+/** Only a usable gate is worth freezing; anything else is not a rule. */
+function freezeGate(gate: GateValue | null | undefined): SavedGate | null {
+  if (!gate?.available || !gate.stage || !gate.multiplier || !(gate.multiplier > 0)) return null;
+  return {
+    stage: gate.stage,
+    multiplier: gate.multiplier,
+    reachedCount: gate.reachedCount,
+    closeRateReached: gate.closeRateReached,
+    closeRateNotReached: gate.closeRateNotReached,
+    withinWindowRate: gate.withinWindowRate,
+    rawMultiplier: gate.rawMultiplier ?? gate.multiplier,
+    wasBounded: gate.wasBounded,
   };
 }
 
@@ -214,6 +265,32 @@ export function loadSavedModel(raw: unknown): LoadResult {
     }
   }
 
+  // A gate that is present but broken is refused rather than dropped. Dropping
+  // it would quietly under-price every lead that reached it, and a model that
+  // silently prices differently from the one that was saved is the failure
+  // this whole file exists to prevent.
+  let gate: SavedGate | null = null;
+  if (r.gate !== undefined && r.gate !== null) {
+    if (typeof r.gate !== "object") {
+      return { model: null, error: "That model's early gate could not be read. Refit and save it again." };
+    }
+    const g = r.gate as Record<string, unknown>;
+    const multiplier = num(g.multiplier);
+    if (typeof g.stage !== "string" || !g.stage.trim() || multiplier === null || multiplier <= 0) {
+      return { model: null, error: "That model's early gate has no usable stage or multiplier. Refit and save it again." };
+    }
+    gate = {
+      stage: g.stage,
+      multiplier,
+      reachedCount: num(g.reachedCount) ?? 0,
+      closeRateReached: num(g.closeRateReached) ?? 0,
+      closeRateNotReached: num(g.closeRateNotReached) ?? 0,
+      withinWindowRate: num(g.withinWindowRate) ?? 0,
+      rawMultiplier: num(g.rawMultiplier) ?? multiplier,
+      wasBounded: g.wasBounded === true,
+    };
+  }
+
   const window = (r.window ?? {}) as Record<string, unknown>;
 
   return {
@@ -231,6 +308,7 @@ export function loadSavedModel(raw: unknown): LoadResult {
       calibrationFactor,
       cap: num(r.cap),
       factors,
+      gate,
       customSignalKeys: Array.isArray(r.customSignalKeys)
         ? r.customSignalKeys.filter((k): k is string => typeof k === "string")
         : [],
@@ -496,5 +574,31 @@ export function compareToFresh(saved: SavedValueModel, fresh: ValueModel): Model
         ? "REFIT"
         : "HOLD",
     reasons,
+  };
+}
+
+/**
+ * Rebuilds the shape buildFeedRows understands from a frozen gate.
+ *
+ * Nothing is measured here. The multiplier is whatever was saved, and the
+ * counts come along so the rule stays explainable in a scheduled run's report
+ * exactly as it was on screen.
+ */
+export function savedGateToGateValue(saved: SavedValueModel): GateValue | null {
+  const gate = saved.gate;
+  if (!gate) return null;
+  return {
+    available: true,
+    stage: gate.stage,
+    multiplier: gate.multiplier,
+    reachedCount: gate.reachedCount,
+    notReachedCount: 0,
+    closeRateReached: gate.closeRateReached,
+    closeRateNotReached: gate.closeRateNotReached,
+    medianWonReached: null,
+    withinWindowRate: gate.withinWindowRate,
+    rawMultiplier: gate.rawMultiplier,
+    wasBounded: gate.wasBounded,
+    unusableReason: null,
   };
 }
