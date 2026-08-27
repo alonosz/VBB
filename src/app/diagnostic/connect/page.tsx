@@ -12,6 +12,7 @@ import { savedModelToValueModel, saveValueModel } from "@/lib/model/savedModel";
 import { recallModel } from "@/lib/model/storage";
 import { buildValueModelCsv, downloadCsv } from "@/lib/export/googleAds";
 import { bestIdentifier, buildFeedRows } from "@/lib/feed/publish";
+import { isDeploymentOrigin } from "@/lib/feed/origin";
 import { money } from "@/components/report/panels";
 import { CONVERSION_NAME } from "@/lib/feed/handlers";
 
@@ -355,6 +356,15 @@ export default function ConnectPage() {
                     {copied ? "Copied" : "Copy"}
                   </button>
                 </div>
+                {isDeploymentOrigin(feed.feedUrl) && (
+                  <p className="mt-2.5 max-w-[70ch] rounded-lg border border-[var(--warn)]/40 bg-amber-50 px-3 py-2 text-[12.5px] text-[var(--foreground)]">
+                    This link points at a single deployment rather than your live
+                    site, so it will stop reflecting changes the next time you
+                    ship — and it may be behind hosting protection Google
+                    can&apos;t get past. Open the app on your normal domain and
+                    publish again before giving this to Google Ads.
+                  </p>
+                )}
                 {!feed.modelStored && (
                   <p className="mt-2.5 max-w-[70ch] rounded-lg border border-[var(--warn)]/40 bg-amber-50 px-3 py-2 text-[12.5px] text-[var(--foreground)]">
                     Google will fetch these values normally, but the rule stack

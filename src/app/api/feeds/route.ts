@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { feedRepositoryFromEnv } from "@/lib/feed/supabaseRepository";
 import { publishFeed, type PublishBody } from "@/lib/feed/handlers";
+import { feedOriginFromEnv } from "@/lib/feed/origin";
 
 /**
  * Publishing a feed.
@@ -33,6 +34,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, error: "That request could not be read." }, { status: 400 });
   }
 
-  const result = await publishFeed(repo, body, new URL(request.url).origin);
+  // Not the request's origin: on Vercel that can be a per-deployment URL, and
+  // a feed link pinned to one build rots the next time anything ships.
+  const origin = feedOriginFromEnv(new URL(request.url).origin);
+  const result = await publishFeed(repo, body, origin);
   return new NextResponse(result.body, { status: result.status, headers: result.headers });
 }
