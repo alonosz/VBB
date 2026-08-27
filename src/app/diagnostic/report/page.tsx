@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useDiagnostic } from "@/context/DiagnosticContext";
 import { Stepper } from "@/components/diagnostic/Stepper";
+import { FlowSkeleton } from "@/components/diagnostic/FlowSkeleton";
 import { ArrowIcon } from "@/components/ArrowIcon";
 import { rowsToDeals } from "@/lib/mapping/toDeals";
 import { runDiagnostic, valueAllLeads, bestCaseStack, withOverrides } from "@/lib/analysis";
@@ -49,8 +50,7 @@ export default function ReportPage() {
   const router = useRouter();
   const {
     file, fields, currency, businessContext, stageTiming, intake,
-    statedCycleDays, statedSizeBands,
-  } = useDiagnostic();
+    statedCycleDays, statedSizeBands, restored } = useDiagnostic();
 
   // A saved model is the difference between a diagnostic and a daily loop: it
   // stops the same lead being worth two different amounts on two days. Recalled
@@ -67,8 +67,11 @@ export default function ReportPage() {
   const [overrides, setOverrides] = useState<Record<string, number>>({});
 
   useEffect(() => {
-    if (!file) router.replace("/diagnostic/upload");
-  }, [file, router]);
+    // Wait for the saved snapshot to be read. Redirecting before it lands
+    // would send someone who just refreshed back to the start, a frame before
+    // their work reappears.
+    if (restored && !file) router.replace("/diagnostic/upload");
+  }, [restored, file, router]);
 
   // Claims from the intake step become factors to test, never values. The
   // engine still has to earn each one against the same thresholds.
@@ -159,6 +162,9 @@ export default function ReportPage() {
     ).comparisons;
   }, [result, businessContext, intake, statedCycleDays, statedSizeBands, mapped]);
 
+  // Same markup on the server and during hydration; the restored flow only
+  // exists in the browser and appears on the pass after.
+  if (!restored) return <FlowSkeleton />;
   if (!file || !result || !mapped || !activeModel) return null;
 
   const cur = result.currencyCode;

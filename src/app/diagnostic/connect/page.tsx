@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useDiagnostic } from "@/context/DiagnosticContext";
 import { Stepper } from "@/components/diagnostic/Stepper";
+import { FlowSkeleton } from "@/components/diagnostic/FlowSkeleton";
 import { ArrowIcon } from "@/components/ArrowIcon";
 import { rowsToDeals } from "@/lib/mapping/toDeals";
 import { runDiagnostic, valueAllLeads, withOverrides } from "@/lib/analysis";
@@ -131,7 +132,7 @@ const BID_STEPS = [
 
 export default function ConnectPage() {
   const router = useRouter();
-  const { file, fields, currency, businessContext, stageTiming, intake } = useDiagnostic();
+  const { file, fields, currency, businessContext, stageTiming, intake, restored } = useDiagnostic();
 
   const [feed, setFeed] = useState<Published | null>(null);
   const [publishing, setPublishing] = useState(false);
@@ -140,8 +141,11 @@ export default function ConnectPage() {
   const [csvNote, setCsvNote] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!file) router.replace("/diagnostic/upload");
-  }, [file, router]);
+    // Wait for the saved snapshot to be read. Redirecting before it lands
+    // would send someone who just refreshed back to the start, a frame before
+    // their work reappears.
+    if (restored && !file) router.replace("/diagnostic/upload");
+  }, [restored, file, router]);
 
   const saved = useMemo(() => (typeof window === "undefined" ? null : recallModel()), []);
 
@@ -198,6 +202,9 @@ export default function ConnectPage() {
     };
   }, [mapped, businessContext, currency.reportingCurrency, customSignalKeys, hypotheses, saved, freshModelId]);
 
+  // Same markup on the server and during hydration; the restored flow only
+  // exists in the browser and appears on the pass after.
+  if (!restored) return <FlowSkeleton />;
   if (!file || !mapped) return null;
 
   const cur = currency.reportingCurrency;

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useDiagnostic } from "@/context/DiagnosticContext";
 import { Stepper } from "@/components/diagnostic/Stepper";
+import { FlowSkeleton } from "@/components/diagnostic/FlowSkeleton";
 import { ArrowIcon } from "@/components/ArrowIcon";
 import type { DetectedField, FileIssue } from "@/lib/mapping/detect";
 import { rowsToDeals } from "@/lib/mapping/toDeals";
@@ -167,14 +168,18 @@ function RowPreview({
 
 export default function MappingPage() {
   const router = useRouter();
-  const { file, fields, setFields, issues, currency, setCurrency, stageTiming, intake } =
+  const { file, fields, setFields, issues, currency, setCurrency, stageTiming, intake, restored } =
     useDiagnostic();
 
   useEffect(() => {
-    if (!file) router.replace("/diagnostic/upload");
-  }, [file, router]);
+    // Wait for the saved snapshot to be read. Redirecting before it lands
+    // would send someone who just refreshed back to the start, a frame before
+    // their work reappears.
+    if (restored && !file) router.replace("/diagnostic/upload");
+  }, [restored, file, router]);
 
   const mixedCurrency = issues.find((i) => i.kind === "mixed_currency");
+
 
   const { hypotheses, customSignalKeys } = useMemo(
     () =>
@@ -195,6 +200,9 @@ export default function MappingPage() {
     });
   }, [file, fields, currency, stageTiming, customSignalKeys]);
 
+  // Same markup on the server and during hydration; the restored flow only
+  // exists in the browser and appears on the pass after.
+  if (!restored) return <FlowSkeleton />;
   if (!file) return null;
 
   const required = fields.filter((f) => f.required);

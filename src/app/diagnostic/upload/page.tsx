@@ -13,7 +13,7 @@ const MAX_ROWS = 100_000;
 
 export default function UploadPage() {
   const router = useRouter();
-  const { businessContext } = useDiagnostic();
+  const { businessContext, needsFile } = useDiagnostic();
   const inputRef = useRef<HTMLInputElement>(null);
 
   const [dragging, setDragging] = useState(false);
@@ -115,6 +115,16 @@ export default function UploadPage() {
             ? "Parsing rows, sampling values, and matching columns against the fields the analysis needs."
             : "A CSV of deals or opportunities — whatever your CRM exports. We'll work out which columns are which and tell you straight away if anything will cause trouble."}
         </p>
+
+        {/* Reached by refreshing with an export too large to keep in the tab.
+            The mapping survived; only the rows did not. */}
+        {needsFile && (
+          <p className="mt-4 max-w-[70ch] rounded-xl border border-[var(--warn)]/40 bg-amber-50 px-4 py-3 text-[13.5px]">
+            <span className="font-semibold">Your column mapping is still here.</span>{" "}
+            Your export was too large to keep in the browser across a refresh, so
+            select the same file again — your choices will be waiting.
+          </p>
+        )}
 
         {!parsing && (
           <>
