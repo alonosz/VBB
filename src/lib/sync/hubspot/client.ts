@@ -182,6 +182,14 @@ export class HubSpotClient {
     return byDeal;
   }
 
+  /**
+   * The cheapest possible read of one object type, used only to prove a token
+   * can see it. One record, no properties.
+   */
+  async probe(kind: "deals" | "contacts" | "companies"): Promise<void> {
+    await this.request(`/crm/v3/objects/${kind}/search`, { limit: 1, properties: [] });
+  }
+
   /** Batch-reads the records a set of deals points at. */
   async readBatch(
     kind: "contacts" | "companies",
@@ -202,6 +210,41 @@ export class HubSpotClient {
 
     return byId;
   }
+}
+
+/**
+ * Confirms a token works and can see what the model needs, at the moment it is
+ * pasted rather than at six in the morning.
+ *
+ * A private app with the wrong scopes ticked fails on the first real run
+ * otherwise, and by then nobody is watching. One cheap read against each
+ * object type turns that into an error the advertiser sees while they still
+ * have the scopes screen open.
+ */
+export async function verifyAccess(
+  client: HubSpotClient
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  // All three, not just deals: the model needs the email and click ID from the
+  // contact and the size and industry from the company, so a token missing
+  // either scope produces leads priced on nothing.
+  for (const kind of ["deals", "contacts", "companies"] as const) {
+    try {
+      await client.probe(kind);
+    } catch (error) {
+      if (error instanceof HubSpotError && (error.status === 401 || error.status === 403)) {
+        return {
+          ok: false,
+          error: `That token cannot read ${kind}. Check it was copied whole, and that the private app has the deals, contacts and companies read scopes.`,
+        };
+      }
+      return {
+        ok: false,
+        error: "We couldn't reach HubSpot with that token. Try again in a moment.",
+      };
+    }
+  }
+
+  return { ok: true };
 }
 
 /**

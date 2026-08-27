@@ -27,7 +27,12 @@ export interface SyncFeedOptions {
   feedId: string;
   repo: FeedRepository;
   connections: CrmConnectionStore;
-  oauth: OAuthConfig;
+  /**
+   * Absent when the deployment has no OAuth app configured — a portal
+   * connected with a private app token has nothing to refresh, so a run needs
+   * no client credentials at all.
+   */
+  oauth?: OAuthConfig | null;
   fetchImpl?: typeof fetch;
   now?: Date;
   windowDays?: number;
@@ -51,7 +56,8 @@ function failed(feedId: string, error: string): FeedSyncOutcome {
 }
 
 export async function syncFeed(opts: SyncFeedOptions): Promise<FeedSyncOutcome> {
-  const { feedId, repo, connections, oauth } = opts;
+  const { feedId, repo, connections } = opts;
+  const oauth = opts.oauth ?? null;
   const now = opts.now ?? new Date();
   const fetchImpl = opts.fetchImpl ?? fetch;
 
@@ -77,7 +83,7 @@ export async function syncFeed(opts: SyncFeedOptions): Promise<FeedSyncOutcome> 
   // Refreshed and stored before anything else uses it. HubSpot rotates the
   // refresh token on use, so losing the new one costs the connection.
   let accessToken = connection.accessToken;
-  if (needsRefresh(connection.expiresAt, now) && connection.refreshToken) {
+  if (oauth && needsRefresh(connection.expiresAt, now) && connection.refreshToken) {
     const refreshed = await refreshAccessToken(oauth, connection.refreshToken, fetchImpl, now);
     if (!refreshed) {
       const why = "HubSpot would not renew the connection. Reconnect the account.";

@@ -50,6 +50,9 @@ export function FeedStatusChecker() {
   const [status, setStatus] = useState<Status | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [connecting, setConnecting] = useState(false);
+  const [crmToken, setCrmToken] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [connected, setConnected] = useState(false);
 
   async function check() {
     setChecking(true);
@@ -96,6 +99,30 @@ export function FeedStatusChecker() {
     } catch {
       setError("We couldn't start the connection.");
       setConnecting(false);
+    }
+  }
+
+  /** The private app path: one portal, one pasted token, no OAuth. */
+  async function saveToken() {
+    setSaving(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/crm/hubspot/token", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ url, token: crmToken }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) {
+        setError(data.error ?? "We couldn't save that token.");
+        return;
+      }
+      setConnected(true);
+      setCrmToken("");
+    } catch {
+      setError("We couldn't save that token.");
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -210,15 +237,64 @@ export function FeedStatusChecker() {
                 saved, and add them for Google to collect. Read-only — nothing
                 in your CRM is changed, and no CRM record is stored.
               </p>
-              <button
-                type="button"
-                onClick={() => void connectHubSpot()}
-                disabled={connecting}
-                className="btn btn-primary mt-3 text-[13.5px]"
-              >
-                {connecting ? "Opening HubSpot…" : "Connect HubSpot"}
-                {!connecting && <ArrowIcon />}
-              </button>
+              {connected ? (
+                <p className="mt-3 rounded-xl border border-[var(--accent)]/30 bg-emerald-50 px-3.5 py-2.5 text-[13px]">
+                  <span className="font-semibold text-[var(--accent)]">✓ HubSpot connected.</span>{" "}
+                  Tonight&apos;s run will read your new deals and add them to this
+                  feed. Nothing else to do.
+                </p>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => void connectHubSpot()}
+                    disabled={connecting}
+                    className="btn btn-primary mt-3 text-[13.5px]"
+                  >
+                    {connecting ? "Opening HubSpot…" : "Connect HubSpot"}
+                    {!connecting && <ArrowIcon />}
+                  </button>
+
+                  <details className="mt-3">
+                    <summary className="cursor-pointer text-[12.5px] text-[var(--muted)] underline underline-offset-2">
+                      Or paste a private app token instead
+                    </summary>
+                    <div className="mt-2.5 max-w-[66ch]">
+                      <p className="text-[12.5px] text-[var(--muted)]">
+                        In HubSpot: Settings → Integrations → Private apps →
+                        Create a private app, with the{" "}
+                        <span className="mono">deals</span>,{" "}
+                        <span className="mono">contacts</span> and{" "}
+                        <span className="mono">companies</span> read scopes.
+                        Connects this one portal without going through HubSpot&apos;s
+                        app review.
+                      </p>
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        <input
+                          type="password"
+                          value={crmToken}
+                          onChange={(e) => setCrmToken(e.target.value)}
+                          placeholder="Private app token"
+                          className="input mono min-w-0 flex-1 text-[13px]"
+                          aria-label="HubSpot private app token"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => void saveToken()}
+                          disabled={saving || !crmToken.trim()}
+                          className="btn btn-secondary shrink-0 text-[13px]"
+                        >
+                          {saving ? "Checking…" : "Connect"}
+                        </button>
+                      </div>
+                      <p className="mt-1.5 text-[12px] text-[var(--muted)]">
+                        We check it can read all three before storing it, and it
+                        is encrypted at rest.
+                      </p>
+                    </div>
+                  </details>
+                </>
+              )}
             </div>
 
             {status.verdict === "collecting" && (

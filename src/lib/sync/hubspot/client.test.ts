@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { HubSpotClient, HubSpotError, pullFromHubSpot } from "./client";
+import { HubSpotClient, HubSpotError, pullFromHubSpot, verifyAccess } from "./client";
 
 const NOW = new Date("2026-06-15T12:00:00Z");
 
@@ -185,5 +185,48 @@ describe("pullFromHubSpot", () => {
 describe("HubSpotError", () => {
   it("carries the status so a caller can tell a retry from a reconnect", () => {
     expect(new HubSpotError("x", 401).status).toBe(401);
+  });
+});
+
+describe("verifyAccess", () => {
+  function probeStub(statusFor: Partial<Record<"deals" | "contacts" | "companies", number>>) {
+    const probed: string[] = [];
+    const fetchImpl = (async (url: string | URL | Request) => {
+      const path = new URL(String(url)).pathname;
+      const kind = path.split("/")[4] as "deals" | "contacts" | "companies";
+      probed.push(kind);
+      const status = statusFor[kind] ?? 200;
+      return new Response(JSON.stringify({ results: [] }), { status });
+    }) as unknown as typeof fetch;
+    return { fetchImpl, probed };
+  }
+
+  it("checks all three object types, not just deals", async () => {
+    const { fetchImpl, probed } = probeStub({});
+    const result = await verifyAccess(client(fetchImpl));
+    expect(result.ok).toBe(true);
+    // Deals alone would pass with the other scopes missing, and the model needs
+    // the contact for the email and the company for the size.
+    expect(probed).toEqual(["deals", "contacts", "companies"]);
+  });
+
+  it("names the scope that is missing", async () => {
+    const { fetchImpl } = probeStub({ companies: 403 });
+    const result = await verifyAccess(client(fetchImpl));
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.error).toMatch(/cannot read companies/);
+  });
+
+  it("stops at the first refusal rather than probing on", async () => {
+    const { fetchImpl, probed } = probeStub({ deals: 401 });
+    await verifyAccess(client(fetchImpl));
+    expect(probed).toEqual(["deals"]);
+  });
+
+  it("distinguishes an unreachable HubSpot from a bad token", async () => {
+    const { fetchImpl } = probeStub({ deals: 500 });
+    const result = await verifyAccess(client(fetchImpl));
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.error).toMatch(/couldn't reach HubSpot/);
   });
 });

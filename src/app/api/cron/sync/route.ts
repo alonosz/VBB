@@ -39,7 +39,9 @@ export async function GET(request: Request) {
   const key = keyFromEnv();
   const oauth = oauthConfigFromEnv(`${origin}/api/crm/hubspot/callback`);
 
-  if (!repo || !client || !key || !oauth) {
+  // No OAuth app is fine: a portal connected with a private app token has
+  // nothing to refresh, so a run needs no client credentials.
+  if (!repo || !client || !key) {
     return NextResponse.json(
       { ok: false, error: "CRM sync is not configured on this deployment." },
       { status: 503 }
