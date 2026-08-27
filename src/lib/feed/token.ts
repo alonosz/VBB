@@ -47,3 +47,35 @@ export async function hashIp(ip: string | null, salt: string): Promise<string | 
   if (!ip?.trim()) return null;
   return sha256Hex(`${salt}:${ip.trim()}`);
 }
+
+/**
+ * Pulls the token out of whatever the advertiser pasted.
+ *
+ * They will paste the whole feed URL, because that is the thing they were
+ * given and told to keep. Accepting a bare token too costs nothing and saves
+ * anyone who kept only the key.
+ *
+ * Deliberately forgiving about surrounding whitespace and a trailing slash,
+ * and deliberately strict about the token itself: anything that is not a
+ * plausible token is rejected here rather than sent to be hashed and looked
+ * up, so a pasted paragraph cannot become a database query.
+ */
+export function tokenFromInput(input: string): string | null {
+  const trimmed = input.trim().replace(/\/+$/, "");
+  if (!trimmed) return null;
+
+  let candidate = trimmed;
+  if (/^https?:\/\//i.test(trimmed)) {
+    let path: string;
+    try {
+      path = new URL(trimmed).pathname;
+    } catch {
+      return null;
+    }
+    candidate = path.split("/").pop() ?? "";
+  }
+
+  candidate = candidate.replace(/\.csv$/i, "").replace(/\.tsv$/i, "");
+  if (!/^[A-Za-z0-9_-]{8,256}$/.test(candidate)) return null;
+  return candidate;
+}

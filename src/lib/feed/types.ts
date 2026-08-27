@@ -64,6 +64,14 @@ export interface FetchLogEntry {
   ipHash: string | null;
 }
 
+/** One logged fetch, read back. The hashed IP is deliberately not carried. */
+export interface FetchRecord {
+  fetchedAt: Date;
+  status: number;
+  rowCount: number;
+  userAgent: string | null;
+}
+
 // ---------------------------------------------------------------------------
 // The guard both storage paths share
 // ---------------------------------------------------------------------------

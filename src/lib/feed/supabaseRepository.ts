@@ -9,6 +9,7 @@ import {
   type FeedRow,
   type FeedRowKind,
   type FetchLogEntry,
+  type FetchRecord,
   type NewFeed,
 } from "./types";
 import type { FeedRepository } from "./repository";
@@ -201,6 +202,25 @@ export class SupabaseFeedRepository implements FeedRepository {
 
     if (error) throw new Error(error.message);
     return count ?? 0;
+  }
+
+  async recentFetches(feedId: string, limit: number): Promise<FetchRecord[]> {
+    const { data, error } = await this.client
+      .from("feed_fetches")
+      .select("fetched_at, status, row_count, user_agent")
+      .eq("feed_id", feedId)
+      .order("fetched_at", { ascending: false })
+      .limit(limit);
+
+    if (error) throw new Error(error.message);
+    return (data as { fetched_at: string; status: number; row_count: number; user_agent: string | null }[]).map(
+      (r) => ({
+        fetchedAt: new Date(r.fetched_at),
+        status: r.status,
+        rowCount: r.row_count,
+        userAgent: r.user_agent,
+      })
+    );
   }
 
   async logFetch(feedId: string, entry: FetchLogEntry): Promise<void> {

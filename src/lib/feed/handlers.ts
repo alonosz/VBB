@@ -253,3 +253,92 @@ export async function publishFeed(
     return bad("The feed could not be saved. Nothing was published.", 500);
   }
 }
+
+// ---------------------------------------------------------------------------
+// Has Google actually collected it?
+// ---------------------------------------------------------------------------
+
+/**
+ * A published feed is a URL handed to a platform that fetches on its own
+ * schedule. Between pasting it in and seeing conversions appear, the advertiser
+ * has no way to tell the difference between "Google hasn't got round to it yet"
+ * and "Google is rejecting it silently" — and those need opposite responses.
+ *
+ * We already log every fetch, because counting them in a 24h window is the rate
+ * limiter. So the answer is sitting in the database and simply was not being
+ * shown. This reads it back.
+ *
+ * Checking status is not fetching: nothing is logged here and nothing counts
+ * against the limit, or looking would consume the budget Google needs.
+ */
+export interface FeedStatus {
+  tokenPrefix: string;
+  publishedAt: string | null;
+  rowsPublished: number;
+  currencyCode: string;
+  identifier: FeedIdentifier;
+  modelId: string;
+  /** Newest first. */
+  fetches: { at: string; status: number; rowCount: number }[];
+  lastSuccessAt: string | null;
+  /** Plain-English reading of the log, which is the whole point of the screen. */
+  verdict: "never-fetched" | "collecting" | "failing";
+  message: string;
+}
+
+const STATUS_FETCH_LIMIT = 20;
+
+export async function feedStatus(
+  repo: FeedRepository,
+  token: string | null,
+  now: Date = new Date()
+): Promise<HandlerResponse> {
+  if (!token?.trim()) return bad("Paste your feed URL to check it.");
+
+  const feed = await repo.findByTokenHash(await hashToken(token.trim()));
+  // The same answer a bad token gets from the feed itself: a wrong key must not
+  // reveal whether a feed exists.
+  if (!feed) return bad("No feed found for that URL. Check you pasted all of it.", 404);
+  if (feed.status !== "active") {
+    return bad("That feed has been revoked, so Google can no longer collect from it.", 404);
+  }
+
+  const fetches = await repo.recentFetches(feed.id, STATUS_FETCH_LIMIT);
+  const lastSuccess = fetches.find((f) => f.status === 200) ?? null;
+
+  let verdict: FeedStatus["verdict"];
+  let message: string;
+
+  if (fetches.length === 0) {
+    verdict = "never-fetched";
+    message =
+      "Google hasn't collected this feed yet. It fetches on its own schedule after you save the data source, so a wait of up to a day is normal. If it stays empty, the URL never made it into Google Ads.";
+  } else if (!lastSuccess) {
+    verdict = "failing";
+    message = `Google has tried ${fetches.length === 1 ? "once" : `${fetches.length} times`} and not been served a file. Every attempt came back an error, so nothing has reached your account.`;
+  } else {
+    const hours = Math.round((now.getTime() - lastSuccess.fetchedAt.getTime()) / 3_600_000);
+    const when = hours < 1 ? "less than an hour ago" : hours === 1 ? "an hour ago" : `${hours} hours ago`;
+    verdict = "collecting";
+    message = `Google last collected this feed ${when} and took ${lastSuccess.rowCount.toLocaleString()} ${lastSuccess.rowCount === 1 ? "row" : "rows"}. The loop is closed.`;
+  }
+
+  const status: FeedStatus = {
+    tokenPrefix: feed.tokenPrefix,
+    publishedAt: feed.publishedAt?.toISOString() ?? null,
+    rowsPublished: feed.rowsPublished,
+    currencyCode: feed.currencyCode,
+    identifier: feed.identifier,
+    modelId: feed.modelId,
+    fetches: fetches.map((f) => ({
+      at: f.fetchedAt.toISOString(),
+      status: f.status,
+      rowCount: f.rowCount,
+    })),
+    lastSuccessAt: lastSuccess?.fetchedAt.toISOString() ?? null,
+    verdict,
+    message,
+  };
+
+  return { status: 200, headers: JSON_HEADERS, body: JSON.stringify({ ok: true, status }) };
+}

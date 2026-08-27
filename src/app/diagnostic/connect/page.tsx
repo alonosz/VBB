@@ -75,8 +75,8 @@ const SETUP_STEPS = [
 
 const SCHEDULE_STEPS = [
   {
-    title: "Start a conversion action",
-    body: 'Goals → Conversions → New conversion action. On the "Choose data sources to measure conversions" screen, tick Conversions offline.',
+    title: "Start the offline data source wizard",
+    body: 'Goals → Conversions → New conversion action again — this second pass sets up the delivery, not another action. On "Choose data sources to measure conversions", tick Conversions offline.',
   },
   {
     title: "Add HTTPS as the data source",
@@ -96,7 +96,35 @@ const SCHEDULE_STEPS = [
   },
   {
     title: "Save",
-    body: "That is the last manual step. Google collects your values on schedule from here on, and republishing serves new leads through the same URL.",
+    body: "Google collects your values on schedule from here on, and republishing serves new leads through the same URL.",
+  },
+];
+
+/**
+ * The step everything else is for, and the easiest one to leave undone.
+ *
+ * Maximize Conversions and Target CPA optimise for the *number* of
+ * conversions. They read the values we send and bid on none of it. So an
+ * advertiser can follow every instruction above, watch the import succeed,
+ * and see no change at all — the values arrive and are ignored. Only the two
+ * value-based strategies below actually spend differently because of them.
+ */
+const BID_STEPS = [
+  {
+    title: "Open the campaign you want to change",
+    body: "Campaigns → pick the campaign → Settings → Bidding. Do this per campaign; the conversion action is account-wide, the bid strategy is not.",
+  },
+  {
+    title: 'Switch it to "Maximize conversion value"',
+    body: 'If it currently says Maximize conversions or Target CPA, that is the problem — those bid on how many leads you get, not what they are worth.',
+  },
+  {
+    title: "Leave Target ROAS empty for now",
+    body: "A target is a promise about a ratio Google has no history for yet. Let it run on Maximize conversion value first, then set a target once you can see what your actual return has been.",
+  },
+  {
+    title: "Expect a quiet couple of weeks",
+    body: "Google re-learns when a bid strategy changes, and it needs a run of real values before that settles. Judge it on what happens after, not during.",
   },
 ];
 
@@ -367,6 +395,15 @@ export default function ConnectPage() {
                 </p>
               </div>
 
+              <p className="mt-3 text-[12.5px] text-[var(--muted)]">
+                Google fetches on its own schedule and reports nothing back. When
+                you want to know whether it has actually collected these values,{" "}
+                <a href="/feed-status" className="font-semibold text-[var(--primary)] underline underline-offset-2">
+                  check your feed
+                </a>{" "}
+                — keep the URL above, it is the only way in.
+              </p>
+
               <div className="mt-6 border-t border-[var(--border)] pt-5">
                 <p className="label">Do this once, first</p>
                 <p className="mt-1 text-[15px] font-bold">
@@ -449,6 +486,38 @@ export default function ConnectPage() {
                     </li>
                   </ul>
                 </div>
+              </div>
+
+              {/* The last mile. Without it everything above is inert, so it
+                  gets the emphasis surface rather than a fourth grey list. */}
+              <div className="mt-6 overflow-hidden rounded-2xl bg-gradient-to-br from-[var(--navy)] to-[var(--navy-soft)] p-5 text-white">
+                <p className="label text-white/60">Last, and the one that makes the rest matter</p>
+                <p className="mt-1 text-[15px] font-bold">
+                  Tell the campaign to bid on value
+                </p>
+                <p className="mt-1.5 max-w-[64ch] text-[13.5px] text-white/75">
+                  Everything above gets your values into Google. It does not make
+                  Google <em>use</em> them. A campaign running{" "}
+                  <span className="font-semibold text-white">Maximize conversions</span>{" "}
+                  or <span className="font-semibold text-white">Target CPA</span> is
+                  optimising for how many leads it can get, and will read every value
+                  you send and bid on none of it.
+                </p>
+                <ol className="mt-4 grid gap-3">
+                  {BID_STEPS.map((step, i) => (
+                    <li key={step.title} className="flex gap-3">
+                      <span className="mono mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-white/15 text-[12px] font-bold text-white">
+                        {i + 1}
+                      </span>
+                      <span>
+                        <span className="block text-[14px] font-semibold">{step.title}</span>
+                        <span className="mt-0.5 block max-w-[62ch] text-[13.5px] text-white/70">
+                          {step.body}
+                        </span>
+                      </span>
+                    </li>
+                  ))}
+                </ol>
               </div>
             </>
           )}

@@ -6,6 +6,7 @@ import {
   type FeedRecord,
   type FeedRow,
   type FetchLogEntry,
+  type FetchRecord,
   type NewFeed,
 } from "./types";
 
@@ -37,6 +38,8 @@ export interface FeedRepository {
    */
   modelFor(feedId: string): Promise<LoadResult>;
   countFetchesSince(feedId: string, since: Date): Promise<number>;
+  /** Most recent fetches, newest first — what the advertiser is shown. */
+  recentFetches(feedId: string, limit: number): Promise<FetchRecord[]>;
   logFetch(feedId: string, entry: FetchLogEntry): Promise<void>;
   revokeFeed(feedId: string): Promise<void>;
 }
@@ -124,6 +127,19 @@ export class InMemoryFeedRepository implements FeedRepository {
 
   async countFetchesSince(feedId: string, since: Date): Promise<number> {
     return (this.fetches.get(feedId) ?? []).filter((d) => d > since).length;
+  }
+
+  async recentFetches(feedId: string, limit: number): Promise<FetchRecord[]> {
+    return this.log
+      .filter((l) => l.feedId === feedId)
+      .sort((a, b) => b.at.getTime() - a.at.getTime())
+      .slice(0, limit)
+      .map((l) => ({
+        fetchedAt: l.at,
+        status: l.entry.status,
+        rowCount: l.entry.rowCount,
+        userAgent: l.entry.userAgent,
+      }));
   }
 
   async logFetch(feedId: string, entry: FetchLogEntry): Promise<void> {

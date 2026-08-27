@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { publishFeed, serveFeed, CONVERSION_NAME } from "./handlers";
+import { publishFeed, serveFeed, feedStatus, CONVERSION_NAME } from "./handlers";
+import { tokenFromInput } from "./token";
 import { InMemoryFeedRepository } from "./repository";
 import {
   loadSavedModel,
@@ -516,5 +517,106 @@ describe("a real fitted model, stored and re-applied", () => {
       expect(level.sampleSize).toBeGreaterThanOrEqual(25);
       expect(level.closeRate).toBeGreaterThan(0);
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Has Google actually collected it?
+// ---------------------------------------------------------------------------
+
+describe("tokenFromInput", () => {
+  it("takes the whole feed URL, which is what people paste", () => {
+    expect(tokenFromInput("https://valuebasedbidding.com/v1/feeds/google-ads/vbb_live_abc123def.csv"))
+      .toBe("vbb_live_abc123def");
+  });
+
+  it("takes a bare token, trailing slash, or stray whitespace", () => {
+    expect(tokenFromInput("  vbb_live_abc123def  ")).toBe("vbb_live_abc123def");
+    expect(tokenFromInput("https://x.com/v1/feeds/google-ads/vbb_live_abc123def.csv/")).toBe(
+      "vbb_live_abc123def"
+    );
+  });
+
+  it("refuses anything that is not a plausible token", () => {
+    expect(tokenFromInput("")).toBeNull();
+    expect(tokenFromInput("short")).toBeNull();
+    expect(tokenFromInput("not a url at all, just a sentence")).toBeNull();
+    expect(tokenFromInput("https://valuebasedbidding.com/")).toBeNull();
+  });
+});
+
+describe("feedStatus", () => {
+  it("says Google has not collected it yet, and that waiting is normal", async () => {
+    const repo = new InMemoryFeedRepository(() => NOW);
+    const { body } = await publishedFeed(repo);
+    const res = await feedStatus(repo, tokenFrom(body.feedUrl as string), NOW);
+    const { status } = JSON.parse(res.body);
+
+    expect(status.verdict).toBe("never-fetched");
+    expect(status.message).toMatch(/hasn't collected/i);
+    expect(status.lastSuccessAt).toBeNull();
+  });
+
+  it("reports the last successful collection in hours and rows", async () => {
+    let clock = new Date("2026-06-15T06:00:00Z");
+    const repo = new InMemoryFeedRepository(() => clock);
+    const { body } = await publishedFeed(repo);
+    const token = tokenFrom(body.feedUrl as string);
+
+    await serveFeed(repo, { token, ip: "203.0.113.7", userAgent: "Google-Ads", now: clock });
+
+    clock = new Date("2026-06-15T12:00:00Z");
+    const res = await feedStatus(repo, token, clock);
+    const { status } = JSON.parse(res.body);
+
+    expect(status.verdict).toBe("collecting");
+    expect(status.message).toMatch(/6 hours ago/);
+    expect(status.message).toMatch(/took 2 rows/);
+    expect(status.fetches[0].status).toBe(200);
+  });
+
+  it("says so when every attempt has failed", async () => {
+    const repo = new InMemoryFeedRepository(() => NOW);
+    const { body } = await publishedFeed(repo);
+    const token = tokenFrom(body.feedUrl as string);
+    const feedId = body.feedId as string;
+
+    for (let i = 0; i < 3; i++) {
+      await repo.logFetch(feedId, { status: 429, rowCount: 0, userAgent: null, ipHash: null });
+    }
+
+    const res = await feedStatus(repo, token, NOW);
+    const { status } = JSON.parse(res.body);
+    expect(status.verdict).toBe("failing");
+    expect(status.message).toMatch(/3 times/);
+  });
+
+  it("checking status is not a fetch — it must not spend the rate limit", async () => {
+    const repo = new InMemoryFeedRepository(() => NOW);
+    const { body } = await publishedFeed(repo);
+    const token = tokenFrom(body.feedUrl as string);
+
+    for (let i = 0; i < 5; i++) await feedStatus(repo, token, NOW);
+
+    // Nothing logged, so nothing counted against the budget Google needs.
+    expect(await repo.countFetchesSince(body.feedId as string, new Date(0))).toBe(0);
+  });
+
+  it("a wrong key does not reveal whether a feed exists", async () => {
+    const repo = new InMemoryFeedRepository(() => NOW);
+    await publishedFeed(repo);
+    const res = await feedStatus(repo, "vbb_live_wrongkey123", NOW);
+    expect(res.status).toBe(404);
+    expect(JSON.parse(res.body).error).toMatch(/no feed found/i);
+  });
+
+  it("says a revoked feed can no longer be collected from", async () => {
+    const repo = new InMemoryFeedRepository(() => NOW);
+    const { body } = await publishedFeed(repo);
+    await repo.revokeFeed(body.feedId as string);
+
+    const res = await feedStatus(repo, tokenFrom(body.feedUrl as string), NOW);
+    expect(res.status).toBe(404);
+    expect(JSON.parse(res.body).error).toMatch(/revoked/i);
   });
 });
