@@ -27,7 +27,7 @@ const json = (body: unknown, status = 200, headers: Record<string, string> = {})
 
 function client(fetchImpl: typeof fetch, over: Record<string, unknown> = {}) {
   return new HubSpotClient({
-    accessToken: "pat-na1-secret",
+    accessToken: "crm-token-placeholder",
     fetchImpl,
     now: NOW,
     sleep: async () => {},
@@ -55,8 +55,8 @@ describe("HubSpotClient", () => {
   it("sends the token as a bearer header and never in the body", async () => {
     const { fetchImpl, calls } = stub([json(dealPage(["1"]))]);
     await client(fetchImpl).listRecentDeals();
-    expect(calls[0].auth).toBe("Bearer pat-na1-secret");
-    expect(JSON.stringify(calls[0].body)).not.toContain("pat-na1-secret");
+    expect(calls[0].auth).toBe("Bearer crm-token-placeholder");
+    expect(JSON.stringify(calls[0].body)).not.toContain("crm-token-placeholder");
   });
 
   it("follows pagination until HubSpot stops offering a cursor", async () => {

@@ -228,6 +228,53 @@ begin
 end;
 $$;
 
+-- --- crm_connections -------------------------------------------------------
+
+select pg_temp.must_pass($$
+  insert into public.crm_connections (feed_id, provider, access_token, refresh_token)
+  values (
+    '11111111-1111-1111-1111-111111111111', 'hubspot',
+    'v1.aBcDeFgHiJkL.mNoPqRsTuVwXyZ01.Zm9vYmFyYmF6cXV4',
+    'v1.QQQQQQQQQQQQ.WWWWWWWWWWWWWWWW.ZWVlZWVlZWVlZQ'
+  )$$,
+  'an encrypted CRM token is stored');
+
+select pg_temp.must_fail($$
+  insert into public.crm_connections (feed_id, provider, access_token)
+  values (
+    '11111111-1111-1111-1111-111111111111', 'hubspot',
+    'crm-token-placeholder-not-a-real-credential'
+  )$$,
+  'A PLAINTEXT CRM TOKEN CANNOT BE STORED');
+
+select pg_temp.must_fail($$
+  insert into public.crm_connections (feed_id, provider, access_token, refresh_token)
+  values (
+    '11111111-1111-1111-1111-111111111111', 'hubspot',
+    'v1.aBcDeFgHiJkL.mNoPqRsTuVwXyZ01.Zm9vYmFyYmF6cXV4',
+    'refresh-token-in-the-clear'
+  )$$,
+  'a plaintext refresh token is rejected too');
+
+select pg_temp.must_fail($$
+  insert into public.crm_connections (feed_id, provider, access_token)
+  values (
+    '11111111-1111-1111-1111-111111111111', 'salesforce',
+    'v1.aBcDeFgHiJkL.mNoPqRsTuVwXyZ01.Zm9vYmFyYmF6cXV4'
+  )$$,
+  'a provider we have not built is rejected');
+
+select pg_temp.must_fail($$
+  update public.crm_connections
+     set last_sync_error = repeat('x', 501)
+   where feed_id = '11111111-1111-1111-1111-111111111111'$$,
+  'an error field long enough to hold a stack trace is rejected');
+
+select pg_temp.must_fail($$
+  update public.crm_connections set last_sync_status = 'weird'
+   where feed_id = '11111111-1111-1111-1111-111111111111'$$,
+  'an unknown sync status is rejected');
+
 -- --- cascade --------------------------------------------------------------
 
 delete from public.feeds where id = '11111111-1111-1111-1111-111111111111';
@@ -238,11 +285,12 @@ begin
   select (select count(*) from public.feed_rows)
        + (select count(*) from public.feed_fetches)
        + (select count(*) from public.feed_models)
+       + (select count(*) from public.crm_connections)
     into leftover;
   if leftover <> 0 then
     raise exception 'FAIL  deleting a feed left % rows behind', leftover;
   end if;
-  raise notice 'PASS  revoking a feed takes its rows, its log and its model with it';
+  raise notice 'PASS  deleting a feed takes its rows, log, model and CRM connection with it';
 end;
 $$;
 
