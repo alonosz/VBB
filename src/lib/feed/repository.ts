@@ -21,6 +21,8 @@ import {
 export interface FeedRepository {
   createFeed(feed: NewFeed): Promise<FeedRecord>;
   findByTokenHash(tokenHash: string): Promise<FeedRecord | null>;
+  /** By id, for a scheduled run that already knows which feed it is servicing. */
+  findById(feedId: string): Promise<FeedRecord | null>;
   /** Inserts rows, ignoring any that were already sent. Returns how many were new. */
   addRows(feedId: string, rows: FeedRow[]): Promise<number>;
   rowsFor(feedId: string): Promise<FeedRow[]>;
@@ -83,6 +85,11 @@ export class InMemoryFeedRepository implements FeedRepository {
 
   async findByTokenHash(tokenHash: string): Promise<FeedRecord | null> {
     const found = [...this.feeds.values()].find((f) => f.tokenHash === tokenHash);
+    return found ? { ...found } : null;
+  }
+
+  async findById(feedId: string): Promise<FeedRecord | null> {
+    const found = this.feeds.get(feedId);
     return found ? { ...found } : null;
   }
 

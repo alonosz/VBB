@@ -99,6 +99,17 @@ export class SupabaseFeedRepository implements FeedRepository {
     return data ? toRecord(data as FeedDto) : null;
   }
 
+  async findById(feedId: string): Promise<FeedRecord | null> {
+    const { data, error } = await this.client
+      .from("feeds")
+      .select(FEED_COLUMNS)
+      .eq("id", feedId)
+      .maybeSingle();
+
+    if (error) throw new Error(error.message);
+    return data ? toRecord(data as FeedDto) : null;
+  }
+
   async addRows(feedId: string, rows: FeedRow[]): Promise<number> {
     if (rows.length === 0) return 0;
     for (const row of rows) assertStorableRow(row);
@@ -256,6 +267,16 @@ export class SupabaseFeedRepository implements FeedRepository {
  * instructions.
  */
 export function feedRepositoryFromEnv(): FeedRepository | null {
+  const client = supabaseFromEnv();
+  return client ? new SupabaseFeedRepository(client) : null;
+}
+
+/**
+ * The raw client, for the tables that are not the feed's own — the CRM
+ * connection store reaches Supabase directly rather than through a repository
+ * shaped around feeds.
+ */
+export function supabaseFromEnv(): SupabaseClient | null {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
   const key =
     process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY;
@@ -274,9 +295,7 @@ export function feedRepositoryFromEnv(): FeedRepository | null {
     return null;
   }
 
-  return new SupabaseFeedRepository(
-    createClient(url, key, { auth: { persistSession: false } })
-  );
+  return createClient(url, key, { auth: { persistSession: false } });
 }
 
 /** The publishable (formerly anon) key, under either naming. */
