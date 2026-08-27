@@ -1,0 +1,171 @@
+import type { MappedDeal, DealOutcome } from "@/lib/analysis/types";
+import type { HubSpotObject, HubSpotPull } from "./types";
+
+/**
+ * Turning HubSpot records into the shape the engine already understands.
+ *
+ * The CSV path asks the user which column is which, because a CSV export has
+ * whatever headers someone chose. HubSpot does not need that: its standard
+ * properties have fixed names, so the mapping is known in advance and there is
+ * no mapping screen to get wrong.
+ *
+ * One thing genuinely is not standard — the ad click ID. HubSpot has no
+ * property for it, so it arrives under whatever name the advertiser's form
+ * used. We look under the names our own snippet writes and the ones the common
+ * integrations use, and if none is present the leads simply match on email
+ * instead. Guessing at a property that happens to hold a long opaque string
+ * would be inventing data.
+ */
+
+/** Property names a Google click ID plausibly lives under, best first. */
+export const CLICK_ID_PROPERTIES = [
+  "gclid",
+  "hs_google_click_id",
+  "gclid__c",
+  "google_click_id",
+  "vbb_gclid",
+  "gbraid",
+  "wbraid",
+];
+
+export const DEAL_PROPERTIES = [
+  "dealname",
+  "amount",
+  "dealstage",
+  "pipeline",
+  "closedate",
+  "createdate",
+  "hs_is_closed",
+  "hs_is_closed_won",
+];
+
+export const CONTACT_PROPERTIES = ["email", "jobtitle", ...CLICK_ID_PROPERTIES];
+
+export const COMPANY_PROPERTIES = ["numberofemployees", "industry", "name"];
+
+function text(record: HubSpotObject | undefined, key: string): string | null {
+  const value = record?.properties?.[key];
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  return trimmed === "" ? null : trimmed;
+}
+
+function number(record: HubSpotObject | undefined, key: string): number | null {
+  const raw = text(record, key);
+  if (raw === null) return null;
+  // HubSpot returns numbers as strings, and a portal can hold "1,200" or "" in
+  // a number field. Anything that does not parse cleanly is missing, not zero.
+  const parsed = Number(raw.replace(/,/g, ""));
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function date(record: HubSpotObject | undefined, key: string): Date | null {
+  const raw = text(record, key);
+  if (raw === null) return null;
+  // Epoch milliseconds on some properties, ISO on others.
+  const parsed = /^\d+$/.test(raw) ? new Date(Number(raw)) : new Date(raw);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+/**
+ * Won, lost or still open.
+ *
+ * Read from HubSpot's own computed flags rather than from stage names. A
+ * portal can call its closed-won stage anything, and matching on the word
+ * "won" would misread "Won back" and miss "Signed".
+ */
+export function outcomeOf(deal: HubSpotObject): DealOutcome {
+  if (text(deal, "hs_is_closed_won") === "true") return "won";
+  if (text(deal, "hs_is_closed") === "true") return "lost";
+  return "open";
+}
+
+function firstAssociated(
+  deal: HubSpotObject,
+  kind: "contacts" | "companies",
+  index: Map<string, HubSpotObject>
+): HubSpotObject | undefined {
+  const ids = deal.associations?.[kind]?.results ?? [];
+  for (const { id } of ids) {
+    const found = index.get(id);
+    if (found) return found;
+  }
+  return undefined;
+}
+
+function clickIdOf(contact: HubSpotObject | undefined): string | null {
+  if (!contact) return null;
+  for (const key of CLICK_ID_PROPERTIES) {
+    const value = text(contact, key);
+    // The same shape the snippet enforces before storing one: long enough to
+    // be a real token, and free of the punctuation an address carries.
+    if (value && value.length >= 8 && /^[A-Za-z0-9_.-]+$/.test(value)) return value;
+  }
+  return null;
+}
+
+/**
+ * Days from creation to first entering each stage.
+ *
+ * HubSpot records this as hs_date_entered_<stageId>, one property per stage of
+ * every pipeline, so the names are portal-specific and are discovered from the
+ * payload rather than listed. Stage ids are opaque, so labels are used when the
+ * pipeline metadata came along and the id is kept when it did not — an
+ * unreadable stage name is better than a wrong one.
+ */
+export function stageTimingOf(
+  deal: HubSpotObject,
+  createdAt: Date | null,
+  stageLabels?: Map<string, string>
+): Record<string, number> | undefined {
+  if (!createdAt) return undefined;
+  const out: Record<string, number> = {};
+
+  for (const [key, raw] of Object.entries(deal.properties)) {
+    const match = /^hs_date_entered_(.+)$/.exec(key);
+    if (!match || !raw) continue;
+    const entered = date(deal, key);
+    if (!entered) continue;
+
+    const days = (entered.getTime() - createdAt.getTime()) / 86_400_000;
+    // A stage entered before the deal existed is a backfill artefact, not a
+    // fast pipeline. stageTrustCheck catches the subtler cases; this one is
+    // impossible rather than merely suspicious.
+    if (!Number.isFinite(days) || days < 0) continue;
+
+    const stageId = match[1];
+    out[stageLabels?.get(stageId) ?? stageId] = days;
+  }
+
+  return Object.keys(out).length > 0 ? out : undefined;
+}
+
+export function hubspotToDeals(pull: HubSpotPull): MappedDeal[] {
+  const deals: MappedDeal[] = [];
+
+  for (const deal of pull.deals) {
+    const contact = firstAssociated(deal, "contacts", pull.contactsById);
+    const company = firstAssociated(deal, "companies", pull.companiesById);
+    const createdAt = date(deal, "createdate");
+    const stageId = text(deal, "dealstage");
+
+    deals.push({
+      id: deal.id,
+      createdAt,
+      closedAt: date(deal, "closedate"),
+      outcome: outcomeOf(deal),
+      amount: number(deal, "amount"),
+      stage: stageId ? pull.stageLabels?.get(stageId) ?? stageId : null,
+      // HubSpot's own attribution, not ours to infer.
+      source: text(contact, "hs_analytics_source") ?? null,
+      email: text(contact, "email"),
+      clickId: clickIdOf(contact),
+      employeeCount: number(company, "numberofemployees"),
+      industry: text(company, "industry"),
+      contactTitle: text(contact, "jobtitle"),
+      stageReachedAfterDays: stageTimingOf(deal, createdAt, pull.stageLabels),
+    });
+  }
+
+  return deals;
+}
