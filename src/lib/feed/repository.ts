@@ -66,6 +66,7 @@ export class InMemoryFeedRepository implements FeedRepository {
     }
     const record: FeedRecord & { tokenHash: string } = {
       id: `feed-${this.feeds.size + 1}`,
+      clientId: feed.clientId,
       tokenHash: feed.tokenHash,
       tokenPrefix: feed.tokenPrefix,
       label: feed.label ?? null,

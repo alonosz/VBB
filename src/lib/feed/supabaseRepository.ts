@@ -35,6 +35,7 @@ interface FeedRowDto {
 
 interface FeedDto {
   id: string;
+  client_id: string;
   token_prefix: string;
   label: string | null;
   model_id: string;
@@ -50,6 +51,7 @@ interface FeedDto {
 function toRecord(dto: FeedDto): FeedRecord {
   return {
     id: dto.id,
+    clientId: dto.client_id,
     tokenPrefix: dto.token_prefix,
     label: dto.label,
     modelId: dto.model_id,
@@ -64,7 +66,7 @@ function toRecord(dto: FeedDto): FeedRecord {
 }
 
 const FEED_COLUMNS =
-  "id, token_prefix, label, model_id, model_fitted_at, currency_code, identifier, status, created_at, published_at, rows_published";
+  "id, client_id, token_prefix, label, model_id, model_fitted_at, currency_code, identifier, status, created_at, published_at, rows_published";
 
 export class SupabaseFeedRepository implements FeedRepository {
   constructor(private client: SupabaseClient) {}
@@ -73,6 +75,7 @@ export class SupabaseFeedRepository implements FeedRepository {
     const { data, error } = await this.client
       .from("feeds")
       .insert({
+        client_id: feed.clientId,
         token_hash: feed.tokenHash,
         token_prefix: feed.tokenPrefix,
         label: feed.label ?? null,

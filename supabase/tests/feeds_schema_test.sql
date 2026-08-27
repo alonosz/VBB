@@ -34,12 +34,47 @@ $$;
 
 begin;
 
+-- A customer, then a feed belonging to them.
+insert into public.workspaces (id, name, key_hash, key_prefix)
+values (
+  '99999999-9999-9999-9999-999999999999',
+  'Northridge Fabrication', repeat('9', 64), 'vbb_ws_4d21'
+);
+
 -- A feed we can hang rows off. 64 hex chars, as a real token hash is.
-insert into public.feeds (id, token_hash, token_prefix, model_id, currency_code)
+insert into public.feeds (id, client_id, token_hash, token_prefix, model_id, currency_code)
 values (
   '11111111-1111-1111-1111-111111111111',
+  '99999999-9999-9999-9999-999999999999',
   repeat('a', 64), 'vbb_live_8f2a', 'model-1', 'USD'
 );
+
+-- --- workspaces ------------------------------------------------------------
+
+select pg_temp.must_fail($$
+  insert into public.feeds (token_hash, token_prefix, model_id, currency_code)
+  values (repeat('b', 64), 'vbb_live_bbbb', 'model-1', 'USD')$$,
+  'A FEED WITH NO OWNER CANNOT BE STORED');
+
+select pg_temp.must_fail($$
+  insert into public.feeds (client_id, token_hash, token_prefix, model_id, currency_code)
+  values ('88888888-8888-8888-8888-888888888888', repeat('c', 64), 'x', 'm', 'USD')$$,
+  'a feed pointing at a workspace that does not exist is rejected');
+
+select pg_temp.must_fail($$
+  insert into public.workspaces (name, key_hash, key_prefix)
+  values ('Plaintext Key Co', 'not-a-hash', 'x')$$,
+  'a workspace key that is not SHA-256 is rejected');
+
+select pg_temp.must_fail($$
+  insert into public.workspaces (name, key_hash, key_prefix)
+  values ('Duplicate Key Co', repeat('9', 64), 'vbb_ws_4d21')$$,
+  'two workspaces cannot share a key');
+
+select pg_temp.must_fail($$
+  insert into public.workspaces (name, key_hash, key_prefix)
+  values ('', repeat('7', 64), 'vbb_ws_7777')$$,
+  'a workspace needs a name an operator can recognise');
 
 -- --- feeds ---------------------------------------------------------------
 
@@ -277,20 +312,21 @@ select pg_temp.must_fail($$
 
 -- --- cascade --------------------------------------------------------------
 
-delete from public.feeds where id = '11111111-1111-1111-1111-111111111111';
+delete from public.workspaces where id = '99999999-9999-9999-9999-999999999999';
 
 do $$
 declare leftover integer;
 begin
-  select (select count(*) from public.feed_rows)
+  select (select count(*) from public.feeds)
+       + (select count(*) from public.feed_rows)
        + (select count(*) from public.feed_fetches)
        + (select count(*) from public.feed_models)
        + (select count(*) from public.crm_connections)
     into leftover;
   if leftover <> 0 then
-    raise exception 'FAIL  deleting a feed left % rows behind', leftover;
+    raise exception 'FAIL  deleting a workspace left % rows behind', leftover;
   end if;
-  raise notice 'PASS  deleting a feed takes its rows, log, model and CRM connection with it';
+  raise notice 'PASS  deleting a workspace takes its feeds, rows, log, model and CRM connection';
 end;
 $$;
 

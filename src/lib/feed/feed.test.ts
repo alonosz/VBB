@@ -313,6 +313,7 @@ describe("InMemoryFeedRepository", () => {
   const feed = {
     tokenHash: "a".repeat(64), tokenPrefix: "vbb_live_8f2a",
     modelId: "m1", currencyCode: "USD", identifier: "clickId" as const,
+    clientId: "ws-1",
   };
 
   it("finds a feed by the hash of its token", async () => {

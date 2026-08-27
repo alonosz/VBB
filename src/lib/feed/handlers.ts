@@ -117,6 +117,8 @@ export interface PublishBody {
    * own.
    */
   model?: unknown;
+  /** Authorises the publish. Read by the route, never by the handler. */
+  workspaceKey?: unknown;
 }
 
 function bad(message: string, status = 400): HandlerResponse {
@@ -164,7 +166,9 @@ export function parseRows(raw: unknown, currencyCode: string, modelId: string): 
 export async function publishFeed(
   repo: FeedRepository,
   body: PublishBody,
-  origin: string
+  origin: string,
+  /** The workspace that authorised this publish. Every feed has an owner. */
+  clientId: string
 ): Promise<HandlerResponse> {
   const modelId = typeof body.modelId === "string" ? body.modelId.trim() : "";
   const currencyCode = typeof body.currencyCode === "string" ? body.currencyCode.trim() : "";
@@ -204,6 +208,7 @@ export async function publishFeed(
 
   try {
     const feed = await repo.createFeed({
+      clientId,
       tokenHash,
       tokenPrefix,
       label: typeof body.label === "string" ? body.label.slice(0, 120) : null,

@@ -3,6 +3,8 @@ import { feedRepositoryFromEnv } from "@/lib/feed/supabaseRepository";
 import { hashToken, tokenFromInput } from "@/lib/feed/token";
 import { feedOriginFromEnv } from "@/lib/feed/origin";
 import { keyFromEnv } from "@/lib/sync/secrets";
+import { workspaceRepositoryFromEnv } from "@/lib/workspace/env";
+import { authorizeWorkspace, feedInWorkspace } from "@/lib/workspace/authorize";
 import { authorizeUrl, oauthConfigFromEnv, signState } from "@/lib/sync/hubspot/oauth";
 
 /**
@@ -21,8 +23,9 @@ export async function POST(request: Request) {
   const oauth = oauthConfigFromEnv(`${origin}/api/crm/hubspot/callback`);
   const key = keyFromEnv();
   const repo = feedRepositoryFromEnv();
+  const workspaces = workspaceRepositoryFromEnv();
 
-  if (!repo || !oauth || !key) {
+  if (!repo || !oauth || !key || !workspaces) {
     return NextResponse.json(
       {
         ok: false,
@@ -32,11 +35,16 @@ export async function POST(request: Request) {
     );
   }
 
-  let body: { url?: unknown };
+  let body: { url?: unknown; workspaceKey?: unknown };
   try {
-    body = (await request.json()) as { url?: unknown };
+    body = (await request.json()) as { url?: unknown; workspaceKey?: unknown };
   } catch {
     return NextResponse.json({ ok: false, error: "That request could not be read." }, { status: 400 });
+  }
+
+  const auth = await authorizeWorkspace(workspaces, body.workspaceKey);
+  if (!auth.ok) {
+    return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
   }
 
   const token = tokenFromInput(typeof body.url === "string" ? body.url : "");
@@ -47,10 +55,16 @@ export async function POST(request: Request) {
     );
   }
 
-  const feed = await repo.findByTokenHash(await hashToken(token));
-  if (!feed || feed.status !== "active") {
+  const found = await repo.findByTokenHash(await hashToken(token));
+  if (!found || found.status !== "active") {
     return NextResponse.json({ ok: false, error: "No feed found for that URL." }, { status: 404 });
   }
+
+  const owned = await feedInWorkspace(repo, found.id, auth.workspace);
+  if (!owned.ok) {
+    return NextResponse.json({ ok: false, error: owned.error }, { status: owned.status });
+  }
+  const feed = owned.feed;
 
   // The feed id travels through HubSpot, signed. The feed *token* does not
   // travel at all.

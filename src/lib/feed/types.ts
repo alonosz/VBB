@@ -34,6 +34,8 @@ export interface FeedRow {
 
 export interface FeedRecord {
   id: string;
+  /** The workspace that owns it. Every feed has one. */
+  clientId: string;
   tokenPrefix: string;
   label: string | null;
   modelId: string;
@@ -47,6 +49,8 @@ export interface FeedRecord {
 }
 
 export interface NewFeed {
+  /** Required: a feed with no owner cannot be listed, supported or isolated. */
+  clientId: string;
   tokenHash: string;
   tokenPrefix: string;
   label?: string | null;

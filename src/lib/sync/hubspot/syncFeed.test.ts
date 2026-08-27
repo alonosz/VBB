@@ -11,6 +11,7 @@ import { withOverrides } from "@/lib/analysis/valueModel";
 import type { OAuthConfig } from "./oauth";
 
 const KEY = parseKey(generateKey())!;
+const WORKSPACE = "ws-1";
 const NOW = new Date("2026-06-15T12:00:00Z");
 const OAUTH: OAuthConfig = {
   clientId: "client-1",
@@ -100,6 +101,7 @@ async function scenario(opts: { expiresAt?: Date | null; withModel?: boolean } =
   });
 
   const feed = await repo.createFeed({
+    clientId: WORKSPACE,
     tokenHash: "a".repeat(64), tokenPrefix: "vbb_live_8f2a",
     modelId: model.modelId, currencyCode: "USD", identifier: "clickId",
   });
@@ -250,10 +252,12 @@ describe("syncAllFeeds", () => {
     });
 
     const good = await repo.createFeed({
+      clientId: WORKSPACE,
       tokenHash: "a".repeat(64), tokenPrefix: "vbb_live_aaaa",
       modelId: "model-1", currencyCode: "USD", identifier: "clickId",
     });
     const broken = await repo.createFeed({
+      clientId: WORKSPACE,
       tokenHash: "b".repeat(64), tokenPrefix: "vbb_live_bbbb",
       modelId: "model-1", currencyCode: "USD", identifier: "clickId",
     });

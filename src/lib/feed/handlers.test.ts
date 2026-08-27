@@ -17,6 +17,7 @@ import { buildFeedRows } from "./publish";
 import type { ValuedLead } from "@/lib/analysis/valueModel";
 import type { MappedDeal } from "@/lib/analysis/types";
 
+const WORKSPACE = "ws-1";
 const NOW = new Date("2026-06-15T12:00:00Z");
 const ORIGIN = "https://valuebasedbidding.com";
 
@@ -46,7 +47,8 @@ async function publishedFeed(repo: InMemoryFeedRepository, count = 2) {
       identifier: "clickId",
       rows: rows.map((r) => ({ ...r, conversionTime: r.conversionTime.toISOString() })),
     },
-    ORIGIN
+    ORIGIN,
+    WORKSPACE
   );
   return { res, body: JSON.parse(res.body) as Record<string, string | number> };
 }
@@ -97,7 +99,8 @@ async function publishWithModel(
       rows: rows.map((r) => ({ ...r, conversionTime: r.conversionTime.toISOString() })),
       model,
     },
-    ORIGIN
+    ORIGIN,
+    WORKSPACE
   );
   return { res, body: JSON.parse(res.body) as Record<string, unknown> };
 }
@@ -142,7 +145,8 @@ describe("publishFeed", () => {
           value: 100, rowKey: "k1",
         }],
       },
-      ORIGIN
+      ORIGIN,
+      WORKSPACE
     );
     expect(res.status).toBe(400);
     expect(JSON.parse(res.body).error).toMatch(/SHA-256/);
@@ -155,7 +159,8 @@ describe("publishFeed", () => {
         modelId: "m", currencyCode: "USD",
         rows: [{ conversionTime: NOW.toISOString(), value: 100, rowKey: "k1" }],
       },
-      ORIGIN
+      ORIGIN,
+      WORKSPACE
     );
     expect(res.status).toBe(400);
     expect(JSON.parse(res.body).error).toMatch(/hashed email or a click ID/);
@@ -165,7 +170,8 @@ describe("publishFeed", () => {
     const res = await publishFeed(
       new InMemoryFeedRepository(),
       { modelId: "m", rows: [] },
-      ORIGIN
+      ORIGIN,
+      WORKSPACE
     );
     expect(res.status).toBe(400);
     expect(JSON.parse(res.body).error).toMatch(/currency/);
@@ -175,7 +181,8 @@ describe("publishFeed", () => {
     const res = await publishFeed(
       new InMemoryFeedRepository(),
       { modelId: "m", currencyCode: "USD", rows: [] },
-      ORIGIN
+      ORIGIN,
+      WORKSPACE
     );
     expect(res.status).toBe(400);
     expect(JSON.parse(res.body).error).toMatch(/no leads to publish/);
@@ -192,7 +199,8 @@ describe("publishFeed", () => {
           rowKey: "k1", currencyCode: "EUR", modelId: "someone-elses-model",
         }],
       },
-      ORIGIN
+      ORIGIN,
+      WORKSPACE
     );
     const feedId = String(JSON.parse(res.body).feedId);
     const stored = await repo.rowsFor(feedId);

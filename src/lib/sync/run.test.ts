@@ -11,6 +11,7 @@ import type { MappedDeal } from "@/lib/analysis/types";
 import { gateStatusFor } from "@/lib/analysis/gateValue";
 import { savedGateToGateValue } from "@/lib/model/savedModel";
 
+const WORKSPACE = "ws-1";
 const NOW = new Date("2026-06-15T12:00:00Z");
 
 function fixture(now = NOW) {
@@ -47,6 +48,7 @@ function expectedValues(deals: MappedDeal[], model: SavedValueModel, now: Date) 
 
 async function feedFor(repo: InMemoryFeedRepository, model: SavedValueModel): Promise<FeedRecord> {
   return repo.createFeed({
+    clientId: WORKSPACE,
     tokenHash: "a".repeat(64),
     tokenPrefix: "vbb_live_8f2a",
     modelId: model.modelId,

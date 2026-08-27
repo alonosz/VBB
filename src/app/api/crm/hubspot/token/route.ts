@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { feedRepositoryFromEnv, supabaseFromEnv } from "@/lib/feed/supabaseRepository";
 import { hashToken, tokenFromInput } from "@/lib/feed/token";
+import { workspaceRepositoryFromEnv } from "@/lib/workspace/env";
+import { authorizeWorkspace, feedInWorkspace } from "@/lib/workspace/authorize";
 import { CrmConnectionStore } from "@/lib/sync/connections";
 import { keyFromEnv } from "@/lib/sync/secrets";
 import { HubSpotClient, verifyAccess } from "@/lib/sync/hubspot/client";
@@ -18,6 +20,11 @@ import { HubSpotClient, verifyAccess } from "@/lib/sync/hubspot/client";
  * a scope left unticked would otherwise fail at six in the morning with nobody
  * watching; this turns that into an error the advertiser sees while the scopes
  * screen is still open.
+ *
+ * Authorised by the workspace key. This route used to resolve the feed by its
+ * own token, which meant anyone holding a feed URL — a link that lives in a
+ * Google Ads configuration screen — could attach their own HubSpot portal to
+ * someone else's feed and push a stranger's leads into their account.
  */
 
 export const runtime = "nodejs";
@@ -26,19 +33,25 @@ export async function POST(request: Request) {
   const repo = feedRepositoryFromEnv();
   const client = supabaseFromEnv();
   const key = keyFromEnv();
+  const workspaces = workspaceRepositoryFromEnv();
 
-  if (!repo || !client || !key) {
+  if (!repo || !client || !key || !workspaces) {
     return NextResponse.json(
       { ok: false, error: "Connecting a CRM is not set up on this deployment yet." },
       { status: 503 }
     );
   }
 
-  let body: { url?: unknown; token?: unknown };
+  let body: { url?: unknown; token?: unknown; workspaceKey?: unknown };
   try {
-    body = (await request.json()) as { url?: unknown; token?: unknown };
+    body = (await request.json()) as { url?: unknown; token?: unknown; workspaceKey?: unknown };
   } catch {
     return NextResponse.json({ ok: false, error: "That request could not be read." }, { status: 400 });
+  }
+
+  const auth = await authorizeWorkspace(workspaces, body.workspaceKey);
+  if (!auth.ok) {
+    return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
   }
 
   const feedToken = tokenFromInput(typeof body.url === "string" ? body.url : "");
@@ -54,10 +67,18 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, error: "Paste the private app token." }, { status: 400 });
   }
 
-  const feed = await repo.findByTokenHash(await hashToken(feedToken));
-  if (!feed || feed.status !== "active") {
+  const found = await repo.findByTokenHash(await hashToken(feedToken));
+  if (!found || found.status !== "active") {
     return NextResponse.json({ ok: false, error: "No feed found for that URL." }, { status: 404 });
   }
+
+  // The key alone is not enough: it has to be the key for the workspace that
+  // owns this feed.
+  const owned = await feedInWorkspace(repo, found.id, auth.workspace);
+  if (!owned.ok) {
+    return NextResponse.json({ ok: false, error: owned.error }, { status: owned.status });
+  }
+  const feed = owned.feed;
 
   const verified = await verifyAccess(new HubSpotClient({ accessToken }));
   if (!verified.ok) {
