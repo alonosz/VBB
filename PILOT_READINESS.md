@@ -99,6 +99,7 @@ NEXT_PUBLIC_SUPABASE_URL       Supabase → Settings → API → Project URL
 SUPABASE_SERVICE_ROLE_KEY      Supabase → Settings → API → secret key (sb_secret_…)
 VBB_TOKEN_KEY                  a generated password, 24+ chars — encrypts CRM credentials
 CRON_SECRET                    a generated password, 24+ chars — gates the nightly job
+VBB_ADMIN_KEY                  the operator's own password, 16+ chars — opens /admin
 ```
 
 Optional:

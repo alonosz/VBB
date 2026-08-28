@@ -34,11 +34,14 @@ back when they have more history.
 
 ## 1. Create their workspace
 
-```bash
-npm run workspace -- create "Northridge Fabrication"
-```
+Go to `<your-domain>/admin`, sign in with your admin password, type their name
+and click **Create**.
 
-Copy the `vbb_ws_…` key. It is shown once.
+Copy the `vbb_ws_…` key it shows. It appears once and cannot be shown again —
+only a hash is stored.
+
+(There is a terminal equivalent, `npm run workspace -- create "Name"`, if you
+prefer it.)
 
 Send it to them with a line like:
 

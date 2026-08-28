@@ -185,12 +185,10 @@ Permanent — publishing a new feed means reconfiguring Google Ads.
 
 Use when a pilot ends or a URL is believed compromised.
 
-### Suspend a customer
+### Add or suspend a customer
 
-```bash
-npm run workspace -- list
-npm run workspace -- suspend <workspace-id>
-```
+`<your-domain>/admin`, signed in with your admin password. Adding shows the new
+key once; suspending is a button on the row.
 
 Their key stops working immediately. **Their feed keeps serving** — suspending
 is about access to the workspace, not about stopping Google. To stop values

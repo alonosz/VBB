@@ -65,6 +65,7 @@ Vercel → your project → **Settings** → **Environment Variables**. Set each
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase → Settings → API → **secret** key (`sb_secret_…`). Not the publishable one — the app refuses that and says so. |
 | `VBB_TOKEN_KEY` | A generated password, 24+ characters (below). Encrypts customers' CRM credentials. |
 | `CRON_SECRET` | Another generated password. Without it the nightly endpoint stays shut rather than falling open. |
+| `VBB_ADMIN_KEY` | **The one password you keep.** Opens `/admin`, where you add customers. At least 16 characters. |
 
 For the two you make yourself, use a password generator — a password manager,
 or 1password.com/password-generator. Set the length to **40 characters** and
@@ -136,13 +137,10 @@ refusing.
 
 ## 6. Create your first workspace
 
-From a machine with the Supabase variables set locally:
+Go to `https://<your-domain>/admin`, sign in with `VBB_ADMIN_KEY`, and add a
+customer by name.
 
-```bash
-npm run workspace -- create "Customer name"
-```
-
-It prints a key starting `vbb_ws_` **once**. Store it where you keep customer
+It shows a key starting `vbb_ws_` **once**. Store it where you keep customer
 records and send it to them. Only a hash is kept, so it cannot be recovered —
 if it is lost, create a new workspace.
 
