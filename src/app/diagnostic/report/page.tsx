@@ -348,20 +348,31 @@ export default function ReportPage() {
           </AnalysisExpander>
         </div>
 
-        <footer className="mt-12 flex flex-wrap items-center justify-between gap-4 border-t border-[var(--border)] pt-6">
+        {/* The report runs several screens deep and the action that leaves it
+            was at the very bottom of all of them. It follows you down now, the
+            same way the mapping screen's does. */}
+        <footer className="sticky bottom-0 z-20 -mx-5 mt-12 flex items-center justify-between gap-3 border-t border-[var(--border)] bg-[color-mix(in_srgb,var(--background)_88%,transparent)] px-5 py-3.5 backdrop-blur-md md:-mx-8 md:gap-4 md:px-8 md:py-4">
+          {/* One row on a phone. Two stacked full-width buttons in a pinned bar
+              eat a third of the screen, and the bar is there for the whole
+              scroll. Both labels shorten rather than wrap. */}
           <button
             type="button"
             onClick={() => router.push("/diagnostic/mapping")}
-            className="btn btn-secondary"
+            className="btn btn-secondary shrink-0"
           >
-            Back to mapping
+            <span className="sm:hidden">Back</span>
+            <span className="hidden sm:inline">Back to mapping</span>
           </button>
           <button
             type="button"
             onClick={() => router.push("/diagnostic/connect")}
-            className="btn btn-primary"
+            className="btn btn-primary min-w-0"
           >
-            Send these values to Google Ads <ArrowIcon />
+            <span className="truncate">
+              <span className="sm:hidden">Send to Google Ads</span>
+              <span className="hidden sm:inline">Send these values to Google Ads</span>
+            </span>
+            <ArrowIcon />
           </button>
         </footer>
       </main>
