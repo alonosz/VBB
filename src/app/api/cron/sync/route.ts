@@ -5,6 +5,7 @@ import { CrmConnectionStore } from "@/lib/sync/connections";
 import { keyFromEnv } from "@/lib/sync/secrets";
 import { oauthConfigFromEnv } from "@/lib/sync/hubspot/oauth";
 import { syncAllFeeds } from "@/lib/sync/hubspot/syncFeed";
+import { SupabaseSyncRunStore } from "@/lib/sync/runs";
 
 /**
  * The nightly run.
@@ -52,6 +53,7 @@ export async function GET(request: Request) {
   const outcomes = await syncAllFeeds({
     repo,
     connections: new CrmConnectionStore(client, key),
+    runs: new SupabaseSyncRunStore(client),
     oauth,
   });
 

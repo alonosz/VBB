@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { syncAllFeeds, syncFeed } from "./syncFeed";
 import { fakeSupabase } from "../fakeSupabase";
 import { CrmConnectionStore } from "../connections";
+import { InMemorySyncRunStore } from "../runs";
 import { generateKey, parseKey } from "../secrets";
 import { InMemoryFeedRepository } from "@/lib/feed/repository";
 import { generateDemoDeals } from "@/lib/fixtures/demoDataset";
@@ -277,5 +278,127 @@ describe("syncAllFeeds", () => {
     expect(outcomes).toHaveLength(2);
     expect(outcomes.filter((o) => o.error)).toHaveLength(1);
     expect(await repo.rowsFor(good.id)).toHaveLength(1);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Every run leaves a trace
+// ---------------------------------------------------------------------------
+
+describe("recording the run", () => {
+  it("records a success with the counts an operator is asked about", async () => {
+    const { repo, connections, feed } = await scenario();
+    const runs = new InMemorySyncRunStore();
+    await syncFeed({
+      feedId: feed.id, repo, connections, runs, oauth: OAUTH,
+      fetchImpl: portal().fetchImpl, now: NOW,
+    });
+
+    const [recorded] = runs.runs;
+    expect(recorded).toMatchObject({
+      status: "ok", clientId: feed.clientId, feedId: feed.id,
+      dealsPulled: 1, rowsPublished: 1, newConversions: 1,
+    });
+    expect(recorded.modelId).toBe("model-1");
+  });
+
+  it("records a refusal WITH ITS REASON, never a silent one", async () => {
+    const { repo, connections, feed } = await scenario({ withModel: false });
+    const runs = new InMemorySyncRunStore();
+    await syncFeed({
+      feedId: feed.id, repo, connections, runs, oauth: OAUTH,
+      fetchImpl: portal().fetchImpl, now: NOW,
+    });
+
+    expect(runs.runs[0].status).toBe("refused");
+    expect(runs.runs[0].message).toMatch(/no saved model/i);
+  });
+
+  it("records a failure when the CRM is unreachable", async () => {
+    const { repo, connections, feed } = await scenario();
+    const runs = new InMemorySyncRunStore();
+    await syncFeed({
+      feedId: feed.id, repo, connections, runs, oauth: OAUTH,
+      fetchImpl: portal({ dealsStatus: 500 }).fetchImpl, now: NOW,
+      sleep: async () => {},
+    });
+
+    expect(runs.runs[0].status).toBe("failed");
+    expect(runs.runs[0].message).toMatch(/next run will pick these up/);
+  });
+
+  it("records a revoked feed rather than exiting quietly", async () => {
+    const { repo, connections, feed } = await scenario();
+    await repo.revokeFeed(feed.id);
+    const runs = new InMemorySyncRunStore();
+    await syncFeed({
+      feedId: feed.id, repo, connections, runs, oauth: OAUTH,
+      fetchImpl: portal().fetchImpl, now: NOW,
+    });
+
+    expect(runs.runs).toHaveLength(1);
+    expect(runs.runs[0].status).toBe("refused");
+  });
+
+  it("EVERY exit path leaves exactly one record", async () => {
+    // The guarantee the table rests on. A path that returns without recording
+    // is indistinguishable from a night the job never ran.
+    const cases: { name: string; run: () => Promise<InMemorySyncRunStore> }[] = [
+      {
+        name: "success",
+        run: async () => {
+          const { repo, connections, feed } = await scenario();
+          const runs = new InMemorySyncRunStore();
+          await syncFeed({ feedId: feed.id, repo, connections, runs, oauth: OAUTH, fetchImpl: portal().fetchImpl, now: NOW });
+          return runs;
+        },
+      },
+      {
+        name: "no model",
+        run: async () => {
+          const { repo, connections, feed } = await scenario({ withModel: false });
+          const runs = new InMemorySyncRunStore();
+          await syncFeed({ feedId: feed.id, repo, connections, runs, oauth: OAUTH, fetchImpl: portal().fetchImpl, now: NOW });
+          return runs;
+        },
+      },
+      {
+        name: "renewal refused",
+        run: async () => {
+          const { repo, connections, feed } = await scenario({ expiresAt: new Date(NOW.getTime() - 1000) });
+          const runs = new InMemorySyncRunStore();
+          await syncFeed({ feedId: feed.id, repo, connections, runs, oauth: OAUTH, fetchImpl: portal({ tokenStatus: 400 }).fetchImpl, now: NOW });
+          return runs;
+        },
+      },
+      {
+        name: "CRM unreachable",
+        run: async () => {
+          const { repo, connections, feed } = await scenario();
+          const runs = new InMemorySyncRunStore();
+          await syncFeed({ feedId: feed.id, repo, connections, runs, oauth: OAUTH, fetchImpl: portal({ dealsStatus: 500 }).fetchImpl, now: NOW, sleep: async () => {} });
+          return runs;
+        },
+      },
+      {
+        name: "feed missing",
+        run: async () => {
+          const { repo, connections } = await scenario();
+          const runs = new InMemorySyncRunStore();
+          await syncFeed({ feedId: "no-such-feed", repo, connections, runs, oauth: OAUTH, fetchImpl: portal().fetchImpl, now: NOW });
+          return runs;
+        },
+      },
+    ];
+
+    for (const { name, run } of cases) {
+      const runs = await run();
+      expect(runs.runs, `${name} left no record`).toHaveLength(1);
+      expect(runs.runs[0].status, name).toMatch(/^(ok|refused|failed)$/);
+      // A refusal without a reason is the exact silent failure to avoid.
+      if (runs.runs[0].status === "refused") {
+        expect(runs.runs[0].message, `${name} refused without saying why`).toBeTruthy();
+      }
+    }
   });
 });

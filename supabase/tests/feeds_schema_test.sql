@@ -310,6 +310,61 @@ select pg_temp.must_fail($$
    where feed_id = '11111111-1111-1111-1111-111111111111'$$,
   'an unknown sync status is rejected');
 
+-- --- sync_runs -------------------------------------------------------------
+
+select pg_temp.must_pass($$
+  insert into public.sync_runs (feed_id, client_id, status, deals_pulled, rows_published, new_conversions)
+  values (
+    '11111111-1111-1111-1111-111111111111',
+    '99999999-9999-9999-9999-999999999999',
+    'ok', 120, 84, 84
+  )$$,
+  'a successful run is recorded');
+
+select pg_temp.must_pass($$
+  insert into public.sync_runs (feed_id, client_id, status, rows_published)
+  values (
+    '11111111-1111-1111-1111-111111111111',
+    '99999999-9999-9999-9999-999999999999',
+    'ok', 0
+  )$$,
+  'a run that published nothing is fine — there may have been no new leads');
+
+select pg_temp.must_fail($$
+  insert into public.sync_runs (client_id, status)
+  values ('99999999-9999-9999-9999-999999999999', 'refused')$$,
+  'a refusal with no reason is rejected — a silent refusal is the bug');
+
+select pg_temp.must_fail($$
+  insert into public.sync_runs (client_id, status, message)
+  values ('99999999-9999-9999-9999-999999999999', 'weird', 'x')$$,
+  'an unknown run status is rejected');
+
+select pg_temp.must_fail($$
+  insert into public.sync_runs (client_id, status, rows_published)
+  values ('99999999-9999-9999-9999-999999999999', 'ok', -1)$$,
+  'a negative row count is rejected');
+
+select pg_temp.must_fail($$
+  insert into public.sync_runs (client_id, status, message)
+  values ('99999999-9999-9999-9999-999999999999', 'failed', repeat('x', 501))$$,
+  'a run message long enough to hold a stack trace is rejected');
+
+do $$
+declare kept integer;
+begin
+  -- History outlives the feed it describes: an operator asked "what happened
+  -- last week" should not be told the feed was deleted.
+  delete from public.feeds where id = '11111111-1111-1111-1111-111111111111';
+  select count(*) into kept from public.sync_runs
+   where client_id = '99999999-9999-9999-9999-999999999999';
+  if kept < 2 then
+    raise exception 'FAIL  deleting a feed destroyed % run records', kept;
+  end if;
+  raise notice 'PASS  a workspace keeps its run history when a feed is deleted';
+end;
+$$;
+
 -- --- cascade --------------------------------------------------------------
 
 delete from public.workspaces where id = '99999999-9999-9999-9999-999999999999';
@@ -322,6 +377,7 @@ begin
        + (select count(*) from public.feed_fetches)
        + (select count(*) from public.feed_models)
        + (select count(*) from public.crm_connections)
+       + (select count(*) from public.sync_runs)
     into leftover;
   if leftover <> 0 then
     raise exception 'FAIL  deleting a workspace left % rows behind', leftover;

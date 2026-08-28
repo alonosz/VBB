@@ -1,5 +1,6 @@
 import type { FeedRepository } from "@/lib/feed/repository";
 import { runSync, type SyncReport } from "../run";
+import type { SyncRunStore } from "../runs";
 import { CrmConnectionStore } from "../connections";
 import { HubSpotClient, HubSpotError, pullFromHubSpot } from "./client";
 import { hubspotToDeals } from "./map";
@@ -25,6 +26,8 @@ import {
 
 export interface SyncFeedOptions {
   feedId: string;
+  /** Where the run is recorded. A run with no record is an invisible run. */
+  runs?: SyncRunStore;
   repo: FeedRepository;
   connections: CrmConnectionStore;
   /**
@@ -62,21 +65,49 @@ export async function syncFeed(opts: SyncFeedOptions): Promise<FeedSyncOutcome> 
   const fetchImpl = opts.fetchImpl ?? fetch;
 
   const feed = await repo.findById(feedId);
-  if (!feed) return failed(feedId, "This feed no longer exists.");
+
+  /**
+   * Every exit from here leaves a row. A run that refused and a run that never
+   * happened look identical from outside otherwise, and they need opposite
+   * responses.
+   */
+  const record = async (
+    status: "ok" | "refused" | "failed",
+    message: string | null,
+    report: SyncReport | null = null
+  ) => {
+    await opts.runs?.record({
+      feedId: feed?.id ?? null,
+      clientId: feed?.clientId ?? null,
+      status,
+      startedAt: now,
+      message,
+      report,
+    });
+  };
+  if (!feed) {
+    await record("failed", "This feed no longer exists.");
+    return failed(feedId, "This feed no longer exists.");
+  }
   if (feed.status !== "active") {
-    return failed(feedId, "This feed has been revoked, so nothing was pulled.");
+    const why = "This feed has been revoked, so nothing was pulled.";
+    await record("refused", why);
+    return failed(feedId, why);
   }
 
   const { connection, error: connectionError } = await connections.load(feedId);
   if (!connection) {
-    await connections.recordRun(feedId, { status: "refused", error: connectionError, at: now });
-    return failed(feedId, connectionError ?? "No CRM is connected.");
+    const why = connectionError ?? "No CRM is connected.";
+    await connections.recordRun(feedId, { status: "refused", error: why, at: now });
+    await record("refused", why);
+    return failed(feedId, why);
   }
 
   const { model, error: modelError } = await repo.modelFor(feedId);
   if (!model) {
     const why = modelError ?? "This feed has no saved model, so nothing can be priced.";
     await connections.recordRun(feedId, { status: "refused", error: why, at: now });
+    await record("refused", why);
     return failed(feedId, why);
   }
 
@@ -88,6 +119,7 @@ export async function syncFeed(opts: SyncFeedOptions): Promise<FeedSyncOutcome> 
     if (!refreshed) {
       const why = "HubSpot would not renew the connection. Reconnect the account.";
       await connections.recordRun(feedId, { status: "refused", error: why, at: now });
+      await record("refused", why);
       return failed(feedId, why);
     }
     await connections.save({
@@ -120,6 +152,7 @@ export async function syncFeed(opts: SyncFeedOptions): Promise<FeedSyncOutcome> 
         ? error.message
         : "The CRM could not be read. Nothing was published; the next run will pick these up.";
     await connections.recordRun(feedId, { status: "failed", error: why, at: now });
+    await record("failed", why);
     return failed(feedId, why);
   }
 
@@ -131,6 +164,7 @@ export async function syncFeed(opts: SyncFeedOptions): Promise<FeedSyncOutcome> 
     error: report.refusedBecause,
     at: now,
   });
+  await record(report.refusedBecause ? "refused" : "ok", report.refusedBecause, report);
 
   return { feedId, report, error: report.refusedBecause };
 }
@@ -152,7 +186,13 @@ export async function syncAllFeeds(
       outcomes.push(await syncFeed({ ...opts, feedId }));
     } catch (error) {
       console.error(`sync failed for feed ${feedId}:`, error);
-      outcomes.push(failed(feedId, "The run failed unexpectedly."));
+      const why = "The run failed unexpectedly.";
+      // syncFeed threw before it could record anything, so this is the only
+      // trace the run will leave.
+      await opts.runs?.record({
+        feedId, clientId: null, status: "failed", startedAt: opts.now ?? new Date(), message: why,
+      });
+      outcomes.push(failed(feedId, why));
     }
   }
 
