@@ -38,8 +38,11 @@
   /* Caution read on navy: --warn is tuned for AA on white and disappears here. */
   --warn-on-navy: #f0c14b;
 
-  /* Ink light enough to recede but still legible: disabled steps, empty
-     states, the grey in the blindness chart. */
+  /*
+   * A fill, never an ink. It sits at 2.6:1 on white, which is right for the
+   * grey in the blindness chart and a hover border, and far too low for text
+   * of any size — recede-but-legible is what --muted is for.
+   */
   --muted-soft: #97a1b8;
 
   --border: #dfe4ef;
@@ -68,14 +71,21 @@
   --navy-line: #232c4f;
 
   /* --- status ------------------------------------------------------------ */
-  /* Reserved. Never a decorative choice, never "another series". */
-  --accent: #0f9f74;
+  /*
+   * Reserved. Never a decorative choice, never "another series".
+   *
+   * Each of these is used as small bold text on both --surface and its own
+   * -soft ground, so each clears WCAG AA (4.5:1) against both. The obvious
+   * brighter greens and ambers do not — a #10b981 "passing" label sits at
+   * 3.0:1 on white, which is a status nobody with low vision can read.
+   */
+  --accent: #0a7a58;
   --accent-soft: #e7f7f1;
   --accent-line: #a8e3cf;
-  --warn: #b7791f;
+  --warn: #8f5d10;
   --warn-soft: #fdf6e7;
   --warn-line: #f0d9a8;
-  --danger: #d1343f;
+  --danger: #c62834;
   --danger-soft: #fdf1f2;
   --danger-line: #f3c2c6;
 

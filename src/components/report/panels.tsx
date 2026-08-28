@@ -713,7 +713,13 @@ export function AnalysisExpander({ children }: { children: React.ReactNode }) {
           ▾
         </span>
       </button>
-      {open && <div className="animate-block-enter mt-4 grid gap-8">{children}</div>}
+      {open && (
+        /* minmax(0,1fr): a grid item will not shrink below its min-content, so
+           one wide table in here would push the phone sideways. */
+        <div className="animate-block-enter mt-4 grid grid-cols-[minmax(0,1fr)] gap-8">
+          {children}
+        </div>
+      )}
     </section>
   );
 }

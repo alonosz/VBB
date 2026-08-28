@@ -51,7 +51,7 @@ export function AppHeader({
         <div className="flex shrink-0 items-center gap-2">
           {right}
           <span
-            className="mono hidden text-[10px] tracking-wide text-[var(--muted-soft)] sm:inline"
+            className="mono hidden text-[10px] tracking-wide text-[var(--muted)] sm:inline"
             title="Deployed build"
           >
             {BUILD_ID}

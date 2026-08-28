@@ -44,7 +44,7 @@ export function StepHeader({ current }: { current: StepKey }) {
                       ? "bg-[var(--primary-soft)] text-[var(--primary)]"
                       : state === "done"
                       ? "text-[var(--foreground)]"
-                      : "text-[var(--muted-soft)]")
+                      : "text-[var(--muted)]")
                   }
                 >
                   <span
@@ -54,7 +54,7 @@ export function StepHeader({ current }: { current: StepKey }) {
                         ? "bg-[var(--primary)] text-white"
                         : state === "done"
                         ? "bg-[var(--accent)] text-white"
-                        : "bg-[var(--background-deep)] text-[var(--muted-soft)]")
+                        : "bg-[var(--background-deep)] text-[var(--muted)]")
                     }
                   >
                     {state === "done" ? "✓" : i + 1}

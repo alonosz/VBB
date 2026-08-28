@@ -99,12 +99,12 @@ export function ShadowRoasSection({
             {rows.map((r) => (
               <tr key={r.source} className="border-t border-white/10">
                 <td className="py-2.5 pr-3 font-semibold">{r.source}</td>
-                <td className="mono py-2.5 pr-3 text-right text-[var(--muted-soft)]">{r.leads}</td>
+                <td className="mono py-2.5 pr-3 text-right text-[var(--muted)]">{r.leads}</td>
                 {/* Identical for every row — that is the entire point. */}
                 <td className="mono py-2.5 pr-3 text-right text-[var(--muted)]">
                   {r.leads} × 1
                 </td>
-                <td className="mono py-2.5 pr-3 text-right text-[var(--muted-soft)]">{r.wonDeals}</td>
+                <td className="mono py-2.5 pr-3 text-right text-[var(--muted)]">{r.wonDeals}</td>
                 <td className="mono py-2.5 pr-3 text-right font-semibold">
                   {money(r.actualValue, currency)}
                 </td>
@@ -269,7 +269,7 @@ export function VerdictBanner({ verdict }: { verdict: Verdict }) {
                   "rounded-full border px-2.5 py-1 text-[11px] font-semibold " +
                   (m.key === verdict.mode
                     ? "border-current bg-[var(--surface)] text-[var(--foreground)]"
-                    : "border-[var(--border)] bg-[var(--surface)]/50 text-[var(--muted-soft)]")
+                    : "border-[var(--border)] bg-[var(--surface)]/50 text-[var(--muted)]")
                 }
               >
                 {m.key === verdict.mode ? "✓ " : ""}

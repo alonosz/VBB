@@ -64,6 +64,7 @@ export function FileDropzone({
         ref={inputRef}
         type="file"
         accept={accept}
+        aria-label="Choose a file"
         className="hidden"
         onChange={(e) => {
           handleFiles(e.target.files);

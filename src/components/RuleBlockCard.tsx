@@ -95,7 +95,7 @@ export function RuleBlockCard({
             type="button"
             aria-label="Remove block"
             onClick={onRemove}
-            className="btn btn-ghost px-2 text-[var(--muted-soft)] hover:text-[var(--danger)]"
+            className="btn btn-ghost px-2 text-[var(--muted)] hover:text-[var(--danger)]"
           >
             ✕
           </button>

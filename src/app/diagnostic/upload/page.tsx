@@ -180,6 +180,7 @@ export default function UploadPage() {
               ref={inputRef}
               type="file"
               accept=".csv,text/csv"
+              aria-label="Choose a CSV export"
               className="hidden"
               onChange={(e) => {
                 const f = e.target.files?.[0];

@@ -121,6 +121,7 @@ export function ModelSourcePanel({
             ref={fileRef}
             type="file"
             accept="application/json,.json"
+            aria-label="Load a saved model file"
             className="hidden"
             onChange={(e) => {
               const f = e.target.files?.[0];

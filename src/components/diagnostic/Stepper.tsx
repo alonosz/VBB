@@ -78,7 +78,7 @@ export function Stepper({ current }: { current: DiagnosticStep }) {
                         ? "bg-[var(--primary-soft)] text-[var(--primary-deep)]"
                         : state === "done"
                           ? "text-[var(--muted-strong)]"
-                          : "text-[var(--muted)]/60")
+                          : "text-[var(--muted)]")
                     }
                   >
                     <span

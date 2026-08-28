@@ -98,7 +98,7 @@ export function NumericBucketEditor({
               <button
                 type="button"
                 aria-label="Remove range"
-                className="btn btn-ghost px-2 text-[var(--muted-soft)] hover:text-[var(--danger)]"
+                className="btn btn-ghost px-2 text-[var(--muted)] hover:text-[var(--danger)]"
                 onClick={() =>
                   onChange({
                     ...rule,
