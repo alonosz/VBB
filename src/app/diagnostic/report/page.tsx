@@ -306,6 +306,8 @@ export default function ReportPage() {
             onResetAll={() => setOverrides({})}
           />
 
+          <EarlyGateSection gate={result.gate} currency={cur} />
+
           <WiringPanel
             match={result.matchRate}
             volume={result.volume}
@@ -317,7 +319,6 @@ export default function ReportPage() {
             <AttributionNote />
             <StatedVsActual businessContext={businessContext} comparisons={comparisons} />
             <ClaimsTestedSection model={result.valueModel} />
-            <EarlyGateSection gate={result.gate} currency={cur} />
             <CycleSection cycle={result.cycle} />
             <section>
               <SectionHead

@@ -699,8 +699,8 @@ export function AnalysisExpander({ children }: { children: React.ReactNode }) {
         <span>
           <span className="text-[15px] font-bold">See the full analysis</span>
           <span className="mt-0.5 block text-[13px] text-[var(--muted)]">
-            Cycle length, channel insight, data quality, and the signals that were tested
-            and dropped.
+            What you said versus what your data says, cycle length, channel
+            insight, data quality, and the signals that were tested and dropped.
           </span>
         </span>
         <span
@@ -954,73 +954,124 @@ export function EarlyGateSection({
 
   return (
     <section>
-      <h3 className="h3 mb-1">
-        When a lead proves itself
-      </h3>
-      <p className="mb-3 max-w-[74ch] text-[13.5px] text-[var(--muted)]">
-        Google stops accepting a new value for a conversion after 7 days. So the
-        only thing that can sharpen a lead&apos;s price is a milestone it hits
-        inside that week.
-      </p>
+      <div className="mb-4">
+        <h2 className="h2">And one thing that can change it later</h2>
+        <p className="mt-1.5 max-w-[72ch] text-[14px] text-[var(--muted)]">
+          Everything above prices a lead on what is knowable the moment it
+          arrives. Google stops accepting a new value for a conversion after 7
+          days, so the only thing that can sharpen a price after that is a
+          milestone the lead hits inside that week.
+        </p>
+      </div>
 
       {gate.available ? (
-        <div className="rounded-xl border border-[var(--accent)]/40 bg-[var(--surface)] px-4 py-3.5">
-          <div className="flex flex-wrap items-baseline justify-between gap-2">
-            <p className="text-[14px] font-bold">
-              Reaching <span className="mono">{gate.stage}</span> is worth{" "}
-              <span className="text-[var(--accent)]">×{gate.multiplier}</span>
-            </p>
-            <span className="mono text-[12px] text-[var(--muted)]">
-              {Math.round(gate.withinWindowRate * 100)}% get there in time
-            </span>
+        <div className="card overflow-hidden p-0">
+          {/*
+            The headline figure gets the same weight as the day-0 stack's, but
+            deliberately not the same box. Folding the gate into the rule stack
+            would read as another arrival multiplier, and it is not one — it is
+            an adjustment sent days later to a conversion Google already has.
+          */}
+          <div className="grid gap-5 border-b border-[var(--border)] bg-[var(--primary-softer)] p-5 sm:grid-cols-[auto_1fr] sm:items-center sm:gap-8 sm:p-6">
+            <div>
+              <p className="label">Reaching this stage is worth</p>
+              <p className="mono mt-1.5 text-[2rem] leading-none font-extrabold tracking-tight text-[var(--primary-deep)]">
+                ×{gate.multiplier}
+              </p>
+            </div>
+            <div className="min-w-0">
+              <p className="text-[15px] font-bold">
+                <span className="mono">{gate.stage}</span>
+              </p>
+              <p className="mono mt-1 text-[12.5px] text-[var(--muted)]">
+                {Math.round(gate.withinWindowRate * 100)}% of leads that get there
+                do it inside the 7 days
+              </p>
+            </div>
           </div>
-          <p className="mt-1.5 max-w-[74ch] text-[13px] text-[var(--muted)]">
-            Leads that reach it close{" "}
-            <span className="mono font-semibold text-[var(--foreground)]">
-              {(gate.closeRateReached * 100).toFixed(1)}%
-            </span>{" "}
-            of the time against{" "}
-            <span className="mono font-semibold text-[var(--foreground)]">
-              {(gate.closeRateNotReached * 100).toFixed(1)}%
-            </span>{" "}
-            for those that don&apos;t, on{" "}
-            <span className="mono">{gate.reachedCount.toLocaleString()}</span> and{" "}
-            <span className="mono">{gate.notReachedCount.toLocaleString()}</span>{" "}
-            resolved deals
-            {gate.medianWonReached !== null && (
-              <>
-                {" "}
-                — median won deal {money(gate.medianWonReached, currency)}
-              </>
+
+          <div className="grid gap-5 p-5 sm:p-6">
+            {/* The evidence: two close rates side by side is the whole case for
+                the multiplier, and it was previously a run-on sentence. */}
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="well p-4">
+                <p className="label">Reached {gate.stage}</p>
+                <p className="mono mt-1.5 text-[1.35rem] font-bold text-[var(--accent)]">
+                  {(gate.closeRateReached * 100).toFixed(1)}%
+                </p>
+                <p className="mono mt-1 text-[11.5px] text-[var(--muted)]">
+                  close rate · n={gate.reachedCount.toLocaleString()}
+                  {gate.medianWonReached !== null && (
+                    <> · {money(gate.medianWonReached, currency)} median</>
+                  )}
+                </p>
+              </div>
+              <div className="well p-4">
+                <p className="label">Did not reach it</p>
+                <p className="mono mt-1.5 text-[1.35rem] font-bold text-[var(--muted-strong)]">
+                  {(gate.closeRateNotReached * 100).toFixed(1)}%
+                </p>
+                <p className="mono mt-1 text-[11.5px] text-[var(--muted)]">
+                  close rate · n={gate.notReachedCount.toLocaleString()}
+                </p>
+              </div>
+            </div>
+
+            {gate.wasBounded && gate.rawMultiplier !== null && (
+              <div className="alert alert-warn">
+                <p className="text-[13.5px] font-bold text-[var(--warn)]">
+                  Measured at ×{gate.rawMultiplier}, held to ×{gate.multiplier}
+                </p>
+                <p className="mt-1 max-w-[72ch] text-[13px] text-[var(--muted-strong)]">
+                  Leads that clear this gate both qualify more often and were
+                  already priced up for the attributes that got them there, so
+                  the full figure counts the same signal twice.
+                </p>
+              </div>
             )}
-            .
-          </p>
-          {gate.wasBounded && gate.rawMultiplier !== null && (
-            <p className="mt-2 max-w-[74ch] text-[13px] text-[var(--muted)]">
-              Measured at{" "}
-              <span className="mono">×{gate.rawMultiplier}</span>, held to{" "}
-              <span className="mono">×{gate.multiplier}</span>. Leads that clear
-              this gate both qualify more often and were already priced up for
-              the attributes that got them there, so the full figure counts the
-              same signal twice.
-            </p>
-          )}
-          <p className="mt-2 max-w-[74ch] text-[13px] text-[var(--muted)]">
-            When a lead reaches it inside the window we send Google a higher
-            value for the conversion it already has. When it reaches it later,
-            we don&apos;t — Google would discard it, and telling you we moved a
-            bid we didn&apos;t move would be worse than saying nothing.
-          </p>
+
+            <div className="grid gap-2.5 sm:grid-cols-2">
+              <div className="flex gap-2.5">
+                <span aria-hidden className="mt-[3px] shrink-0">
+                  <span className="flex size-[18px] items-center justify-center rounded-full bg-[var(--accent-soft)] text-[11px] font-bold text-[var(--accent)]">
+                    ✓
+                  </span>
+                </span>
+                <p className="text-[13px] text-[var(--muted-strong)]">
+                  <span className="font-semibold text-[var(--foreground)]">
+                    Reached in time
+                  </span>{" "}
+                  — we send Google a higher value for the conversion it already
+                  has.
+                </p>
+              </div>
+              <div className="flex gap-2.5">
+                <span aria-hidden className="mt-[3px] shrink-0">
+                  <span className="flex size-[18px] items-center justify-center rounded-full bg-[var(--surface-sunken)] text-[11px] font-bold text-[var(--muted)]">
+                    —
+                  </span>
+                </span>
+                <p className="text-[13px] text-[var(--muted-strong)]">
+                  <span className="font-semibold text-[var(--foreground)]">
+                    Reached late
+                  </span>{" "}
+                  — we send nothing. Google discards a late adjustment, and
+                  telling you we moved a bid we did not move would be worse than
+                  saying nothing.
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
       ) : (
-        <div className="card px-4 py-3.5">
-          <p className="text-[13.5px] font-semibold">
+        <div className="card p-5 sm:p-6">
+          <p className="text-[14px] font-bold">
             Nothing in this file can sharpen a lead&apos;s value in time
           </p>
-          <p className="mt-0.5 max-w-[74ch] text-[13px] text-[var(--muted)]">
+          <p className="mt-1 max-w-[74ch] text-[13.5px] text-[var(--muted)]">
             {gate.unusableReason}
           </p>
-          <p className="mt-2 max-w-[74ch] text-[13px] text-[var(--muted)]">
+          <p className="mt-2.5 max-w-[74ch] text-[13.5px] text-[var(--muted)]">
             Every lead keeps the value it was given on arrival. That is not a
             fault — it is what happens when a pipeline moves slower than the
             week Google gives you.
