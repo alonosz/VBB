@@ -54,6 +54,15 @@ export interface WorkspaceRepository {
   /** Operator-only, used by the console script rather than any route. */
   list(): Promise<Workspace[]>;
   suspend(id: string): Promise<void>;
+  /**
+   * Replace the key on an existing workspace.
+   *
+   * Redeeming an invite mints a fresh key rather than handing back a stored
+   * one, which is what lets the key live only as a hash. The previous key
+   * stops working here — correct for the case this exists to serve, where the
+   * customer has just said they no longer have it.
+   */
+  rotateKey(id: string, keyHash: string, keyPrefix: string): Promise<void>;
 }
 
 export class SupabaseWorkspaceRepository implements WorkspaceRepository {
@@ -113,6 +122,14 @@ export class SupabaseWorkspaceRepository implements WorkspaceRepository {
       .eq("id", id);
     if (error) throw new Error(error.message);
   }
+
+  async rotateKey(id: string, keyHash: string, keyPrefix: string): Promise<void> {
+    const { error } = await this.client
+      .from("workspaces")
+      .update({ key_hash: keyHash, key_prefix: keyPrefix })
+      .eq("id", id);
+    if (error) throw new Error(error.message);
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -159,5 +176,12 @@ export class InMemoryWorkspaceRepository implements WorkspaceRepository {
   async suspend(id: string): Promise<void> {
     const row = this.rows.get(id);
     if (row) row.status = "suspended";
+  }
+
+  async rotateKey(id: string, keyHash: string, keyPrefix: string): Promise<void> {
+    const row = this.rows.get(id);
+    if (!row) return;
+    row.keyHash = keyHash;
+    row.keyPrefix = keyPrefix;
   }
 }

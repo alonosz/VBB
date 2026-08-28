@@ -33,7 +33,9 @@ export function AdminView() {
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
 
   const [newName, setNewName] = useState("");
-  const [issued, setIssued] = useState<{ name: string; key: string } | null>(null);
+  const [issued, setIssued] = useState<
+    { name: string; url: string; expiresAt: string } | null
+  >(null);
   const [copied, setCopied] = useState(false);
 
   const call = useCallback(
@@ -94,9 +96,40 @@ export function AdminView() {
         setError(data.error ?? "Could not create that customer.");
         return;
       }
-      setIssued({ name: data.workspace.name as string, key: data.key as string });
+      setIssued({
+        name: data.workspace.name as string,
+        url: data.inviteUrl as string,
+        expiresAt: data.expiresAt as string,
+      });
       setNewName("");
       await load(adminKey, false);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  /**
+   * A fresh link for someone who lost their key.
+   *
+   * Redeeming it mints a new key and retires the old one, so this is both
+   * "send them a link" and "rotate their credential". Everything they own —
+   * feed, model, CRM connection — stays attached, which is the whole reason
+   * this exists rather than making a second customer.
+   */
+  async function sendLink(id: string, name: string) {
+    setBusy(true);
+    setError(null);
+    try {
+      const { res, data } = await call({ action: "invite", workspaceId: id }, adminKey);
+      if (!res.ok || !data.ok) {
+        setError(data.error ?? "Could not create a link.");
+        return;
+      }
+      setIssued({
+        name,
+        url: data.inviteUrl as string,
+        expiresAt: data.expiresAt as string,
+      });
     } finally {
       setBusy(false);
     }
@@ -110,9 +143,9 @@ export function AdminView() {
     setBusy(false);
   }
 
-  function copyKey() {
+  function copyLink() {
     if (!issued) return;
-    void navigator.clipboard.writeText(issued.key).then(
+    void navigator.clipboard.writeText(issued.url).then(
       () => { setCopied(true); setTimeout(() => setCopied(false), 2500); },
       () => {}
     );
@@ -181,31 +214,50 @@ export function AdminView() {
           </button>
         </div>
 
-        {/* The key, once. */}
+        {/* The link, once. */}
         {issued && (
-          <section className="mt-6 rounded-2xl bg-gradient-to-br from-[var(--navy)] to-[var(--navy-soft)] p-5 text-white">
-            <p className="label text-white/60">Send this to {issued.name}</p>
-            <p className="mt-1 text-[15px] font-bold">Their workspace key</p>
-            <div className="mt-3 flex flex-wrap items-center gap-2">
-              <code className="mono min-w-0 flex-1 overflow-x-auto whitespace-nowrap rounded-lg bg-[var(--surface)]/10 px-3 py-2.5 text-[13px]">
-                {issued.key}
+          <section className="panel-navy mt-6 p-5 sm:p-6">
+            <p className="label" style={{ color: "var(--on-navy-muted)" }}>
+              Send this to {issued.name}
+            </p>
+            <p className="mt-1.5 text-[16px] font-bold" style={{ color: "var(--on-navy)" }}>
+              Their sign-in link
+            </p>
+            <div className="mt-3.5 flex flex-wrap items-center gap-2">
+              <code
+                className="mono min-w-0 flex-1 overflow-x-auto whitespace-nowrap rounded-[var(--radius-sm)] border border-[var(--navy-line)] bg-black/30 px-3 py-2.5 text-[12.5px]"
+                style={{ color: "var(--on-navy)" }}
+              >
+                {issued.url}
               </code>
-              <button type="button" onClick={copyKey} className="btn btn-primary shrink-0 text-[13px]">
+              <button type="button" onClick={copyLink} className="btn btn-primary shrink-0 text-[13px]">
                 {copied ? "Copied" : "Copy"}
               </button>
             </div>
-            <p className="mt-2.5 max-w-[68ch] text-[13px] text-white/75">
-              <span className="font-semibold text-white">Copy it now.</span> Only
-              a hash is stored, so this cannot be shown again. If it is lost,
-              create a new customer. It is not the feed URL — that comes later
-              and goes to Google Ads.
+            <p
+              className="mt-3 max-w-[68ch] text-[13px]"
+              style={{ color: "var(--on-navy-muted)" }}
+            >
+              Works once, and expires{" "}
+              <span className="mono" style={{ color: "var(--on-navy)" }}>
+                {new Date(issued.expiresAt).toLocaleString(undefined, {
+                  month: "short",
+                  day: "numeric",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+              </span>
+              . Clicking it signs their browser in — they never see or type a key.
+              If they lose access, send another from the list below; everything
+              they own stays attached.
             </p>
             <button
               type="button"
               onClick={() => setIssued(null)}
-              className="mt-3 text-[12.5px] text-white/60 underline underline-offset-2"
+              className="mt-3 text-[12.5px] underline underline-offset-2"
+              style={{ color: "var(--on-navy-muted)" }}
             >
-              I&apos;ve saved it — hide this
+              I&apos;ve sent it — hide this
             </button>
           </section>
         )}
@@ -281,13 +333,24 @@ export function AdminView() {
                       </td>
                       <td className="py-2 text-right">
                         {w.status === "active" && (
-                          <button
-                            type="button"
-                            onClick={() => void suspend(w.id, w.name)}
-                            className="rounded-lg px-2 py-1 text-[12.5px] font-semibold text-[var(--muted)] hover:bg-[var(--surface-sunken)] hover:text-[var(--danger)]"
-                          >
-                            Suspend
-                          </button>
+                          <span className="flex justify-end gap-1">
+                            <button
+                              type="button"
+                              disabled={busy}
+                              onClick={() => void sendLink(w.id, w.name)}
+                              title="Mints a new key when they click it. Their old one stops working."
+                              className="rounded-lg px-2 py-1 text-[12.5px] font-semibold text-[var(--primary)] hover:bg-[var(--primary-soft)] disabled:opacity-50"
+                            >
+                              Send a link
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => void suspend(w.id, w.name)}
+                              className="rounded-lg px-2 py-1 text-[12.5px] font-semibold text-[var(--muted)] hover:bg-[var(--surface-sunken)] hover:text-[var(--danger)]"
+                            >
+                              Suspend
+                            </button>
+                          </span>
                         )}
                       </td>
                     </tr>
