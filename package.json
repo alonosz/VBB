@@ -9,7 +9,8 @@
     "lint": "eslint",
     "test": "vitest run",
     "test:watch": "vitest",
-    "workspace": "tsx scripts/workspace.ts"
+    "workspace": "tsx scripts/workspace.ts",
+    "dry-run": "tsx scripts/dry-run.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.120.0",
