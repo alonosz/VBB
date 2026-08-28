@@ -171,20 +171,93 @@ Budget at least as much time for this as for the code.
 
 ---
 
-## 3. Suggested order
+## 3. Connect HubSpot at step 2
+
+**Goal:** step 2 offers "connect HubSpot" beside "drop a CSV", so the worst
+step in the funnel — export a file, find it, upload it — disappears for anyone
+on HubSpot.
+
+**Decided 28 Aug: submit the HubSpot public app now, build the screen later.**
+The app review is the long pole and it is the one part not under our control,
+so it starts while everything else waits. Step 2 stays CSV-only until it comes
+back approved — by which point we will also know whether Google Ads accepts a
+feed at all, which is the thing that decides if any of this matters.
+
+### What already exists
+
+More than expected. The OAuth path is complete and tested: signed state with a
+15-minute TTL, code exchange, token refresh, `needsRefresh`. The reader takes a
+`windowDays` parameter, so pulling twelve months of history instead of the
+nightly window is a call-site change rather than new code.
+
+### What it needs
+
+| Piece | Cost |
+|---|---|
+| Re-scope CRM connections from feed to workspace (`crm_connections.feed_id` → `workspace_id`, plus the OAuth state which signs a feed id) | ~half a day |
+| A history pull — `listRecentDeals()` with `windowDays: 365` | ~1 hour |
+| Step 2 UI, and mapping auto-filled from known HubSpot properties | ~half a day |
+
+**Estimate: ~1.5 days**, and none of it can ship before the app is approved.
+
+A feed belongs to a workspace anyway, so the re-scoping is a simplification
+rather than a workaround — worth doing even if this screen never gets built.
+
+### Why a public app, and not the private token that already works
+
+Private app tokens work today and are right for a pilot customer at step 5:
+they are committed, and an operator can walk them through it. At step 2 they
+are worse than exporting a CSV — create an app, tick three scopes, copy a
+token. One-click OAuth is the only version of this worth building, and that
+needs a public app.
+
+### Registering it
+
+Redirect URI (must match exactly, and this is why the domain should be settled
+first — changing it later means editing the app):
+
+    https://<your origin>/api/crm/hubspot/callback
+
+Scopes, all read-only, matching `SCOPES` in `src/lib/sync/hubspot/oauth.ts`:
+
+    crm.objects.deals.read
+    crm.objects.contacts.read
+    crm.objects.companies.read
+
+Nothing that can write to a customer's CRM, because the product never needs
+to. That is worth saying plainly in the review submission — read-only scopes
+on a narrow set of objects is the easiest kind of app to approve.
+
+Then `HUBSPOT_CLIENT_ID` and `HUBSPOT_CLIENT_SECRET` in Vercel.
+
+### The gate question, deferred with it
+
+Connecting a CRM needs a workspace key, and a step-2 visitor has none. The
+shape agreed for when this is built: **two doors** — CSV stays ungated exactly
+as it is today, HubSpot asks for an email first. Someone willing to OAuth their
+CRM is a much warmer lead than a CSV uploader, so asking at that moment is
+qualification rather than friction, and "no account needed" stays true of the
+door that touches nothing.
+
+---
+
+## 4. Suggested order
 
 1. **Get one feed accepted by Google Ads.** Nothing on this page matters if the
    core mechanic doesn't work in a real account.
 2. **HubSpot nightly sync** for the pilot customers. Needs `VBB_TOKEN_KEY` and
    `CRON_SECRET`. The code is built and tested; only configuration is missing.
-3. **Contact capture at step 1**, if that decision goes that way. Half a day,
+3. **Submit the HubSpot public app.** Free, parallel, and the slowest thing
+   here. Settle the domain first so the redirect URI does not have to change.
+4. **Contact capture at step 1**, if that decision goes that way. Half a day,
    independent of everything below it, and the sooner it exists the sooner the
    churn list starts filling.
-4. **Stripe + the paywall at step 5.** Gate the feed URL, keep the CSV free.
-5. **Signup**, in the same modal as the paywall. One interruption, one moment.
-6. **Real sessions** — email magic link, works on any device.
+5. **Stripe + the paywall at step 5.** Gate the feed URL, keep the CSV free.
+6. **Signup**, in the same modal as the paywall. One interruption, one moment.
+7. **Step 2 HubSpot connection**, once the app is approved.
+8. **Real sessions** — email magic link, works on any device.
 
-Steps 4 and 5 land together because they are the same screen and the same
+Steps 5 and 6 land together because they are the same screen and the same
 moment. Splitting them means interrupting the customer twice.
 
 ---
