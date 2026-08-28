@@ -229,32 +229,13 @@ export default function ReportPage() {
       <Stepper current="report" />
 
       <main className="page animate-page-in flex-1 py-10">
+        {/* No action here. The bar pinned to the bottom of the viewport carries
+            it for the whole page, so a second copy at the top is the same
+            button twice on one screen. */}
         <PageHead
-          eyebrow={
-            <>
-              Step 4 of 5 · Your model
-            </>
-          }
+          eyebrow="Step 4 of 5 · Your model"
           title="This is what a lead is worth to you"
-          lede={
-            <>
-              Every figure below is computed from the file you uploaded — cohort
-              win rate against your own median deal size. Nothing is estimated
-              or benchmarked against other accounts.
-            </>
-          }
-          action={
-            /* The action belongs where the page starts, not two screens down.
-               Someone who already trusts the model should never have to scroll
-               past the whole analysis to act on it. */
-            <button
-              type="button"
-              onClick={() => router.push("/diagnostic/connect")}
-              className="btn btn-primary btn-lg w-full justify-center sm:w-auto"
-            >
-              Send these values to Google Ads <ArrowIcon />
-            </button>
-          }
+          lede="Every figure below is computed from the file you uploaded — cohort win rate against your own median deal size. Nothing is estimated or benchmarked against other accounts."
         />
 
         <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1.5">

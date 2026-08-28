@@ -33,9 +33,12 @@ export function PageHead({
       <div className="min-w-0">
         {eyebrow && <p className="label mb-2">{eyebrow}</p>}
         <h1 className="h1">{title}</h1>
-        {/* Capped tighter than the prose default so the action stays on this
-            row at desktop widths instead of dropping under the text. */}
-        {lede && <p className="lede mt-2.5 max-w-[52ch]">{lede}</p>}
+        {/* With an action beside it the lede is capped tighter than the prose
+            default, so the button stays on this row at desktop widths instead
+            of dropping under the text. Without one it gets the full measure. */}
+        {lede && (
+          <p className={`lede mt-2.5 ${action ? "max-w-[52ch]" : ""}`}>{lede}</p>
+        )}
       </div>
       {action && <div className="shrink-0">{action}</div>}
     </div>
