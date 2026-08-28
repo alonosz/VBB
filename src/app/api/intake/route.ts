@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { workspaceRepositoryFromEnv } from "@/lib/workspace/env";
+import { authorizeWorkspace } from "@/lib/workspace/authorize";
 import Anthropic from "@anthropic-ai/sdk";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { z } from "zod";
@@ -60,6 +62,8 @@ const ProposalSchema = z.object({
 interface IntakeRequestBody {
   businessContext?: unknown;
   columns?: unknown;
+  /** Whose call this is. The endpoint spends money, so it has an owner. */
+  workspaceKey?: unknown;
 }
 
 function fail(reason: string, status = 200) {
@@ -77,6 +81,23 @@ export async function POST(request: Request) {
     body = (await request.json()) as IntakeRequestBody;
   } catch {
     return fail("The request could not be read.", 400);
+  }
+
+  // This is the one endpoint that spends money per call, and it was reachable
+  // by anyone who found it. It now belongs to a customer.
+  //
+  // A refusal is not an error the flow has to handle: it returns the same
+  // shape as a missing API key, so the mapping screen falls back to header
+  // matching and says why, exactly as it always has.
+  const workspaces = workspaceRepositoryFromEnv();
+  if (!workspaces) {
+    return fail("Workspaces are not configured, so the mapping suggestion was skipped.");
+  }
+  const auth = await authorizeWorkspace(workspaces, body.workspaceKey);
+  if (!auth.ok) {
+    return fail(
+      "Open your workspace page first so we know whose account this is — until then we match columns by name only."
+    );
   }
 
   const businessContext =

@@ -261,6 +261,14 @@ export class SupabaseFeedRepository implements FeedRepository {
     if (error) console.error("feed fetch log failed:", error.message);
   }
 
+  async rotateToken(feedId: string, tokenHash: string, tokenPrefix: string): Promise<void> {
+    const { error } = await this.client
+      .from("feeds")
+      .update({ token_hash: tokenHash, token_prefix: tokenPrefix })
+      .eq("id", feedId);
+    if (error) throw new Error(error.message);
+  }
+
   async revokeFeed(feedId: string): Promise<void> {
     const { error } = await this.client
       .from("feeds")

@@ -8,13 +8,39 @@ import { loadSavedModel, type SavedValueModel } from "./savedModel";
  * that coming back tomorrow does not mean finding a file first, which is the
  * difference between a model people actually reuse and one they refit every
  * time out of convenience.
+ *
+ * Scoped per workspace, because the browser copy was one fixed key. An
+ * operator onboarding five customers from one laptop would overwrite each
+ * customer's model with the next, and the symptom — the wrong multipliers
+ * quietly applied to the wrong advertiser — is one nobody would catch by
+ * looking at the screen.
  */
 
-const STORAGE_KEY = "vbb.savedModel.v1";
+const LEGACY_KEY = "vbb.savedModel.v1";
+const WORKSPACE_KEY_STORE = "vbb.workspaceKey.v1";
+
+/**
+ * Which slot this browser is writing to.
+ *
+ * Derived from the workspace key rather than being the key, so a stored model
+ * cannot be read back into a credential. Anyone with the storage already has
+ * the key sitting beside it — this is about not colliding, not about secrecy.
+ */
+function slot(): string {
+  try {
+    const key = typeof window === "undefined" ? null : localStorage.getItem(WORKSPACE_KEY_STORE);
+    if (!key) return LEGACY_KEY;
+    // The last twelve characters distinguish workspaces without reproducing
+    // the credential in a second place.
+    return `vbb.savedModel.v1.${key.slice(-12)}`;
+  } catch {
+    return LEGACY_KEY;
+  }
+}
 
 export function rememberModel(model: SavedValueModel): void {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(model));
+    localStorage.setItem(slot(), JSON.stringify(model));
   } catch {
     // A private window or a full quota is not worth interrupting the flow for;
     // the downloaded file is the copy that matters.
@@ -23,7 +49,10 @@ export function rememberModel(model: SavedValueModel): void {
 
 export function recallModel(): SavedValueModel | null {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const key = slot();
+    // Falls back to the unscoped slot once, so a model saved before scoping
+    // existed is not silently lost on the next visit.
+    const raw = localStorage.getItem(key) ?? (key === LEGACY_KEY ? null : localStorage.getItem(LEGACY_KEY));
     if (!raw) return null;
     return loadSavedModel(JSON.parse(raw)).model;
   } catch {
@@ -33,7 +62,10 @@ export function recallModel(): SavedValueModel | null {
 
 export function forgetModel(): void {
   try {
-    localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(slot());
+    // The unscoped copy goes too, or it would be recalled again by the
+    // fallback above.
+    localStorage.removeItem(LEGACY_KEY);
   } catch {
     // Nothing to clean up if storage is unavailable.
   }

@@ -46,6 +46,13 @@ export interface FeedRepository {
   recentFetches(feedId: string, limit: number): Promise<FetchRecord[]>;
   logFetch(feedId: string, entry: FetchLogEntry): Promise<void>;
   revokeFeed(feedId: string): Promise<void>;
+  /**
+   * Issues a new token for an existing feed, keeping its rows, model and
+   * history. Used when a customer has lost the URL — the alternative is
+   * republishing, which loses the record of what Google already has and would
+   * resend every conversion.
+   */
+  rotateToken(feedId: string, tokenHash: string, tokenPrefix: string): Promise<void>;
 }
 
 // ---------------------------------------------------------------------------
@@ -170,5 +177,15 @@ export class InMemoryFeedRepository implements FeedRepository {
   async revokeFeed(feedId: string): Promise<void> {
     const feed = this.feeds.get(feedId);
     if (feed) feed.status = "revoked";
+  }
+
+  async rotateToken(feedId: string, tokenHash: string, tokenPrefix: string): Promise<void> {
+    const feed = this.feeds.get(feedId);
+    if (!feed) throw new Error("No such feed.");
+    if ([...this.feeds.values()].some((f) => f.id !== feedId && f.tokenHash === tokenHash)) {
+      throw new Error("That token is already in use.");
+    }
+    feed.tokenHash = tokenHash;
+    feed.tokenPrefix = tokenPrefix;
   }
 }

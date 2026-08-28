@@ -26,6 +26,22 @@ export interface IntakeResult extends IntakeOutcome {
   sent: ColumnProfile[];
 }
 
+/**
+ * The key the workspace page stored, if this browser has one.
+ *
+ * The assisted intake spends money on someone's behalf, so it belongs to a
+ * customer. Without a key the endpoint refuses and the flow falls back to
+ * header matching — the same path it already takes when no API key is
+ * configured, so nobody is blocked by this.
+ */
+function storedWorkspaceKey(): string | null {
+  try {
+    return typeof window === "undefined" ? null : localStorage.getItem("vbb.workspaceKey.v1");
+  } catch {
+    return null;
+  }
+}
+
 export async function requestIntakeProposal(req: IntakeRequest): Promise<IntakeResult> {
   const sent = profileColumns(req.headers, req.rows);
 
@@ -45,7 +61,11 @@ export async function requestIntakeProposal(req: IntakeRequest): Promise<IntakeR
     const res = await fetch("/api/intake", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ businessContext: req.businessContext, columns: sent }),
+      body: JSON.stringify({
+        businessContext: req.businessContext,
+        columns: sent,
+        workspaceKey: storedWorkspaceKey(),
+      }),
       signal: controller.signal,
     });
 
