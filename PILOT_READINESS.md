@@ -97,8 +97,8 @@ Required:
 ```
 NEXT_PUBLIC_SUPABASE_URL       Supabase → Settings → API → Project URL
 SUPABASE_SERVICE_ROLE_KEY      Supabase → Settings → API → secret key (sb_secret_…)
-VBB_TOKEN_KEY                  32 random bytes, base64 — encrypts CRM credentials
-CRON_SECRET                    32 random bytes, base64 — gates the nightly job
+VBB_TOKEN_KEY                  a generated password, 24+ chars — encrypts CRM credentials
+CRON_SECRET                    a generated password, 24+ chars — gates the nightly job
 ```
 
 Optional:
@@ -111,7 +111,8 @@ HUBSPOT_CLIENT_ID              only for OAuth; private app tokens need neither
 HUBSPOT_CLIENT_SECRET
 ```
 
-Generate the two you make yourself:
+For the two you make yourself, use a password generator set to 40 characters.
+Anything 24 characters or longer is accepted. A developer can instead run:
 
 ```bash
 node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"

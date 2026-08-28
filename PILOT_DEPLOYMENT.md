@@ -63,10 +63,15 @@ Vercel → your project → **Settings** → **Environment Variables**. Set each
 |---|---|
 | `NEXT_PUBLIC_SUPABASE_URL` | Supabase → Settings → API → Project URL |
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase → Settings → API → **secret** key (`sb_secret_…`). Not the publishable one — the app refuses that and says so. |
-| `VBB_TOKEN_KEY` | Generate it yourself (below). Encrypts customers' CRM credentials. |
-| `CRON_SECRET` | Generate it yourself. Without it the nightly endpoint stays shut rather than falling open. |
+| `VBB_TOKEN_KEY` | A generated password, 24+ characters (below). Encrypts customers' CRM credentials. |
+| `CRON_SECRET` | Another generated password. Without it the nightly endpoint stays shut rather than falling open. |
 
-Generate the two you make yourself, one at a time:
+For the two you make yourself, use a password generator — a password manager,
+or 1password.com/password-generator. Set the length to **40 characters** and
+generate one for each. Anything 24 characters or longer is accepted; below that
+the app refuses to start rather than encrypting with a weak key.
+
+A developer who would rather generate a raw key can:
 
 ```bash
 node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"

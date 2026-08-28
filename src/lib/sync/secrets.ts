@@ -1,4 +1,4 @@
-import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
+import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:crypto";
 
 /**
  * Encrypting the credentials that reach someone else's CRM.
@@ -26,17 +26,41 @@ const VERSION = "v1";
 export class MissingKeyError extends Error {
   constructor() {
     super(
-      "CRM connections are not configured on this deployment: VBB_TOKEN_KEY is not set. " +
-        "Nothing was stored — a credential for someone's CRM is not written down in the clear."
+      "CRM connections are not configured on this deployment: VBB_TOKEN_KEY is not set, " +
+        "or is shorter than 24 characters. Nothing was stored — a credential for " +
+        "someone's CRM is not written down in the clear."
     );
     this.name = "MissingKeyError";
   }
 }
 
 /**
- * Accepts the key as base64 or hex, because the two are easy to confuse when
- * pasting one into a hosting dashboard and the failure would otherwise be a
- * baffling length error.
+ * The shortest passphrase we will derive a key from.
+ *
+ * Whoever sets this up is not necessarily a developer, and "32 random bytes in
+ * base64" is not something a person can produce without a terminal. A password
+ * manager's generated password is, so that has to work — but only if it is
+ * long enough that hashing it is not the weak link. Thirty characters of
+ * generated password carries far more entropy than the 256-bit key it derives.
+ */
+export const MIN_PASSPHRASE_LENGTH = 24;
+
+/**
+ * Turns whatever was configured into a 32-byte key.
+ *
+ * Three accepted forms, in order:
+ *
+ *   1. 64 hex characters — exactly the key, as a developer would generate it.
+ *   2. Base64 decoding to 32 bytes — the same thing, differently written. Both
+ *      are accepted because they are easy to confuse when pasting into a
+ *      hosting dashboard, and the failure would otherwise be a length error
+ *      nobody could interpret.
+ *   3. Any passphrase of at least MIN_PASSPHRASE_LENGTH characters, hashed to
+ *      32 bytes. This is the one a non-technical operator will actually use.
+ *
+ * Anything shorter is refused rather than padded. A key derived from a short
+ * passphrase would encrypt exactly as convincingly and protect nothing, and a
+ * silent downgrade is worse than a startup that says what is wrong.
  */
 export function parseKey(raw: string | undefined): Buffer | null {
   if (!raw?.trim()) return null;
@@ -44,12 +68,23 @@ export function parseKey(raw: string | undefined): Buffer | null {
 
   if (/^[0-9a-fA-F]{64}$/.test(value)) return Buffer.from(value, "hex");
 
-  try {
-    const decoded = Buffer.from(value, "base64");
-    if (decoded.length === KEY_BYTES) return decoded;
-  } catch {
-    // fall through
+  // Only treat it as base64 if it looks like base64 and lands on 32 bytes.
+  // Node's decoder is lenient enough to turn an ordinary passphrase into
+  // something 32 bytes long by accident, which would silently use a different
+  // key than the passphrase branch would.
+  if (/^[A-Za-z0-9+/]+={0,2}$/.test(value)) {
+    try {
+      const decoded = Buffer.from(value, "base64");
+      if (decoded.length === KEY_BYTES) return decoded;
+    } catch {
+      // fall through to the passphrase branch
+    }
   }
+
+  if (value.length >= MIN_PASSPHRASE_LENGTH) {
+    return createHash("sha256").update(value, "utf8").digest();
+  }
+
   return null;
 }
 
