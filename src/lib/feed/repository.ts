@@ -23,6 +23,8 @@ export interface FeedRepository {
   findByTokenHash(tokenHash: string): Promise<FeedRecord | null>;
   /** By id, for a scheduled run that already knows which feed it is servicing. */
   findById(feedId: string): Promise<FeedRecord | null>;
+  /** Everything one customer owns, newest first. */
+  listForWorkspace(clientId: string): Promise<FeedRecord[]>;
   /** Inserts rows, ignoring any that were already sent. Returns how many were new. */
   addRows(feedId: string, rows: FeedRow[]): Promise<number>;
   rowsFor(feedId: string): Promise<FeedRow[]>;
@@ -92,6 +94,13 @@ export class InMemoryFeedRepository implements FeedRepository {
   async findById(feedId: string): Promise<FeedRecord | null> {
     const found = this.feeds.get(feedId);
     return found ? { ...found } : null;
+  }
+
+  async listForWorkspace(clientId: string): Promise<FeedRecord[]> {
+    return [...this.feeds.values()]
+      .filter((f) => f.clientId === clientId)
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+      .map((f) => ({ ...f }));
   }
 
   async addRows(feedId: string, incoming: FeedRow[]): Promise<number> {

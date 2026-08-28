@@ -113,6 +113,17 @@ export class SupabaseFeedRepository implements FeedRepository {
     return data ? toRecord(data as FeedDto) : null;
   }
 
+  async listForWorkspace(clientId: string): Promise<FeedRecord[]> {
+    const { data, error } = await this.client
+      .from("feeds")
+      .select(FEED_COLUMNS)
+      .eq("client_id", clientId)
+      .order("created_at", { ascending: false });
+
+    if (error) throw new Error(error.message);
+    return (data as FeedDto[]).map(toRecord);
+  }
+
   async addRows(feedId: string, rows: FeedRow[]): Promise<number> {
     if (rows.length === 0) return 0;
     for (const row of rows) assertStorableRow(row);
