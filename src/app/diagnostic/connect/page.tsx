@@ -14,6 +14,8 @@ import { recallModel } from "@/lib/model/storage";
 import { buildValueModelCsv, downloadCsv } from "@/lib/export/googleAds";
 import { bestIdentifier, buildFeedRows } from "@/lib/feed/publish";
 import { isDeploymentOrigin } from "@/lib/feed/origin";
+import { readWorkspaceKey } from "@/lib/workspace/clientKey";
+import { WorkspaceKeyPrompt } from "@/components/workspace/WorkspaceKeyPrompt";
 import { money } from "@/components/report/panels";
 import { CONVERSION_NAME } from "@/lib/feed/handlers";
 
@@ -139,6 +141,8 @@ export default function ConnectPage() {
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [csvNote, setCsvNote] = useState<string | null>(null);
+  /** Set when publishing was refused for want of a key, so we can ask for it. */
+  const [needsKey, setNeedsKey] = useState(false);
 
   useEffect(() => {
     // Wait for the saved snapshot to be read. Redirecting before it lands
@@ -237,6 +241,9 @@ export default function ConnectPage() {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
+          // Publishing creates something and so is authorised by the workspace
+          // key, never by the feed token.
+          workspaceKey: readWorkspaceKey(),
           modelId,
           modelFittedAt: saved?.fittedAt ?? null,
           currencyCode: cur,
@@ -246,8 +253,12 @@ export default function ConnectPage() {
         }),
       });
       const data = await res.json();
-      if (!res.ok || !data.ok) setError(data.error ?? "The feed could not be published.");
-      else
+      if (!res.ok || !data.ok) {
+        setError(data.error ?? "The feed could not be published.");
+        // 401 here means the key is missing or wrong, which is a thing the
+        // customer can fix on the spot rather than a dead end.
+        setNeedsKey(res.status === 401);
+      } else
         setFeed({
           feedUrl: data.feedUrl,
           rowsPublished: data.rowsPublished,
@@ -342,6 +353,16 @@ export default function ConnectPage() {
                 <p className="mt-3 rounded-xl border border-[var(--danger)]/30 bg-red-50 px-3.5 py-2.5 text-[13px] text-[var(--danger)]">
                   {error}
                 </p>
+              )}
+
+              {needsKey && (
+                <WorkspaceKeyPrompt
+                  onSaved={() => {
+                    setNeedsKey(false);
+                    setError(null);
+                    void publish();
+                  }}
+                />
               )}
             </>
           ) : (

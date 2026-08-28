@@ -1,4 +1,5 @@
 import { profileColumns, type ColumnProfile } from "./profile";
+import { readWorkspaceKey } from "@/lib/workspace/clientKey";
 import {
   EMPTY_PROPOSAL,
   sanitizeProposal,
@@ -34,14 +35,6 @@ export interface IntakeResult extends IntakeOutcome {
  * header matching — the same path it already takes when no API key is
  * configured, so nobody is blocked by this.
  */
-function storedWorkspaceKey(): string | null {
-  try {
-    return typeof window === "undefined" ? null : localStorage.getItem("vbb.workspaceKey.v1");
-  } catch {
-    return null;
-  }
-}
-
 export async function requestIntakeProposal(req: IntakeRequest): Promise<IntakeResult> {
   const sent = profileColumns(req.headers, req.rows);
 
@@ -64,7 +57,7 @@ export async function requestIntakeProposal(req: IntakeRequest): Promise<IntakeR
       body: JSON.stringify({
         businessContext: req.businessContext,
         columns: sent,
-        workspaceKey: storedWorkspaceKey(),
+        workspaceKey: readWorkspaceKey(),
       }),
       signal: controller.signal,
     });

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { ArrowIcon } from "@/components/ArrowIcon";
+import { forgetWorkspaceKey, readWorkspaceKey, rememberWorkspaceKey } from "@/lib/workspace/clientKey";
 
 /**
  * One customer, one page.
@@ -46,7 +47,6 @@ interface Overview {
   working: boolean;
 }
 
-const KEY_STORE = "vbb.workspaceKey.v1";
 
 const TONE: Record<ActionItem["severity"], { border: string; bg: string; dot: string; label: string }> = {
   blocked:   { border: "var(--danger)", bg: "#fef2f2", dot: "●", label: "Needs fixing" },
@@ -101,13 +101,13 @@ export function WorkspaceView() {
         setError(data.error ?? "We couldn't load this workspace.");
         setOverview(null);
         // A key that stopped working must not keep being retried on every visit.
-        if (remember) try { localStorage.removeItem(KEY_STORE); } catch {}
+        if (remember) forgetWorkspaceKey();
         return;
       }
       setOverview(data.overview as Overview);
       // Kept so returning is one click. It is a bearer credential, so it lives
       // in the browser that was given it and never in a URL.
-      if (remember) try { localStorage.setItem(KEY_STORE, workspaceKey); } catch {}
+      if (remember) rememberWorkspaceKey(workspaceKey);
     } catch {
       setError("We couldn't load this workspace.");
     } finally {
@@ -116,9 +116,7 @@ export function WorkspaceView() {
   }, []);
 
   useEffect(() => {
-    let saved: string | null = null;
-    // Throws outright in some privacy modes rather than returning null.
-    try { saved = localStorage.getItem(KEY_STORE); } catch { saved = null; }
+    const saved = readWorkspaceKey();
     if (!saved) return;
 
     // Deferred a tick so the state this sets lands outside the effect's
@@ -131,7 +129,7 @@ export function WorkspaceView() {
   }, [load]);
 
   function signOut() {
-    try { localStorage.removeItem(KEY_STORE); } catch {}
+    forgetWorkspaceKey();
     setOverview(null);
     setKey("");
   }

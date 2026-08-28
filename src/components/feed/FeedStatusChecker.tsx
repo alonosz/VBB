@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { ArrowIcon } from "@/components/ArrowIcon";
+import { readWorkspaceKey } from "@/lib/workspace/clientKey";
+import { WorkspaceKeyPrompt } from "@/components/workspace/WorkspaceKeyPrompt";
 
 /**
  * Whether Google is actually collecting the feed.
@@ -53,6 +55,7 @@ export function FeedStatusChecker() {
   const [crmToken, setCrmToken] = useState("");
   const [saving, setSaving] = useState(false);
   const [connected, setConnected] = useState(false);
+  const [needsKey, setNeedsKey] = useState(false);
 
   async function check() {
     setChecking(true);
@@ -87,11 +90,12 @@ export function FeedStatusChecker() {
       const res = await fetch("/api/crm/hubspot/connect", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ url }),
+        body: JSON.stringify({ url, workspaceKey: readWorkspaceKey() }),
       });
       const data = await res.json();
       if (!res.ok || !data.ok) {
         setError(data.error ?? "We couldn't start the connection.");
+        setNeedsKey(res.status === 401);
         setConnecting(false);
         return;
       }
@@ -110,11 +114,12 @@ export function FeedStatusChecker() {
       const res = await fetch("/api/crm/hubspot/token", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ url, token: crmToken }),
+        body: JSON.stringify({ url, token: crmToken, workspaceKey: readWorkspaceKey() }),
       });
       const data = await res.json();
       if (!res.ok || !data.ok) {
         setError(data.error ?? "We couldn't save that token.");
+        setNeedsKey(res.status === 401);
         return;
       }
       setConnected(true);
@@ -171,6 +176,15 @@ export function FeedStatusChecker() {
             <p className="mt-3 rounded-xl border border-[var(--danger)]/30 bg-red-50 px-3.5 py-2.5 text-[13px] text-[var(--danger)]">
               {error}
             </p>
+          )}
+
+          {needsKey && (
+            <WorkspaceKeyPrompt
+              onSaved={() => {
+                setNeedsKey(false);
+                setError(null);
+              }}
+            />
           )}
         </section>
 

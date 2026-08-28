@@ -1,4 +1,5 @@
 import { loadSavedModel, type SavedValueModel } from "./savedModel";
+import { readWorkspaceKey } from "@/lib/workspace/clientKey";
 
 /**
  * Where a saved model lives.
@@ -17,7 +18,6 @@ import { loadSavedModel, type SavedValueModel } from "./savedModel";
  */
 
 const LEGACY_KEY = "vbb.savedModel.v1";
-const WORKSPACE_KEY_STORE = "vbb.workspaceKey.v1";
 
 /**
  * Which slot this browser is writing to.
@@ -28,7 +28,7 @@ const WORKSPACE_KEY_STORE = "vbb.workspaceKey.v1";
  */
 function slot(): string {
   try {
-    const key = typeof window === "undefined" ? null : localStorage.getItem(WORKSPACE_KEY_STORE);
+    const key = readWorkspaceKey();
     if (!key) return LEGACY_KEY;
     // The last twelve characters distinguish workspaces without reproducing
     // the credential in a second place.
