@@ -53,7 +53,7 @@ function IssueCard({ issue }: { issue: FileIssue }) {
     <div
       className={
         "rounded-xl border p-4 " +
-        (warn ? "border-[var(--warn-line)] bg-[var(--warn-soft)]" : "border-[var(--border)] bg-white")
+        (warn ? "border-[var(--warn-line)] bg-[var(--warn-soft)]" : "border-[var(--border)] bg-[var(--surface)]")
       }
     >
       <div className="flex items-start gap-3">
@@ -73,7 +73,7 @@ function IssueCard({ issue }: { issue: FileIssue }) {
         )}
       </div>
       {showRows && (
-        <p className="mono mt-3 max-h-24 overflow-y-auto rounded-lg bg-white/70 px-3 py-2 text-[12px] text-[var(--muted)]">
+        <p className="mono mt-3 max-h-24 overflow-y-auto rounded-lg bg-[var(--surface)]/75 px-3 py-2 text-[12px] text-[var(--muted)]">
           Rows {issue.rowIndices.slice(0, 60).map((i) => i + 2).join(", ")}
           {issue.rowIndices.length > 60 && ` … +${issue.rowIndices.length - 60} more`}
           <span className="mt-1 block text-[11px]">(line numbers as they appear in your CSV)</span>

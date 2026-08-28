@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useDiagnostic } from "@/context/DiagnosticContext";
 import { Stepper } from "@/components/diagnostic/Stepper";
+import { Alert, PageHead } from "@/components/ui";
 import { FlowSkeleton } from "@/components/diagnostic/FlowSkeleton";
 import { ArrowIcon } from "@/components/ArrowIcon";
 import { rowsToDeals } from "@/lib/mapping/toDeals";
@@ -305,12 +306,12 @@ export default function ConnectPage() {
     <div className="animate-page-in flex min-h-screen flex-col">
       <Stepper current="connect" />
 
-      <main className="mx-auto w-full max-w-3xl flex-1 px-6 py-10">
-        <p className="label mb-2">Step 5 of 5</p>
-        <h1 className="text-3xl font-bold tracking-tight text-balance">
-          Send these values to Google Ads
-        </h1>
-        <p className="mt-2 max-w-[68ch] text-[15px] text-[var(--muted)]">
+      <main className="page animate-page-in flex-1 py-10">
+        <PageHead
+          eyebrow="Step 5 of 5 · Connect"
+          title="Send these values to Google Ads"
+        />
+        <p className="lede mt-3 max-w-[68ch]">
           Your model has priced{" "}
           <span className="mono font-semibold text-[var(--foreground)]">
             {priced.length.toLocaleString()}
@@ -328,11 +329,11 @@ export default function ConnectPage() {
         </p>
 
         {/* ---- the product: a URL Google fetches by itself ---- */}
-        <section className="card mt-7 border-[var(--primary)]/25 p-6">
-          <p className="label">Recommended</p>
-          <h2 className="mt-1.5 text-xl font-bold tracking-tight">
-            Give Google a URL to fetch
-          </h2>
+        <section className="card mt-8 border-[var(--primary)]/25 p-6 sm:p-7">
+          <p className="label" style={{ color: "var(--primary-deep)" }}>
+            Recommended
+          </p>
+          <h2 className="h2 mt-2">Give Google a URL to fetch</h2>
           <p className="mt-1 max-w-[68ch] text-[14px] text-[var(--muted)]">
             You paste one link into Google Ads, once. It collects your values on a
             schedule from then on — no file to download, nothing to remember daily.
@@ -344,15 +345,17 @@ export default function ConnectPage() {
                 type="button"
                 onClick={() => void publish()}
                 disabled={publishing}
-                className="btn btn-primary mt-4"
+                className="btn btn-primary btn-lg mt-5"
               >
                 {publishing ? "Publishing…" : "Generate my feed URL"}
                 {!publishing && <ArrowIcon />}
               </button>
               {error && (
-                <p className="mt-3 rounded-xl border border-[var(--danger)]/30 bg-[var(--danger-soft)] px-3.5 py-2.5 text-[13px] text-[var(--danger)]">
-                  {error}
-                </p>
+                <div className="mt-4">
+                  <Alert tone="bad" title="The feed wasn't published">
+                    <p className="text-[13.5px]">{error}</p>
+                  </Alert>
+                </div>
               )}
 
               {needsKey && (
@@ -367,18 +370,24 @@ export default function ConnectPage() {
             </>
           ) : (
             <>
-              <div className="mt-4 rounded-xl border border-[var(--border)] bg-[var(--surface-sunken)] p-4">
-                <div className="flex flex-wrap items-baseline justify-between gap-2">
-                  <p className="text-[13.5px] font-bold text-[var(--accent)]">
-                    ✓ Your feed is live
+              <div className="panel-navy mt-5 p-5 sm:p-6">
+                <div className="flex flex-wrap items-baseline justify-between gap-3">
+                  <p className="flex items-center gap-2 text-[15px] font-bold" style={{ color: "var(--on-navy)" }}>
+                    <span
+                      aria-hidden
+                      className="flex size-5 items-center justify-center rounded-full bg-[var(--accent)] text-[11px] font-bold text-white"
+                    >
+                      ✓
+                    </span>
+                    Your feed is live
                   </p>
-                  <p className="mono text-[12px] text-[var(--muted)]">
+                  <p className="mono text-[12px]" style={{ color: "var(--on-navy-muted)" }}>
                     {feed.rowsPublished.toLocaleString()} conversions ·{" "}
                     {feed.identifier === "clickId" ? "click ID" : "hashed email"}
                   </p>
                 </div>
-                <div className="mt-2.5 flex flex-wrap items-center gap-2">
-                  <code className="mono min-w-0 flex-1 overflow-x-auto whitespace-nowrap rounded-lg border border-[var(--border)] bg-white px-3 py-2 text-[12px]">
+                <div className="mt-4 flex flex-wrap items-center gap-2">
+                  <code className="mono min-w-0 flex-1 overflow-x-auto whitespace-nowrap rounded-[var(--radius-sm)] border border-[var(--navy-line)] bg-black/30 px-3 py-2.5 text-[12px]" style={{ color: "var(--on-navy)" }}>
                     {feed.feedUrl}
                   </code>
                   <button type="button" onClick={copy} className="btn btn-primary shrink-0 text-[13px]">
@@ -386,7 +395,7 @@ export default function ConnectPage() {
                   </button>
                 </div>
                 {isDeploymentOrigin(feed.feedUrl) && (
-                  <p className="mt-2.5 max-w-[70ch] rounded-lg border border-[var(--warn)]/40 bg-[var(--warn-soft)] px-3 py-2 text-[12.5px] text-[var(--foreground)]">
+                  <p className="mt-2.5 max-w-[70ch] rounded-lg border border-[var(--warn)]/40 bg-[var(--warn-soft)] px-3 py-2 text-[12.5px] text-[var(--foreground)] mt-3.5">
                     This link points at a single deployment rather than your live
                     site, so it will stop reflecting changes the next time you
                     ship — and it may be behind hosting protection Google
@@ -395,7 +404,7 @@ export default function ConnectPage() {
                   </p>
                 )}
                 {!feed.modelStored && (
-                  <p className="mt-2.5 max-w-[70ch] rounded-lg border border-[var(--warn)]/40 bg-[var(--warn-soft)] px-3 py-2 text-[12.5px] text-[var(--foreground)]">
+                  <p className="mt-2.5 max-w-[70ch] rounded-lg border border-[var(--warn)]/40 bg-[var(--warn-soft)] px-3 py-2 text-[12.5px] text-[var(--foreground)] mt-3.5">
                     Google will fetch these values normally, but the rule stack
                     behind them was not stored with the feed. That only matters
                     later: this feed cannot price new leads on its own, so
@@ -403,7 +412,7 @@ export default function ConnectPage() {
                   </p>
                 )}
                 {feed.gateStage && (feed.gateAdjustments > 0 || feed.gateTooLate > 0) && (
-                  <p className="mt-2.5 max-w-[70ch] text-[12.5px] text-[var(--muted)]">
+                  <p className="mt-3.5 max-w-[70ch] text-[12.5px]" style={{ color: "var(--on-navy-muted)" }}>
                     {feed.gateAdjustments > 0 && (
                       <>
                         <span className="mono font-semibold text-[var(--accent)]">
@@ -416,7 +425,7 @@ export default function ConnectPage() {
                     )}
                     {feed.gateTooLate > 0 && (
                       <>
-                        <span className="mono font-semibold">
+                        <span className="mono font-semibold" style={{ color: "var(--on-navy)" }}>
                           {feed.gateTooLate.toLocaleString()}
                         </span>{" "}
                         reached it after Google&apos;s 7-day window, so{" "}
@@ -427,8 +436,10 @@ export default function ConnectPage() {
                   </p>
                 )}
 
-                <p className="mt-2.5 max-w-[70ch] text-[12.5px] text-[var(--muted)]">
-                  <span className="font-semibold text-[var(--warn)]">Copy it now.</span>{" "}
+                <p className="mt-3.5 max-w-[70ch] text-[12.5px]" style={{ color: "var(--on-navy-muted)" }}>
+                  <span className="font-semibold" style={{ color: "var(--warn-on-navy)" }}>
+                    Copy it now.
+                  </span>{" "}
                   The key is stored only as a hash, so we can&apos;t show it again — and
                   anyone holding it can read the feed.
                 </p>
@@ -445,7 +456,7 @@ export default function ConnectPage() {
 
               <div className="mt-6 border-t border-[var(--border)] pt-5">
                 <p className="label">Do this once, first</p>
-                <p className="mt-1 text-[15px] font-bold">
+                <p className="mt-1.5 text-[16px] font-bold">
                   Create the conversion action in Google Ads
                 </p>
                 <p className="mt-1 max-w-[64ch] text-[13.5px] text-[var(--muted)]">
@@ -461,7 +472,7 @@ export default function ConnectPage() {
                 <ol className="mt-3.5 grid gap-3">
                   {SETUP_STEPS.map((step, i) => (
                     <li key={step.title} className="flex gap-3">
-                      <span className="mono mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[var(--primary-soft)] text-[12px] font-bold text-[var(--primary)]">
+                      <span className="mono mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full bg-[var(--primary-soft)] text-[12px] font-bold text-[var(--primary-deep)]">
                         {i + 1}
                       </span>
                       <span>
@@ -480,7 +491,7 @@ export default function ConnectPage() {
                 <ol className="mt-3 grid gap-3">
                   {SCHEDULE_STEPS.map((step, i) => (
                     <li key={step.title} className="flex gap-3">
-                      <span className="mono mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[var(--navy)] text-[12px] font-bold text-white">
+                      <span className="mono mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full bg-[var(--navy)] text-[12px] font-bold text-[var(--on-navy)]">
                         {i + 1}
                       </span>
                       <span>
@@ -545,7 +556,7 @@ export default function ConnectPage() {
                 <ol className="mt-4 grid gap-3">
                   {BID_STEPS.map((step, i) => (
                     <li key={step.title} className="flex gap-3">
-                      <span className="mono mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-white/15 text-[12px] font-bold text-white">
+                      <span className="mono mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[var(--surface)]/15 text-[12px] font-bold text-white">
                         {i + 1}
                       </span>
                       <span>
@@ -563,7 +574,7 @@ export default function ConnectPage() {
         </section>
 
         {/* ---- the fallback, clearly secondary ---- */}
-        <section className="mt-4 rounded-2xl border border-[var(--border)] bg-white p-5">
+        <section className="mt-4 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <p className="text-[14px] font-bold">Or upload a file yourself</p>
@@ -585,7 +596,7 @@ export default function ConnectPage() {
         </section>
 
         {/* ---- the next thing worth doing ---- */}
-        <section className="mt-4 rounded-2xl border border-[var(--border)] bg-white p-5">
+        <section className="mt-4 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5">
           <p className="text-[14px] font-bold">Then: raise your match rate</p>
           <p className="mt-0.5 max-w-[66ch] text-[13.5px] text-[var(--muted)]">
             A lead carrying an ad click ID matches exactly. One without relies on Google

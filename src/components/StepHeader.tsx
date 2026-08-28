@@ -20,7 +20,7 @@ export function StepHeader({ current }: { current: StepKey }) {
   const currentIdx = STEPS.findIndex((s) => s.key === current);
 
   return (
-    <header className="sticky top-0 z-20 border-b border-[var(--border)] bg-white/80 backdrop-blur-md">
+    <header className="sticky top-0 z-20 border-b border-[var(--border)] bg-[var(--surface)]/80 backdrop-blur-md">
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-6 px-6 py-3">
         <Link href="/" className="flex items-center gap-2 shrink-0">
           <span className="gradient-navy flex h-7 w-7 items-center justify-center rounded-lg text-sm font-bold text-white">

@@ -187,7 +187,7 @@ export function AdminView() {
             <p className="label text-white/60">Send this to {issued.name}</p>
             <p className="mt-1 text-[15px] font-bold">Their workspace key</p>
             <div className="mt-3 flex flex-wrap items-center gap-2">
-              <code className="mono min-w-0 flex-1 overflow-x-auto whitespace-nowrap rounded-lg bg-white/10 px-3 py-2.5 text-[13px]">
+              <code className="mono min-w-0 flex-1 overflow-x-auto whitespace-nowrap rounded-lg bg-[var(--surface)]/10 px-3 py-2.5 text-[13px]">
                 {issued.key}
               </code>
               <button type="button" onClick={copyKey} className="btn btn-primary shrink-0 text-[13px]">

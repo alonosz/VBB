@@ -5,6 +5,7 @@ import Papa from "papaparse";
 import { useRouter } from "next/navigation";
 import { useDiagnostic } from "@/context/DiagnosticContext";
 import { Stepper } from "@/components/diagnostic/Stepper";
+import { Alert, PageHead } from "@/components/ui";
 import { generateDemoDeals, demoDealsToCsvRows } from "@/lib/fixtures/demoDataset";
 import { useIngest } from "@/lib/diagnostic/useIngest";
 
@@ -105,25 +106,28 @@ export default function UploadPage() {
   return (
     <div className="animate-page-in flex min-h-screen flex-col">
       <Stepper current="upload" />
-      <main className="mx-auto w-full max-w-3xl flex-1 px-6 py-10">
-        <p className="label mb-2">Step 2 of 5</p>
-        <h1 className="text-3xl font-bold tracking-tight text-balance">
-          {parsing ? "Reading your file…" : "Upload your CRM deal export"}
-        </h1>
-        <p className="mt-2 max-w-2xl text-[15px] text-[var(--muted)]">
-          {parsing
-            ? "Parsing rows, sampling values, and matching columns against the fields the analysis needs."
-            : "A CSV of deals or opportunities — whatever your CRM exports. We'll work out which columns are which and tell you straight away if anything will cause trouble."}
-        </p>
+      <main className="page-narrow animate-page-in flex-1 py-10">
+        <PageHead
+          eyebrow="Step 2 of 5 · Upload"
+          title={parsing ? "Reading your file…" : "Upload your CRM deal export"}
+          lede={
+            parsing
+              ? "Parsing rows, sampling values, and matching columns against the fields the analysis needs."
+              : "A CSV of deals or opportunities — whatever your CRM exports. We'll work out which columns are which and tell you straight away if anything will cause trouble."
+          }
+        />
 
         {/* Reached by refreshing with an export too large to keep in the tab.
             The mapping survived; only the rows did not. */}
         {needsFile && (
-          <p className="mt-4 max-w-[70ch] rounded-xl border border-[var(--warn)]/40 bg-[var(--warn-soft)] px-4 py-3 text-[13.5px]">
-            <span className="font-semibold">Your column mapping is still here.</span>{" "}
-            Your export was too large to keep in the browser across a refresh, so
-            select the same file again — your choices will be waiting.
-          </p>
+          <div className="mt-5">
+            <Alert tone="warn" title="Your column mapping is still here">
+              <p className="text-[13.5px]">
+                Your export was too large to keep in the browser across a refresh, so
+                select the same file again — your choices will be waiting.
+              </p>
+            </Alert>
+          </div>
         )}
 
         {!parsing && (
@@ -150,19 +154,19 @@ export default function UploadPage() {
                 if (f) handleFile(f);
               }}
               className={
-                "mt-7 cursor-pointer rounded-2xl border-2 border-dashed px-6 py-14 text-center transition-all " +
+                "mt-8 cursor-pointer rounded-[var(--radius-xl)] border-2 border-dashed px-6 py-16 text-center transition-all duration-[var(--base)] ease-[var(--ease)] " +
                 (dragging
-                  ? "border-[var(--primary)] bg-[var(--primary-soft)]"
-                  : "border-[var(--border)] bg-white hover:-translate-y-0.5 hover:border-[var(--primary)]/60 hover:bg-[var(--primary-soft)]/40")
+                  ? "border-[var(--primary)] bg-[var(--primary-soft)] shadow-[var(--shadow-md)]"
+                  : "border-[var(--border-strong)] bg-[var(--surface)] hover:-translate-y-0.5 hover:border-[var(--primary)] hover:bg-[var(--primary-softer)] hover:shadow-[var(--shadow-md)]")
               }
             >
-              <span className="mx-auto mb-4 flex h-13 w-13 items-center justify-center rounded-2xl bg-[var(--primary-soft)] p-3">
+              <span className="mx-auto mb-5 flex size-14 items-center justify-center rounded-[var(--radius-lg)] bg-[var(--primary-soft)]">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                   <path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5" stroke="var(--primary)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
                   <path d="M3.5 15v2.5A2.5 2.5 0 0 0 6 20h12a2.5 2.5 0 0 0 2.5-2.5V15" stroke="var(--primary)" strokeWidth="1.8" strokeLinecap="round" />
                 </svg>
               </span>
-              <p className="text-[15px] font-semibold">Drop your CSV here, or click to browse</p>
+              <p className="text-[17px] font-bold">Drop your CSV here, or click to browse</p>
               <p className="mt-1 text-[13px] text-[var(--muted)]">
                 HubSpot, Salesforce, Pipedrive, Close, or a plain spreadsheet export
               </p>
@@ -185,7 +189,7 @@ export default function UploadPage() {
             />
 
             {assisted && (
-              <details className="mt-4 rounded-xl border border-[var(--border)] bg-white px-4 py-3">
+              <details className="mt-4 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 py-3">
                 <summary className="cursor-pointer text-[13px] font-semibold">
                   What we send to match your description to your columns
                 </summary>
@@ -220,16 +224,18 @@ export default function UploadPage() {
             )}
 
             {error && (
-              <p className="mt-4 rounded-xl border border-[var(--danger)]/30 bg-[var(--danger-soft)] px-4 py-3 text-sm text-[var(--danger)]">
-                {error}
-              </p>
+              <div className="mt-4">
+                <Alert tone="bad" title="That file didn't read">
+                  <p className="text-[13.5px]">{error}</p>
+                </Alert>
+              </div>
             )}
 
-            <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
+            <div className="well mt-5 flex flex-wrap items-center justify-between gap-3 p-4 sm:p-5">
               <p className="text-[13px] text-[var(--muted)]">
                 No export handy? Try it on a synthetic dataset first.
               </p>
-              <button type="button" onClick={loadDemo} className="btn btn-secondary text-[13px]">
+              <button type="button" onClick={loadDemo} className="btn btn-secondary btn-sm">
                 Use demo data
               </button>
             </div>

@@ -7,6 +7,7 @@ import { generateDemoDeals, demoDealsToCsvRows } from "@/lib/fixtures/demoDatase
 import { SIZE_BANDS, describeSizeSelection } from "@/lib/analysis/statedProfile";
 import { useIngest } from "@/lib/diagnostic/useIngest";
 import { Stepper } from "@/components/diagnostic/Stepper";
+import { PageHead } from "@/components/ui";
 import { ArrowIcon } from "@/components/ArrowIcon";
 
 // Tuned to match the shape of the demo dataset, so the walkthrough surfaces
@@ -57,26 +58,18 @@ export default function IntakePage() {
   return (
     <div className="animate-page-in flex min-h-screen flex-col">
       <Stepper current="intake" />
-      <main className="mx-auto w-full max-w-3xl flex-1 px-6 py-10">
-        <p className="label mb-2">Step 1 of 5</p>
-        <h1 className="text-3xl font-bold tracking-tight text-balance">
-          Tell us about your business
-        </h1>
-        <p className="mt-2 max-w-2xl text-[15px] text-[var(--muted)]">
-          Nothing here changes what your leads are worth — we hold it next to what your
-          data actually says and show you where the two disagree. That gap is usually
-          the most useful thing in the report.
-        </p>
+      <main className="page animate-page-in flex-1 py-10">
+        <PageHead
+          eyebrow="Step 1 of 5 · Your business"
+          title="Tell us about your business"
+          lede="Nothing here changes what your leads are worth. We hold it next to what your data actually says and show you where the two disagree — usually the most useful page in the report."
+        />
 
         {/* ---- the two claims worth asking for straight, first ---- */}
-        <div className="card mt-7 p-6">
-          <p className="text-[15px] font-semibold">
-            Start with two numbers
-          </p>
-          <p className="mt-1 max-w-[62ch] text-[13.5px] text-[var(--muted)]">
-            Both optional, and neither changes what your leads are worth. We hold them
-            against your data and show you where the two disagree — which is usually
-            the most useful page in the report.
+        <div className="card mt-8 p-6 sm:p-7">
+          <h2 className="h3">Start with two numbers</h2>
+          <p className="mt-1.5 max-w-[62ch] text-[13.5px] text-[var(--muted)]">
+            Both optional. Neither prices a lead — your closed deals do that.
           </p>
 
           {/* Sales cycle */}
@@ -147,7 +140,7 @@ export default function IntakePage() {
                       "rounded-full border px-3.5 py-1.5 text-[13px] font-semibold transition-colors " +
                       (on
                         ? "border-[var(--primary)] bg-[var(--primary-soft)] text-[var(--primary)]"
-                        : "border-[var(--border)] bg-white text-[var(--muted)] hover:border-[var(--primary)]/40")
+                        : "border-[var(--border)] bg-[var(--surface)] text-[var(--muted-strong)] hover:border-[var(--primary)]/40 hover:text-[var(--foreground)]")
                     }
                   >
                     {band.label}
@@ -168,8 +161,8 @@ export default function IntakePage() {
           </div>
         </div>
 
-        <div className="card mt-4 p-6">
-          <label htmlFor="ctx" className="block text-[15px] font-semibold">
+        <div className="card mt-4 p-6 sm:p-7">
+          <label htmlFor="ctx" className="block text-[16px] font-bold">
             Now describe your business and your ideal customer, in your own words
           </label>
           <p className="mt-1 max-w-[64ch] text-[13.5px] text-[var(--muted)]">
@@ -204,7 +197,7 @@ export default function IntakePage() {
           </div>
         </div>
 
-        <div className="mt-7 flex flex-wrap items-center justify-between gap-4">
+        <div className="mt-8 flex flex-wrap items-center justify-between gap-4 border-t border-[var(--border)] pt-6">
           <p className="max-w-[54ch] text-[13px] text-[var(--muted)]">
             You can skip this, but the stated-versus-actual comparison is the part
             most people screenshot.
@@ -212,14 +205,14 @@ export default function IntakePage() {
           <button
             type="button"
             onClick={() => router.push("/diagnostic/upload")}
-            className="btn btn-primary"
+            className="btn btn-primary btn-lg"
           >
             Continue to upload <ArrowIcon />
           </button>
         </div>
 
         {/* No CSV to hand? Walk the whole thing on synthetic data instead. */}
-        <div className="card mt-8 flex flex-wrap items-center justify-between gap-4 p-5">
+        <div className="well mt-8 flex flex-wrap items-center justify-between gap-4 p-5 sm:p-6">
           <div>
             <p className="text-[14px] font-bold">No export handy?</p>
             <p className="mt-0.5 max-w-[58ch] text-[13.5px] text-[var(--muted)]">
@@ -231,7 +224,7 @@ export default function IntakePage() {
             type="button"
             disabled={loadingSample}
             onClick={() => void trySample()}
-            className="btn btn-secondary shrink-0"
+            className="btn btn-secondary btn-wrap w-full sm:w-auto sm:shrink-0"
           >
             {loadingSample
               ? "Building 500 deals…"

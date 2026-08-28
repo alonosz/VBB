@@ -50,7 +50,7 @@ export function FileDropzone({
         "flex cursor-pointer flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed px-6 py-14 text-center transition-colors " +
         (isDragging
           ? "border-[var(--primary)] bg-[var(--primary-soft)]"
-          : "border-[var(--border)] bg-white hover:border-[var(--primary)]/60 hover:bg-[var(--primary-soft)]/30")
+          : "border-[var(--border)] bg-[var(--surface)] hover:border-[var(--primary)]/60 hover:bg-[var(--primary-soft)]/30")
       }
     >
       <span className="flex h-12 w-12 items-center justify-center rounded-full bg-[var(--primary-soft)] text-2xl">

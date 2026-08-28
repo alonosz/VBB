@@ -40,7 +40,7 @@ export function NumericBucketEditor({
               "px-3 py-1.5 text-xs font-semibold transition-colors " +
               (rule.mode === m
                 ? "bg-[var(--primary)] text-white"
-                : "bg-white text-[var(--muted-strong)] hover:bg-[var(--surface-sunken)]")
+                : "bg-[var(--surface)] text-[var(--muted-strong)] hover:bg-[var(--surface-sunken)]")
             }
           >
             {m === "range" ? "Fixed ranges" : "Percentile"}

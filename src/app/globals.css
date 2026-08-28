@@ -35,6 +35,8 @@
   --on-navy-faint: #7d88a8;
   /* The data hue read on navy — brand indigo is too dark against it. */
   --primary-on-navy: #8fa6ff;
+  /* Caution read on navy: --warn is tuned for AA on white and disappears here. */
+  --warn-on-navy: #f0c14b;
 
   /* Ink light enough to recede but still legible: disabled steps, empty
      states, the grey in the blindness chart. */
