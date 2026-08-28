@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useDiagnostic } from "@/context/DiagnosticContext";
 import { Stepper } from "@/components/diagnostic/Stepper";
 import { Alert, PageHead } from "@/components/ui";
+import { VolumeFloorPanel } from "@/components/report/volumeFloor";
 import { FlowSkeleton } from "@/components/diagnostic/FlowSkeleton";
 import { ArrowIcon } from "@/components/ArrowIcon";
 import { rowsToDeals } from "@/lib/mapping/toDeals";
@@ -167,16 +168,17 @@ export default function ConnectPage() {
     return rowsToDeals({ rows: file.rows, fields, currency, stageTiming, signalColumns: customSignalKeys });
   }, [file, fields, currency, stageTiming, customSignalKeys]);
 
-  const gate = useMemo(() => {
-    if (!mapped) return null;
-    return runDiagnostic({
+  const { gate, volume } = useMemo(() => {
+    if (!mapped) return { gate: null, volume: null };
+    const result = runDiagnostic({
       deals: mapped.deals,
       excluded: mapped.excluded,
       businessContext,
       currencyCode: currency.reportingCurrency,
       customSignalKeys,
       hypotheses,
-    }).gate;
+    });
+    return { gate: result.gate, volume: result.volume };
   }, [mapped, businessContext, currency.reportingCurrency, customSignalKeys, hypotheses]);
 
   // Fixed for the life of the screen, so re-rendering cannot hand two halves
@@ -328,8 +330,14 @@ export default function ConnectPage() {
           This is the step that changes that.
         </p>
 
+        {volume && (
+          <div className="mt-8">
+            <VolumeFloorPanel volume={volume} currency={cur} />
+          </div>
+        )}
+
         {/* ---- the product: a URL Google fetches by itself ---- */}
-        <section className="card mt-8 border-[var(--primary)]/25 p-6 sm:p-7">
+        <section className="card mt-4 border-[var(--primary)]/25 p-6 sm:p-7">
           <p className="label" style={{ color: "var(--primary-deep)" }}>
             Recommended
           </p>

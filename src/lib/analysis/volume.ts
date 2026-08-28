@@ -1,7 +1,7 @@
 import type { MappedDeal, VolumeCheck } from "./types";
 import { monthsSpanned, round } from "./helpers";
 
-const MIN_LEADS_PER_MONTH = 30;
+export const MIN_LEADS_PER_MONTH = 30;
 const LOOKBACK_DAYS = 182;
 
 /**
