@@ -63,6 +63,47 @@ One trade-off to make deliberately: the landing page currently promises
 of two, at the point where the product has already proven itself. The blurred
 modal is a good pattern — just put it later.
 
+### Open decision: contact capture before the gate
+
+Gating at step 5 has a cost that the recommendation above ignored. Everyone who
+drops out at steps 1–4 leaves no trace, and those are precisely the people
+worth a phone call — someone who reached their own model and then stopped is
+the most informative churn there is.
+
+The tension dissolves once **collecting an email** and **creating an account**
+are treated as separate events. The wall is the account. The email is a field.
+
+Proposed shape:
+
+- **Step 1 or 2** — one optional field: *"Where should we send your model when
+  it's ready?"* No password, no verification, skippable. A value exchange, not
+  a gate.
+- **Step 5** — account and payment, with the email already filled in. Signing
+  up becomes one click instead of a form.
+
+**Capture:** email, timestamp, furthest step reached. That is enough for the
+call — *"you got all the way to your model and stopped, what happened?"* needs
+no more than that.
+
+**Do not capture:** spread ratio, lead count, deal values, or anything else
+derived from their file. Today nothing touches the server until a customer
+publishes, and that is a promise made on the landing page and in
+`SECURITY_AND_DATA.md`. Storing derived facts about a non-customer's revenue is
+a materially larger commitment than storing an email, and the same information
+is available by asking them.
+
+The one argument for storing the spread is triage — deciding which churned
+users to call first. That is a problem worth solving at a few hundred churns
+per month, not at zero. Leave it.
+
+**Cost: ~half a day.** An optional field, a `leads` table, a ping per step.
+
+Not code, and not optional if selling into the EU: a sentence at the point of
+collection saying you may get in touch, and a delete-on-request path.
+
+**Status: undecided.** The trade-off is between a slightly heavier step 1 and
+having a churn list at all.
+
 ### Note on sessions
 
 Access is currently "this browser remembers a key". That is fine for five
@@ -136,11 +177,14 @@ Budget at least as much time for this as for the code.
    core mechanic doesn't work in a real account.
 2. **HubSpot nightly sync** for the pilot customers. Needs `VBB_TOKEN_KEY` and
    `CRON_SECRET`. The code is built and tested; only configuration is missing.
-3. **Stripe + the paywall at step 5.** Gate the feed URL, keep the CSV free.
-4. **Signup**, in the same modal as the paywall. One interruption, one moment.
-5. **Real sessions** — email magic link, works on any device.
+3. **Contact capture at step 1**, if that decision goes that way. Half a day,
+   independent of everything below it, and the sooner it exists the sooner the
+   churn list starts filling.
+4. **Stripe + the paywall at step 5.** Gate the feed URL, keep the CSV free.
+5. **Signup**, in the same modal as the paywall. One interruption, one moment.
+6. **Real sessions** — email magic link, works on any device.
 
-Steps 3 and 4 land together because they are the same screen and the same
+Steps 4 and 5 land together because they are the same screen and the same
 moment. Splitting them means interrupting the customer twice.
 
 ---
