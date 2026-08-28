@@ -67,7 +67,7 @@ export function LiveShell({
         }
         right={status}
       />
-      <main className="page-wide section animate-page-in flex-1">{children}</main>
+      <main className="page-wide animate-page-in flex-1 py-10">{children}</main>
     </>
   );
 }

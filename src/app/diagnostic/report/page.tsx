@@ -228,7 +228,7 @@ export default function ReportPage() {
     <div className="flex min-h-screen flex-col">
       <Stepper current="report" />
 
-      <main className="page section animate-page-in flex-1">
+      <main className="page animate-page-in flex-1 py-10">
         <PageHead
           eyebrow={
             <>

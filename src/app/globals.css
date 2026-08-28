@@ -270,6 +270,13 @@ body {
       border-color var(--fast) var(--ease);
   }
 
+  /* Long marketing labels need to wrap rather than run off a phone. Opt-in,
+     because nowrap is right for every button that sits in a toolbar. */
+  .btn-wrap {
+    white-space: normal;
+    text-align: center;
+  }
+
   .btn:disabled {
     opacity: 0.45;
     cursor: not-allowed;
