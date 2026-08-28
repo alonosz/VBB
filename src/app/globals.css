@@ -372,7 +372,7 @@ body {
 
   .input:hover:not(:disabled),
   .select:hover:not(:disabled) {
-    border-color: #b3bdd4;
+    border-color: var(--muted-soft);
   }
 
   .input:focus,

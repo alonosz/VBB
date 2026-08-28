@@ -9,6 +9,7 @@ import { ArrowIcon } from "@/components/ArrowIcon";
 import type { DetectedField, FileIssue } from "@/lib/mapping/detect";
 import { rowsToDeals } from "@/lib/mapping/toDeals";
 import { resolveHypotheses } from "@/lib/intake/merge";
+import { PageHead } from "@/components/ui";
 
 const CURRENCIES = ["USD", "EUR", "GBP", "CAD", "AUD", "JPY", "INR", "BRL", "MXN", "NZD"];
 
@@ -17,23 +18,17 @@ function ConfidenceBadge({ field }: { field: DetectedField }) {
   // a percentage for one would be inventing a number.
   if (field.column !== null && field.source === "assistant") {
     return (
-      <span className="inline-flex whitespace-nowrap rounded-full bg-[var(--primary-soft)] px-2.5 py-1 text-[11px] font-bold tracking-wide text-[var(--primary)]">
-        From your description
-      </span>
+      <span className="badge badge-primary whitespace-nowrap">From your description</span>
     );
   }
   if (field.column !== null && field.source === "user") {
     return (
-      <span className="inline-flex whitespace-nowrap rounded-full bg-[var(--background-deep)] px-2.5 py-1 text-[11px] font-bold tracking-wide text-[var(--foreground)]">
-        Your choice
-      </span>
+      <span className="badge badge-neutral whitespace-nowrap">Your choice</span>
     );
   }
   if (field.column === null) {
     return (
-      <span className="inline-flex whitespace-nowrap rounded-full bg-[var(--background-deep)] px-2.5 py-1 text-[11px] font-bold tracking-wide text-[var(--muted)]">
-        Not found
-      </span>
+      <span className="badge badge-neutral whitespace-nowrap">Not found</span>
     );
   }
   const pct = Math.round((field.confidence ?? 0) * 100);
@@ -235,107 +230,169 @@ export default function MappingPage() {
   return (
     <div className="animate-page-in flex min-h-screen flex-col">
       <Stepper current="mapping" />
-      <main className="mx-auto w-full max-w-5xl flex-1 px-6 py-10">
-        <p className="label mb-2">Step 3 of 5</p>
-        <h1 className="text-3xl font-bold tracking-tight text-balance">
-          Here&apos;s what we found in your file
-        </h1>
-        <p className="mt-2 max-w-2xl text-[15px] text-[var(--muted)]">
-          Check anything marked for review, then confirm — you&apos;re the one who
-          knows your CRM.
-        </p>
+      <main className="page-wide animate-page-in flex-1 py-10">
+        <PageHead
+          eyebrow="Step 3 of 5 · Map columns"
+          title="Here's what we found in your file"
+          lede="Check anything marked for review, then confirm — you're the one who knows your CRM."
+        />
 
-        <div className="mt-6 flex flex-wrap items-center gap-3 rounded-xl border border-[var(--accent-line)] bg-[var(--accent-soft)] px-4 py-3.5">
-          <span>✓</span>
-          <p className="text-[14px] text-[var(--muted)]">
-            <span className="mono font-bold text-[var(--foreground)]">
-              {file.rows.length.toLocaleString()} rows
-            </span>{" "}
-            ·{" "}
-            <span className="mono font-bold text-[var(--foreground)]">
-              {file.headers.length} columns
-            </span>{" "}
+        <div className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-1.5 rounded-full border border-[var(--accent-line)] bg-[var(--accent-soft)] px-4 py-2">
+          <span aria-hidden className="text-[var(--accent)]">✓</span>
+          <span className="mono text-[12.5px] font-bold">
+            {file.rows.length.toLocaleString()} rows
+          </span>
+          <span aria-hidden className="text-[var(--accent-line)]">·</span>
+          <span className="mono text-[12.5px] font-bold">
+            {file.headers.length} columns
+          </span>
+          <span className="mono max-w-[32ch] truncate text-[12.5px] text-[var(--muted)]" title={file.name}>
             read from {file.name}
-          </p>
+          </span>
         </div>
 
         {/* ---- mapping table ---- */}
+        {/*
+          Required and optional are separated rather than run together in one
+          list of thirteen identical rows. Everything that can block the
+          analysis is above the fold; everything that only sharpens it is
+          below, and the eye no longer has to read each label to find out
+          which is which.
+        */}
         <section className="mt-8">
-          <div className="mb-3 flex flex-wrap items-baseline justify-between gap-3">
-            <h2 className="text-lg font-bold tracking-tight">Column mapping</h2>
+          <div className="mb-4 flex flex-wrap items-baseline justify-between gap-3">
+            <h2 className="h2">Column mapping</h2>
             <span className="text-[12.5px] text-[var(--muted)]">
               Change any of these if we got it wrong
             </span>
           </div>
 
-          <div className="card overflow-hidden">
-            {fields.map((field, i) => (
-              <div
-                key={field.key}
-                className={
-                  "grid items-center gap-4 px-4 py-3 transition-colors hover:bg-[var(--surface-sunken)] md:grid-cols-[170px_1fr_1.15fr_auto] " +
-                  (i < fields.length - 1 ? "border-b border-[var(--border)]" : "")
-                }
-              >
-                <div>
-                  <p className="text-[13.5px] font-semibold">
-                    {field.label}
-                    {field.required && <span className="ml-1 text-[var(--danger)]">*</span>}
-                  </p>
-                  <p className="text-[11.5px] text-[var(--muted)]">{field.hint}</p>
-                </div>
+          <div className="grid gap-5">
+            {(
+              [
+                {
+                  key: "required",
+                  title: "Needed to run",
+                  note: "The analysis cannot start without these.",
+                  rows: fields.filter((f) => f.required),
+                },
+                {
+                  key: "optional",
+                  title: "Makes it sharper",
+                  note: "Each one adds a signal the model can test. Leave any unmapped.",
+                  rows: fields.filter((f) => !f.required),
+                },
+              ] as const
+            ).map((group) =>
+              group.rows.length === 0 ? null : (
+                <div key={group.key}>
+                  <div className="mb-2 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                    <h3 className="label">{group.title}</h3>
+                    <span className="text-[12px] text-[var(--muted)]">{group.note}</span>
+                  </div>
 
-                <select
-                  aria-label={`Column for ${field.label}`}
-                  className="mono input text-[12.5px]"
-                  value={field.column ?? ""}
-                  onChange={(e) => setColumn(field.key, e.target.value || null)}
-                >
-                  <option value="">— not mapped —</option>
-                  {file.headers.map((h) => (
-                    <option key={h} value={h}>
-                      {h}
-                    </option>
-                  ))}
-                </select>
+                  <div className="card overflow-hidden p-0">
+                    {group.rows.map((field, i) => {
+                      // One rail, one meaning: this row is why you are on this
+                      // screen. Red when it blocks, amber when we are unsure.
+                      const blocking = field.required && field.column === null;
+                      const unsure =
+                        !blocking &&
+                        (Boolean(field.disagreement) ||
+                          (field.source === "heuristic" &&
+                            field.column !== null &&
+                            (field.confidence ?? 1) < 0.7));
 
-                <div className="text-[12.5px] leading-snug text-[var(--muted)]">
-                  {field.disagreement && (
-                    <span className="mb-1 block rounded-lg bg-[var(--warn-soft)] px-2 py-1 text-[12px] text-[var(--warn)]">
-                      {field.disagreement}
-                    </span>
-                  )}
-                  {field.reason ?? (
-                    <span className="italic">
-                      {field.required
-                        ? "No matching column found — pick one to continue"
-                        : "Not present in this file"}
-                    </span>
-                  )}
-                  {field.sampleValues && field.sampleValues.length > 0 && field.sampleValues.length <= 6 && (
-                    <span className="mt-1 flex flex-wrap gap-1">
-                      {field.sampleValues.map((v) => (
-                        <span
-                          key={v}
-                          className="mono rounded-full border border-[var(--border)] bg-[var(--surface-sunken)] px-2 py-0.5 text-[11px]"
+                      return (
+                        <div
+                          key={field.key}
+                          className={
+                            "grid items-center gap-4 border-l-[3px] px-4 py-3.5 transition-colors hover:bg-[var(--surface-sunken)] md:grid-cols-[170px_1fr_1.15fr_auto] " +
+                            (i < group.rows.length - 1
+                              ? "border-b border-b-[var(--border)] "
+                              : "") +
+                            (blocking
+                              ? "border-l-[var(--danger)] bg-[var(--danger-soft)]/50"
+                              : unsure
+                                ? "border-l-[var(--warn)] bg-[var(--warn-soft)]/50"
+                                : "border-l-transparent")
+                          }
                         >
-                          {v}
-                        </span>
-                      ))}
-                    </span>
-                  )}
-                </div>
+                          <div className="min-w-0">
+                            <p className="text-[13.5px] font-semibold">
+                              {field.label}
+                              {field.required && (
+                                <span
+                                  className="ml-1 text-[var(--danger)]"
+                                  aria-label="required"
+                                >
+                                  *
+                                </span>
+                              )}
+                            </p>
+                            <p className="text-[11.5px] text-[var(--muted)]">
+                              {field.hint}
+                            </p>
+                          </div>
 
-                <ConfidenceBadge field={field} />
-              </div>
-            ))}
+                          <select
+                            aria-label={`Column for ${field.label}`}
+                            className="mono select text-[12.5px]"
+                            value={field.column ?? ""}
+                            onChange={(e) => setColumn(field.key, e.target.value || null)}
+                          >
+                            <option value="">— not mapped —</option>
+                            {file.headers.map((h) => (
+                              <option key={h} value={h}>
+                                {h}
+                              </option>
+                            ))}
+                          </select>
+
+                          <div className="min-w-0 text-[12.5px] leading-snug text-[var(--muted)]">
+                            {field.disagreement && (
+                              <span className="mb-1 block rounded-[var(--radius-sm)] bg-[var(--warn-soft)] px-2 py-1 text-[12px] font-medium text-[var(--warn)]">
+                                {field.disagreement}
+                              </span>
+                            )}
+                            {field.reason ?? (
+                              <span className="italic">
+                                {field.required
+                                  ? "No matching column found — pick one to continue"
+                                  : "Not present in this file"}
+                              </span>
+                            )}
+                            {field.sampleValues &&
+                              field.sampleValues.length > 0 &&
+                              field.sampleValues.length <= 6 && (
+                                <span className="mt-1.5 flex flex-wrap gap-1">
+                                  {field.sampleValues.map((v) => (
+                                    <span
+                                      key={v}
+                                      className="mono rounded-full border border-[var(--border)] bg-[var(--surface-sunken)] px-2 py-0.5 text-[11px]"
+                                    >
+                                      {v}
+                                    </span>
+                                  ))}
+                                </span>
+                              )}
+                          </div>
+
+                          <ConfidenceBadge field={field} />
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )
+            )}
           </div>
 
           {missingRequired.length > 0 && (
-            <p className="mt-3 rounded-xl border border-[var(--danger)]/30 bg-[var(--danger-soft)] px-4 py-3 text-[13px] text-[var(--danger)]">
-              Pick a column for{" "}
-              {missingRequired.map((f) => f.label).join(", ")} before continuing —
-              the analysis can&apos;t run without {missingRequired.length === 1 ? "it" : "them"}.
+            <p className="alert alert-bad mt-4 text-[13px] font-medium" role="alert">
+              Pick a column for {missingRequired.map((f) => f.label).join(", ")} before
+              continuing — the analysis can&apos;t run without{" "}
+              {missingRequired.length === 1 ? "it" : "them"}.
             </p>
           )}
         </section>
@@ -346,7 +403,7 @@ export default function MappingPage() {
         {mixedCurrency && (
           <section className="mt-8">
             <div className="mb-3 flex flex-wrap items-baseline justify-between gap-3">
-              <h2 className="text-lg font-bold tracking-tight">Reporting currency</h2>
+              <h2 className="h3">Reporting currency</h2>
               <span className="text-[12.5px] text-[var(--muted)]">
                 We never convert without a rate you set
               </span>
@@ -359,7 +416,7 @@ export default function MappingPage() {
                 <label className="block">
                   <span className="label">Report everything in</span>
                   <select
-                    className="input mono mt-1 w-28"
+                    className="select mono mt-1 w-28"
                     value={currency.reportingCurrency}
                     onChange={(e) =>
                       setCurrency({ ...currency, reportingCurrency: e.target.value })
@@ -426,7 +483,7 @@ export default function MappingPage() {
         {issues.filter((i) => i.kind !== "mixed_currency").length > 0 && (
           <section className="mt-8">
             <div className="mb-3 flex flex-wrap items-baseline justify-between gap-3">
-              <h2 className="text-lg font-bold tracking-tight">Before we analyze</h2>
+              <h2 className="h3">Before we analyze</h2>
               <span className="text-[12.5px] text-[var(--muted)]">
                 What we found worth knowing about this file
               </span>
@@ -445,7 +502,7 @@ export default function MappingPage() {
         {intake && intake.status !== "skipped" && (
           <section className="mt-8">
             <div className="mb-3 flex flex-wrap items-baseline justify-between gap-3">
-              <h2 className="text-lg font-bold tracking-tight">From your description</h2>
+              <h2 className="h3">From your description</h2>
               <span className="text-[12.5px] text-[var(--muted)]">
                 Claims to test, not conclusions
               </span>
@@ -480,7 +537,7 @@ export default function MappingPage() {
                       </p>
                       <p className="mt-0.5 text-[12.5px] text-[var(--muted)]">
                         Testing against{" "}
-                        <span className="mono rounded-full border border-[var(--border)] bg-white px-2 py-0.5 text-[11px]">
+                        <span className="mono rounded-full border border-[var(--border)] bg-[var(--surface)] px-2 py-0.5 text-[11px]">
                           {h.column}
                         </span>
                         {h.statedLevels.length > 0 && (
@@ -489,7 +546,7 @@ export default function MappingPage() {
                             {h.statedLevels.map((l) => (
                               <span
                                 key={l}
-                                className="mono mr-1 inline-block rounded-full border border-[var(--border)] bg-white px-2 py-0.5 text-[11px]"
+                                className="mono mr-1 inline-block rounded-full border border-[var(--border)] bg-[var(--surface)] px-2 py-0.5 text-[11px]"
                               >
                                 {l}
                               </span>
@@ -522,7 +579,7 @@ export default function MappingPage() {
                     {detectedOptional.map((f) => (
                       <span
                         key={f.key}
-                        className="mono mr-1 inline-block rounded-full border border-[var(--border)] bg-white px-2 py-0.5 text-[11px]"
+                        className="mono mr-1 inline-block rounded-full border border-[var(--border)] bg-[var(--surface)] px-2 py-0.5 text-[11px]"
                       >
                         {f.column}
                       </span>
@@ -537,7 +594,9 @@ export default function MappingPage() {
         )}
 
         {/* ---- footer ---- */}
-        <div className="mt-8 flex flex-wrap items-center justify-between gap-4 border-t border-[var(--border)] pt-6">
+        {/* This page runs well past a screen, and the button that leaves it was
+            at the very bottom. It now follows you down. */}
+        <div className="sticky bottom-0 z-20 -mx-5 mt-8 flex flex-wrap items-center justify-between gap-4 border-t border-[var(--border)] bg-[color-mix(in_srgb,var(--background)_88%,transparent)] px-5 py-4 backdrop-blur-md md:-mx-8 md:px-8">
           <p className="max-w-[54ch] text-[13px] text-[var(--muted)]">
             <span className="mono font-semibold text-[var(--foreground)]">
               {preview.deals.length.toLocaleString()}
