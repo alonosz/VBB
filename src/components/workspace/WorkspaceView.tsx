@@ -2,7 +2,10 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { ArrowIcon } from "@/components/ArrowIcon";
+import Link from "next/link";
 import { forgetWorkspaceKey, readWorkspaceKey, rememberWorkspaceKey } from "@/lib/workspace/clientKey";
+import { LiveShell } from "@/components/shell/LiveShell";
+import { Alert, Badge, DataRow, Empty, Metric, Section, StatusDot, type Tone } from "@/components/ui";
 
 /**
  * One customer, one page.
@@ -14,6 +17,11 @@ import { forgetWorkspaceKey, readWorkspaceKey, rememberWorkspaceKey } from "@/li
  * What to do comes first and the detail comes second, because someone opening
  * this at nine in the morning needs the answer, not the evidence. The evidence
  * is underneath for when the answer is not enough.
+ *
+ * This is also the one screen that says the setup is over. It wears the live
+ * shell — product navigation instead of a five-step progress bar — and every
+ * problem it reports links back to the setup screen that owns the fix rather
+ * than growing a page of its own.
  */
 
 interface ActionItem {
@@ -48,10 +56,16 @@ interface Overview {
 }
 
 
-const TONE: Record<ActionItem["severity"], { border: string; bg: string; dot: string; label: string }> = {
-  blocked:   { border: "var(--danger)", bg: "var(--danger-soft)", dot: "●", label: "Needs fixing" },
-  attention: { border: "var(--warn)",   bg: "var(--warn-soft)", dot: "●", label: "Worth a look" },
-  info:      { border: "var(--accent)", bg: "var(--accent-soft)", dot: "✓", label: "Working" },
+const TONE: Record<ActionItem["severity"], Tone> = {
+  blocked: "bad",
+  attention: "warn",
+  info: "good",
+};
+
+const TONE_LABEL: Record<ActionItem["severity"], string> = {
+  blocked: "Needs fixing",
+  attention: "Worth a look",
+  info: "Working",
 };
 
 function when(iso: string | null): string {
@@ -69,16 +83,34 @@ function ago(iso: string | null): string {
   return `${Math.floor(hours / 24)}d ago`;
 }
 
-function Row({ label, value, hint }: { label: string; value: string; hint?: string }) {
-  return (
-    <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-[var(--border)] py-2 last:border-0">
-      <span className="text-[13px] text-[var(--muted)]">{label}</span>
-      <span className="mono text-right text-[13px] font-semibold">
-        {value}
-        {hint && <span className="ml-2 font-normal text-[var(--muted)]">{hint}</span>}
-      </span>
-    </div>
-  );
+type FixKey = "none" | "publish" | "model" | "crm" | "feed";
+
+const FIXES: Record<FixKey, { href: string; label: string } | null> = {
+  none: null,
+  publish: { href: "/diagnostic", label: "Run the diagnostic" },
+  model: { href: "/diagnostic/report", label: "Open the model" },
+  crm: { href: "/diagnostic/connect", label: "Connect a CRM" },
+  feed: { href: "/feed-status", label: "Check the feed" },
+};
+
+/**
+ * Which setup screen fixes this. Matched on what the engine already said
+ * rather than on a new field, so `buildOverview()` stays the single owner of
+ * what is wrong and this file only owns where you go about it.
+ */
+function fixFor(item: ActionItem, overview: Overview): FixKey {
+  if (item.developer) return "none";
+  if (!overview.feed || overview.feed.status === "revoked") return "publish";
+  if (!overview.model) return "model";
+
+  // Both halves, because the engine writes the cause in the title for some
+  // items ("No CRM is connected") and in the remedy for others ("The last sync
+  // did not complete." / "HubSpot returned 401…").
+  const text = `${item.title} ${item.action}`;
+  if (/currency/i.test(text)) return "publish";
+  if (/crm|hubspot|credential|reconnect/i.test(text)) return "crm";
+  if (/collect|fetch|data source/i.test(text)) return "feed";
+  return "none";
 }
 
 export function WorkspaceView() {
@@ -137,18 +169,16 @@ export function WorkspaceView() {
   if (!overview) {
     return (
       <div className="animate-page-in flex min-h-screen flex-col">
-        <main className="mx-auto w-full max-w-lg flex-1 px-6 py-20">
+        <main className="page-narrow flex-1 py-20">
           <p className="label mb-2">Your workspace</p>
-          <h1 className="text-3xl font-bold tracking-tight text-balance">
-            How is your bidding data doing?
-          </h1>
-          <p className="mt-2 text-[15px] text-[var(--muted)]">
+          <h1 className="h1">How is your bidding data doing?</h1>
+          <p className="lede mt-2.5 max-w-[52ch]">
             Paste the workspace key you were given. It starts{" "}
-            <span className="mono">vbb_ws_</span> — it is not the feed URL that
-            goes to Google.
+            <span className="mono font-semibold text-[var(--foreground)]">vbb_ws_</span>{" "}
+            — it is not the feed URL that goes to Google.
           </p>
 
-          <div className="card mt-8 p-5">
+          <div className="card mt-8 p-5 sm:p-6">
             <div className="flex flex-wrap gap-2">
               <input
                 type="password"
@@ -170,9 +200,11 @@ export function WorkspaceView() {
               </button>
             </div>
             {error && (
-              <p className="mt-3 rounded-xl border border-[var(--danger)]/30 bg-[var(--danger-soft)] px-3.5 py-2.5 text-[13px] text-[var(--danger)]">
-                {error}
-              </p>
+              <div className="mt-4">
+                <Alert tone="bad" title="That key didn't open a workspace">
+                  <p className="text-[13.5px]">{error}</p>
+                </Alert>
+              </div>
             )}
           </div>
         </main>
@@ -182,147 +214,273 @@ export function WorkspaceView() {
 
   const { workspace, feed, model, connection, runs, actions } = overview;
 
+  const health: Tone = overview.working
+    ? "good"
+    : actions.some((a) => a.severity === "blocked")
+      ? "bad"
+      : "warn";
+
   return (
-    <div className="animate-page-in flex min-h-screen flex-col">
-      <main className="mx-auto w-full max-w-3xl flex-1 px-6 py-12">
-        <div className="flex flex-wrap items-baseline justify-between gap-3">
-          <div>
-            <p className="label mb-1">Workspace</p>
-            <h1 className="text-3xl font-bold tracking-tight text-balance">{workspace.name}</h1>
-          </div>
-          <button type="button" onClick={signOut} className="btn btn-ghost text-xs">
+    <LiveShell
+      status={
+        <div className="flex items-center gap-2.5">
+          <span className="hidden items-center gap-2 sm:flex">
+            <StatusDot tone={health} />
+            <span className="text-[12.5px] font-semibold text-[var(--muted-strong)]">
+              {overview.working ? "Live" : health === "bad" ? "Blocked" : "Check this"}
+            </span>
+          </span>
+          <button type="button" onClick={signOut} className="btn btn-ghost btn-sm">
             Sign out
           </button>
         </div>
+      }
+    >
+      {/*
+        The band answers the only question this page exists for, before any
+        evidence. Navy when it is working, because that is the same emphasis
+        surface the report uses for the moment that matters.
+      */}
+      <section
+        className={
+          overview.working
+            ? "panel-navy p-6 sm:p-8"
+            : "card p-6 sm:p-8 " +
+              (health === "bad"
+                ? "border-[var(--danger-line)] bg-[var(--danger-soft)]"
+                : "border-[var(--warn-line)] bg-[var(--warn-soft)]")
+        }
+      >
+        <p
+          className="label"
+          style={overview.working ? { color: "var(--on-navy-muted)" } : undefined}
+        >
+          {workspace.name}
+        </p>
+        <h1
+          className="h1 mt-2.5 max-w-[22ch]"
+          style={overview.working ? { color: "var(--on-navy)" } : undefined}
+        >
+          {overview.working
+            ? "Your values are reaching Google."
+            : health === "bad"
+              ? "Values are not reaching Google."
+              : "Running, with something worth a look."}
+        </h1>
 
-        {/* ---- what to do, before the evidence ---- */}
-        <section className="mt-7 grid gap-3">
-          {actions.map((item, i) => {
-            const tone = TONE[item.severity];
-            return (
-              <div
-                key={`${item.title}-${i}`}
-                className="rounded-2xl border px-4 py-3.5"
-                style={{ borderColor: tone.border, background: tone.bg }}
-              >
-                <p className="label" style={{ color: tone.border }}>
-                  {tone.dot} {tone.label}
-                  {item.developer && " · developer"}
-                </p>
-                <p className="mt-1 text-[14.5px] font-bold">{item.title}</p>
-                <p className="mt-1 max-w-[70ch] text-[13.5px]">{item.action}</p>
-              </div>
-            );
-          })}
+        <div className="mt-7 grid gap-6 sm:grid-cols-3">
+          <Metric
+            onNavy={overview.working}
+            label="Rows in the feed"
+            value={feed ? feed.rowsPublished.toLocaleString() : "—"}
+            hint={feed ? `published ${ago(feed.publishedAt)}` : "nothing published yet"}
+          />
+          <Metric
+            onNavy={overview.working}
+            label="Google last collected"
+            value={feed ? ago(feed.lastFetchedAt) : "—"}
+            hint={
+              feed
+                ? `${feed.fetchesLast24h} ${feed.fetchesLast24h === 1 ? "fetch" : "fetches"} in 24h`
+                : undefined
+            }
+          />
+          <Metric
+            onNavy={overview.working}
+            label="Last nightly sync"
+            value={connection.connected ? ago(connection.lastSyncAt) : "not connected"}
+            hint={connection.connected ? (connection.lastSyncStatus ?? undefined) : "manual publishing only"}
+          />
+        </div>
+      </section>
+
+      {/* ---- what to do, before the evidence ---- */}
+      {actions.length > 0 && (
+        <section className="mt-6 grid gap-3">
+          {actions.map((item, i) => (
+            <Alert
+              key={`${item.title}-${i}`}
+              tone={TONE[item.severity]}
+              title={
+                <>
+                  {TONE_LABEL[item.severity]}
+                  {item.developer && (
+                    <span className="ml-2 font-semibold text-[var(--muted)]">
+                      · your developer
+                    </span>
+                  )}
+                </>
+              }
+            >
+              <p className="text-[14.5px] font-bold">{item.title}</p>
+              <p className="mt-1 text-[13.5px] text-[var(--muted-strong)]">{item.action}</p>
+              {(() => {
+                const fix = item.severity === "info" ? null : FIXES[fixFor(item, overview)];
+                return fix ? (
+                  <Link href={fix.href} className="btn btn-secondary btn-sm mt-3">
+                    {fix.label} <ArrowIcon />
+                  </Link>
+                ) : null;
+              })()}
+            </Alert>
+          ))}
         </section>
+      )}
 
-        {/* ---- the evidence ---- */}
-        <section className="card mt-5 p-5">
-          <p className="text-[14px] font-bold">Feed</p>
+      {/* ---- the evidence ---- */}
+      <div className="mt-6 grid gap-4 lg:grid-cols-2">
+        <Section
+          title="Feed"
+          aside={
+            feed ? (
+              <Badge tone={feed.status === "active" ? "good" : "bad"}>
+                {feed.status === "active" ? "Active" : "Revoked"}
+              </Badge>
+            ) : undefined
+          }
+        >
           {feed ? (
-            <div className="mt-2">
-              <Row label="Status" value={feed.status === "active" ? "Active" : "Revoked"} />
-              <Row label="Key" value={`${feed.tokenPrefix}…`} />
-              <Row label="Matches on" value={feed.identifier === "clickId" ? "Ad click ID" : "Hashed email"} />
-              <Row label="Currency" value={feed.currencyCode} />
-              <Row label="Rows published" value={feed.rowsPublished.toLocaleString()} />
-              <Row label="Last published" value={when(feed.publishedAt)} hint={ago(feed.publishedAt)} />
-              <Row label="Google last collected" value={when(feed.lastFetchedAt)} hint={ago(feed.lastFetchedAt)} />
+            <div>
+              <DataRow label="Key" value={`${feed.tokenPrefix}…`} />
+              <DataRow
+                label="Matches on"
+                value={feed.identifier === "clickId" ? "Ad click ID" : "Hashed email"}
+              />
+              <DataRow label="Currency" value={feed.currencyCode} />
+              <DataRow label="Rows published" value={feed.rowsPublished.toLocaleString()} />
+              <DataRow label="Last published" value={when(feed.publishedAt)} hint={ago(feed.publishedAt)} />
+              <DataRow
+                label="Google last collected"
+                value={when(feed.lastFetchedAt)}
+                hint={ago(feed.lastFetchedAt)}
+              />
             </div>
           ) : (
-            <p className="mt-1 text-[13.5px] text-[var(--muted)]">Nothing published yet.</p>
+            <Empty
+              title="Nothing published yet"
+              body="Run the diagnostic on a CRM export and publish a feed. Nothing reaches Google until that exists."
+              action={
+                <Link href="/diagnostic" className="btn btn-primary btn-sm">
+                  Start the diagnostic <ArrowIcon />
+                </Link>
+              }
+            />
           )}
-        </section>
+        </Section>
 
-        <section className="card mt-4 p-5">
-          <p className="text-[14px] font-bold">Model</p>
+        <Section
+          title="Model"
+          aside={model ? <Badge tone="neutral">{model.modelId}</Badge> : undefined}
+        >
           {model ? (
-            <div className="mt-2">
-              <Row label="Version" value={model.modelId} />
-              <Row label="Fitted" value={when(model.fittedAt)} hint={ago(model.fittedAt)} />
-              <Row label="Fitted on" value={`${model.fittedOn.toLocaleString()} resolved deals`} />
-              <Row label="Rules" value={`${model.factorCount}`} />
-              <Row
+            <div>
+              <DataRow label="Fitted" value={when(model.fittedAt)} hint={ago(model.fittedAt)} />
+              <DataRow
+                label="Fitted on"
+                value={`${model.fittedOn.toLocaleString()} resolved deals`}
+              />
+              <DataRow label="Rules" value={String(model.factorCount)} />
+              <DataRow
                 label="Early gate"
                 value={model.hasGate ? (model.gateStage ?? "yes") : "none"}
                 hint={model.hasGate ? "sharpens inside 7 days" : undefined}
               />
-              <Row label="Currency" value={model.currencyCode} />
+              <DataRow label="Currency" value={model.currencyCode} />
             </div>
           ) : (
-            <p className="mt-1 text-[13.5px] text-[var(--muted)]">No model saved with this feed.</p>
+            <Empty
+              title="No model saved with this feed"
+              body="The nightly sync cannot price anything without one. Re-publish from the diagnostic, which saves the model alongside the feed."
+              action={
+                <Link href="/diagnostic/report" className="btn btn-secondary btn-sm">
+                  Go to the model <ArrowIcon />
+                </Link>
+              }
+            />
           )}
-        </section>
+        </Section>
+      </div>
 
-        <section className="card mt-4 p-5">
-          <p className="text-[14px] font-bold">CRM connection</p>
-          <div className="mt-2">
-            <Row label="Connected" value={connection.connected ? "HubSpot" : "No"} />
-            {connection.connected && (
-              <>
-                <Row
-                  label="Authorised via"
-                  value={connection.scopes === "private-app" ? "Private app token" : "OAuth"}
-                />
-                <Row label="Last sync" value={when(connection.lastSyncAt)} hint={ago(connection.lastSyncAt)} />
-                <Row label="Result" value={connection.lastSyncStatus ?? "—"} />
-              </>
-            )}
-          </div>
+      <div className="mt-4">
+        <Section
+          title="CRM connection"
+          aside={
+            <Badge tone={connection.connected ? "good" : "neutral"}>
+              {connection.connected ? "HubSpot" : "Not connected"}
+            </Badge>
+          }
+        >
+          {connection.connected ? (
+            <div>
+              <DataRow
+                label="Authorised via"
+                value={connection.scopes === "private-app" ? "Private app token" : "OAuth"}
+              />
+              <DataRow label="Last sync" value={when(connection.lastSyncAt)} hint={ago(connection.lastSyncAt)} />
+              <DataRow label="Result" value={connection.lastSyncStatus ?? "—"} />
+            </div>
+          ) : (
+            <p className="text-[13.5px] text-[var(--muted)]">
+              The feed only updates when someone publishes by hand. Connecting HubSpot
+              has it refresh itself nightly.
+            </p>
+          )}
           {connection.lastSyncError && (
-            <p className="mt-3 rounded-lg border border-[var(--border)] bg-[var(--surface-sunken)] px-3 py-2 text-[12.5px]">
+            <p className="well mt-3 px-3 py-2 text-[12.5px] text-[var(--muted-strong)]">
               {connection.lastSyncError}
             </p>
           )}
-        </section>
+        </Section>
+      </div>
 
-        <section className="card mt-4 p-5">
-          <p className="text-[14px] font-bold">Recent nightly runs</p>
+      {/* ---- activity: a section here, not a screen of its own ---- */}
+      <div className="mt-4">
+        <Section
+          title="Recent nightly runs"
+          hint="Too late means the lead's value moved after Google's 7-day window, so nothing was sent — that outcome feeds the next refit instead."
+        >
           {runs.length === 0 ? (
-            <p className="mt-1 text-[13.5px] text-[var(--muted)]">
-              None yet. The first runs overnight after a CRM is connected.
-            </p>
+            <Empty
+              title="No runs yet"
+              body="The first one runs overnight after a CRM is connected."
+            />
           ) : (
-            <div className="mt-3 overflow-x-auto">
-              <table className="w-full min-w-[34rem] text-left text-[12.5px]">
+            <div className="scroll-x">
+              <table className="table min-w-[34rem]">
                 <thead>
-                  <tr className="border-b border-[var(--border)] text-[var(--muted)]">
-                    <th className="label pb-1.5 font-bold">When</th>
-                    <th className="label pb-1.5 font-bold">Result</th>
-                    <th className="label pb-1.5 text-right font-bold">Pulled</th>
-                    <th className="label pb-1.5 text-right font-bold">Sent</th>
-                    <th className="label pb-1.5 text-right font-bold">Adjusted</th>
-                    <th className="label pb-1.5 text-right font-bold">Too late</th>
-                    <th className="label pb-1.5 text-right font-bold">Skipped</th>
+                  <tr>
+                    <th>When</th>
+                    <th>Result</th>
+                    <th className="num">Pulled</th>
+                    <th className="num">Sent</th>
+                    <th className="num">Adjusted</th>
+                    <th className="num">Too late</th>
+                    <th className="num">Skipped</th>
                   </tr>
                 </thead>
                 <tbody>
                   {runs.map((r) => (
-                    <tr key={r.id} className="border-b border-[var(--border)] last:border-0">
-                      <td className="mono py-1.5 whitespace-nowrap">{when(r.startedAt)}</td>
-                      <td className="mono py-1.5">
-                        <span style={{ color: r.status === "ok" ? "var(--accent)" : "var(--danger)" }}>
+                    <tr key={r.id}>
+                      <td className="mono whitespace-nowrap text-[12.5px]">{when(r.startedAt)}</td>
+                      <td>
+                        <span className="flex items-center gap-1.5 text-[12.5px] font-semibold">
+                          <StatusDot tone={r.status === "ok" ? "good" : "bad"} />
                           {r.status}
                         </span>
                       </td>
-                      <td className="mono py-1.5 text-right">{r.dealsPulled.toLocaleString()}</td>
-                      <td className="mono py-1.5 text-right">{r.newConversions.toLocaleString()}</td>
-                      <td className="mono py-1.5 text-right">{r.adjustments.toLocaleString()}</td>
-                      <td className="mono py-1.5 text-right">{r.recalibrationOnly.toLocaleString()}</td>
-                      <td className="mono py-1.5 text-right">{r.skipped.toLocaleString()}</td>
+                      <td className="num">{r.dealsPulled.toLocaleString()}</td>
+                      <td className="num">{r.newConversions.toLocaleString()}</td>
+                      <td className="num">{r.adjustments.toLocaleString()}</td>
+                      <td className="num">{r.recalibrationOnly.toLocaleString()}</td>
+                      <td className="num">{r.skipped.toLocaleString()}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
-              <p className="mt-2 max-w-[70ch] text-[12px] text-[var(--muted)]">
-                <span className="font-semibold">Too late</span> means the lead&apos;s
-                value moved after Google&apos;s 7-day window, so nothing was sent —
-                that outcome feeds the next refit instead.
-              </p>
             </div>
           )}
-        </section>
-      </main>
-    </div>
+        </Section>
+      </div>
+    </LiveShell>
   );
 }

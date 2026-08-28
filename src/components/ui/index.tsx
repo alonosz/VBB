@@ -57,7 +57,7 @@ export function Section({
   className?: string;
 }) {
   return (
-    <section className={`section card p-5 sm:p-6 ${className}`}>
+    <section className={`card p-5 sm:p-6 ${className}`}>
       {(title || aside) && (
         <div className="mb-4 flex flex-wrap items-start justify-between gap-x-6 gap-y-2">
           <div className="min-w-0">
@@ -250,11 +250,24 @@ export function DataRow({
 }
 
 /** Empty state that says what is missing and what would fill it. */
-export function Empty({ title, children }: { title: ReactNode; children?: ReactNode }) {
+export function Empty({
+  title,
+  body,
+  action,
+  children,
+}: {
+  title: ReactNode;
+  body?: ReactNode;
+  /** The way out. An empty state that names a fix should also offer it. */
+  action?: ReactNode;
+  children?: ReactNode;
+}) {
+  const text = body ?? children;
   return (
     <div className="well px-4 py-6 text-center">
       <p className="text-[0.875rem] font-semibold">{title}</p>
-      {children && <p className="hint mx-auto mt-1 max-w-[52ch]">{children}</p>}
+      {text && <p className="hint mx-auto mt-1 max-w-[52ch]">{text}</p>}
+      {action && <div className="mt-4 flex justify-center">{action}</div>}
     </div>
   );
 }

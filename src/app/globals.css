@@ -571,9 +571,6 @@ body {
     .page-narrow, .page, .page-wide, .page-full { padding-inline: 2rem; }
   }
 
-  /* A titled section with room to breathe between it and the next. */
-  .section + .section { margin-top: 1.25rem; }
-
   .divider {
     height: 1px;
     background: var(--border);
