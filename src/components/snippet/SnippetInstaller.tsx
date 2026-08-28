@@ -78,7 +78,7 @@ export function SnippetInstaller({ origin }: { origin: string }) {
             dependencies and sends nothing anywhere.
           </p>
           <div className="mt-3 flex flex-wrap items-center gap-2">
-            <code className="mono min-w-0 flex-1 overflow-x-auto whitespace-nowrap rounded-xl border border-[var(--border)] bg-[#f8fafd] px-3 py-2.5 text-[12.5px]">
+            <code className="mono min-w-0 flex-1 overflow-x-auto whitespace-nowrap rounded-xl border border-[var(--border)] bg-[var(--surface-sunken)] px-3 py-2.5 text-[12.5px]">
               {tag}
             </code>
             <button type="button" onClick={copy} className="btn btn-secondary shrink-0 text-[13px]">
@@ -129,7 +129,7 @@ export function SnippetInstaller({ origin }: { origin: string }) {
           </div>
 
           {error && (
-            <p className="mt-3 rounded-xl border border-[var(--danger)]/30 bg-red-50 px-3.5 py-2.5 text-[13px] text-[var(--danger)]">
+            <p className="mt-3 rounded-xl border border-[var(--danger)]/30 bg-[var(--danger-soft)] px-3.5 py-2.5 text-[13px] text-[var(--danger)]">
               {error}
             </p>
           )}
@@ -139,8 +139,8 @@ export function SnippetInstaller({ origin }: { origin: string }) {
               className={
                 "mt-3 rounded-xl border p-4 " +
                 (finding.installed
-                  ? "border-emerald-300/60 bg-emerald-50/60"
-                  : "border-amber-300/60 bg-amber-50/60")
+                  ? "border-[var(--accent-line)] bg-[var(--accent-soft)]"
+                  : "border-[var(--warn-line)] bg-[var(--warn-soft)]")
               }
             >
               <p className="text-[14px] font-bold">
@@ -170,7 +170,7 @@ export function SnippetInstaller({ origin }: { origin: string }) {
                 )}
               </p>
               {finding.warnings.map((w) => (
-                <p key={w} className="mt-2 max-w-[70ch] text-[13px] text-amber-800">
+                <p key={w} className="mt-2 max-w-[70ch] text-[13px] text-[var(--warn)]">
                   {w}
                 </p>
               ))}

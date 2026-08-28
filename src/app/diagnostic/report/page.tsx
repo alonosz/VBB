@@ -6,6 +6,7 @@ import { useDiagnostic } from "@/context/DiagnosticContext";
 import { Stepper } from "@/components/diagnostic/Stepper";
 import { FlowSkeleton } from "@/components/diagnostic/FlowSkeleton";
 import { ArrowIcon } from "@/components/ArrowIcon";
+import { PageHead } from "@/components/ui";
 import { rowsToDeals } from "@/lib/mapping/toDeals";
 import { runDiagnostic, valueAllLeads, bestCaseStack, withOverrides } from "@/lib/analysis";
 import { buildComparisons } from "@/lib/analysis/statedVsActual";
@@ -224,31 +225,60 @@ export default function ReportPage() {
   }
 
   return (
-    <div className="animate-page-in flex min-h-screen flex-col">
+    <div className="flex min-h-screen flex-col">
       <Stepper current="report" />
 
-      <main className="mx-auto w-full max-w-5xl flex-1 px-6 py-10">
-        <div className="mb-7">
-          <p className="label mb-2">Step 4 of 5</p>
-          <p className="mono text-[13px] text-[var(--muted)]">
-            {result.rowsAnalyzed.toLocaleString()} deals · {file.name}
-            {result.excluded.length > 0 &&
-              ` · ${result.excluded.length.toLocaleString()} excluded`}
-          </p>
+      <main className="page section animate-page-in flex-1">
+        <PageHead
+          eyebrow={
+            <>
+              Step 4 of 5 · Your model
+            </>
+          }
+          title="This is what a lead is worth to you"
+          lede={
+            <>
+              Every figure below is computed from the file you uploaded — cohort
+              win rate against your own median deal size. Nothing is estimated
+              or benchmarked against other accounts.
+            </>
+          }
+          action={
+            /* The action belongs where the page starts, not two screens down.
+               Someone who already trusts the model should never have to scroll
+               past the whole analysis to act on it. */
+            <button
+              type="button"
+              onClick={() => router.push("/diagnostic/connect")}
+              className="btn btn-primary btn-lg w-full justify-center sm:w-auto"
+            >
+              Send these values to Google Ads <ArrowIcon />
+            </button>
+          }
+        />
+
+        <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1.5">
+          <span className="mono text-[12.5px] text-[var(--muted)]">
+            {result.rowsAnalyzed.toLocaleString()} deals analysed
+          </span>
+          <span aria-hidden className="text-[var(--border-strong)]">·</span>
+          <span className="mono max-w-[28ch] truncate text-[12.5px] text-[var(--muted)]" title={file.name}>
+            {file.name}
+          </span>
+          {result.excluded.length > 0 && (
+            <>
+              <span aria-hidden className="text-[var(--border-strong)]">·</span>
+              <span className="mono text-[12.5px] text-[var(--warn)]">
+                {result.excluded.length.toLocaleString()} excluded
+              </span>
+            </>
+          )}
         </div>
 
-        {/* The action belongs where the page starts, not two screens down.
-            Someone who already trusts the model should never have to scroll
-            past the whole analysis to act on it. */}
-        <button
-          type="button"
-          onClick={() => router.push("/diagnostic/connect")}
-          className="btn btn-primary mb-7 w-full justify-center sm:w-auto"
-        >
-          Send these values to Google Ads <ArrowIcon />
-        </button>
-
-        <div className="grid gap-8">
+        {/* minmax(0,1fr) rather than the default auto: a grid item will not shrink
+            below its min-content, so one wide table inside any panel would push
+            the whole page sideways on a phone. */}
+        <div className="mt-8 grid grid-cols-[minmax(0,1fr)] gap-7">
           <HookPanel spread={result.valueSpread} valued={valued} currency={cur} />
 
           <ModelSourcePanel
@@ -317,17 +347,20 @@ export default function ReportPage() {
           </AnalysisExpander>
         </div>
 
-        <footer className="mt-10 border-t border-[var(--border)] pt-6">
-          <p className="max-w-[78ch] text-[12.5px] text-[var(--muted)]">
-            Every figure here is computed from the file you uploaded. Nothing is
-            estimated, benchmarked against other accounts, or forecast.
-          </p>
+        <footer className="mt-12 flex flex-wrap items-center justify-between gap-4 border-t border-[var(--border)] pt-6">
           <button
             type="button"
             onClick={() => router.push("/diagnostic/mapping")}
-            className="btn btn-secondary mt-4"
+            className="btn btn-secondary"
           >
             Back to mapping
+          </button>
+          <button
+            type="button"
+            onClick={() => router.push("/diagnostic/connect")}
+            className="btn btn-primary"
+          >
+            Send these values to Google Ads <ArrowIcon />
           </button>
         </footer>
       </main>

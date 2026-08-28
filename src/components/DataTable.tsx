@@ -12,12 +12,12 @@ export function DataTable({ headers, rows, maxRows, highlightColumn }: DataTable
     <div className="overflow-x-auto rounded-xl border border-[var(--border)]">
       <table className="w-full min-w-max border-collapse text-left text-sm">
         <thead>
-          <tr className="bg-[#f8f8fc]">
+          <tr className="bg-[var(--surface-sunken)]">
             {headers.map((h) => (
               <th
                 key={h}
                 className={
-                  "whitespace-nowrap border-b border-[var(--border)] px-3 py-2 text-xs font-semibold uppercase tracking-wide text-[#6b6d85] " +
+                  "whitespace-nowrap border-b border-[var(--border)] px-3 py-2 text-xs font-semibold uppercase tracking-wide text-[var(--muted-strong)] " +
                   (h === highlightColumn ? "bg-[var(--primary-soft)] text-[var(--primary)]" : "")
                 }
               >
@@ -30,18 +30,18 @@ export function DataTable({ headers, rows, maxRows, highlightColumn }: DataTable
           {shown.map((row, i) => (
             <tr
               key={i}
-              className="border-b border-[var(--border)] last:border-0 even:bg-[#fbfbfd]"
+              className="border-b border-[var(--border)] last:border-0 even:bg-[var(--surface-sunken)]"
             >
               {headers.map((h) => (
                 <td
                   key={h}
                   className={
-                    "max-w-[220px] truncate whitespace-nowrap px-3 py-2 text-[#33344a] " +
+                    "max-w-[220px] truncate whitespace-nowrap px-3 py-2 text-[var(--muted-strong)] " +
                     (h === highlightColumn ? "bg-[var(--primary-soft)]/40" : "")
                   }
                   title={row[h]}
                 >
-                  {row[h] || <span className="text-[#c7c8d6]">—</span>}
+                  {row[h] || <span className="text-[var(--border-strong)]">—</span>}
                 </td>
               ))}
             </tr>

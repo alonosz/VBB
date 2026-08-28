@@ -173,7 +173,7 @@ export function FeedStatusChecker() {
           </p>
 
           {error && (
-            <p className="mt-3 rounded-xl border border-[var(--danger)]/30 bg-red-50 px-3.5 py-2.5 text-[13px] text-[var(--danger)]">
+            <p className="mt-3 rounded-xl border border-[var(--danger)]/30 bg-[var(--danger-soft)] px-3.5 py-2.5 text-[13px] text-[var(--danger)]">
               {error}
             </p>
           )}
@@ -252,7 +252,7 @@ export function FeedStatusChecker() {
                 in your CRM is changed, and no CRM record is stored.
               </p>
               {connected ? (
-                <p className="mt-3 rounded-xl border border-[var(--accent)]/30 bg-emerald-50 px-3.5 py-2.5 text-[13px]">
+                <p className="mt-3 rounded-xl border border-[var(--accent)]/30 bg-[var(--accent-soft)] px-3.5 py-2.5 text-[13px]">
                   <span className="font-semibold text-[var(--accent)]">✓ HubSpot connected.</span>{" "}
                   Tonight&apos;s run will read your new deals and add them to this
                   feed. Nothing else to do.
@@ -312,7 +312,7 @@ export function FeedStatusChecker() {
             </div>
 
             {status.verdict === "collecting" && (
-              <p className="mt-4 max-w-[70ch] rounded-xl border border-[var(--border)] bg-[#f8fafd] px-3.5 py-2.5 text-[13px] text-[var(--muted)]">
+              <p className="mt-4 max-w-[70ch] rounded-xl border border-[var(--border)] bg-[var(--surface-sunken)] px-3.5 py-2.5 text-[13px] text-[var(--muted)]">
                 Values are reaching Google. That does not by itself change how it
                 bids — the campaign has to be running{" "}
                 <span className="font-semibold text-[var(--foreground)]">

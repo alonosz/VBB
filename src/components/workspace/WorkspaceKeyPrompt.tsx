@@ -22,7 +22,7 @@ export function WorkspaceKeyPrompt({ onSaved }: { onSaved: () => void }) {
   }
 
   return (
-    <div className="mt-3 rounded-xl border border-[var(--warn)]/40 bg-amber-50 px-4 py-3.5">
+    <div className="mt-3 rounded-xl border border-[var(--warn)]/40 bg-[var(--warn-soft)] px-4 py-3.5">
       <p className="text-[13.5px] font-semibold">Paste your workspace key to publish</p>
       <p className="mt-0.5 max-w-[66ch] text-[13px] text-[var(--muted)]">
         It starts <span className="mono">vbb_ws_</span> and was sent to you when

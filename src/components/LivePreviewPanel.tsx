@@ -35,7 +35,7 @@ export function LivePreviewPanel({
     <div className="card sticky top-[130px] flex max-h-[calc(100vh-160px)] flex-col overflow-hidden">
       <div className="border-b border-[var(--border)] px-4 py-3">
         <p className="text-sm font-semibold">Live preview</p>
-        <p className="text-xs text-[#8688a0]">
+        <p className="text-xs text-[var(--muted)]">
           {activeBlockCount === 0
             ? "Add a rule block to see scores appear."
             : `Scoring ${sample.length} of ${csvData.rowCount.toLocaleString()} rows as you build`}
@@ -45,14 +45,14 @@ export function LivePreviewPanel({
         {scored.map(({ row, score }, i) => (
           <div key={i} className="px-4 py-3 transition-colors">
             <div className="mb-1.5 flex items-center justify-between gap-2">
-              <span className="truncate text-xs font-medium text-[#33344a]">
+              <span className="truncate text-xs font-medium text-[var(--muted-strong)]">
                 {previewCols.map((c) => row[c]).filter(Boolean).join(" · ") ||
                   `Row ${i + 1}`}
               </span>
               <span className="shrink-0 text-sm font-bold tabular-nums">{score}</span>
             </div>
             <div className="flex items-center gap-2">
-              <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-[#eceeF7]">
+              <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-[var(--background-deep)]">
                 <div
                   className="h-full rounded-full bg-[var(--primary)] transition-all duration-300 ease-out"
                   style={{ width: `${score}%` }}

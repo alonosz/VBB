@@ -40,7 +40,7 @@ export function NumericBucketEditor({
               "px-3 py-1.5 text-xs font-semibold transition-colors " +
               (rule.mode === m
                 ? "bg-[var(--primary)] text-white"
-                : "bg-white text-[#6b6d85] hover:bg-[#f3f3f8]")
+                : "bg-white text-[var(--muted-strong)] hover:bg-[var(--surface-sunken)]")
             }
           >
             {m === "range" ? "Fixed ranges" : "Percentile"}
@@ -66,7 +66,7 @@ export function NumericBucketEditor({
                   onChange({ ...rule, buckets });
                 }}
               />
-              <span className="text-xs text-[#8688a0]">to</span>
+              <span className="text-xs text-[var(--muted)]">to</span>
               <input
                 type="number"
                 placeholder="max"
@@ -81,7 +81,7 @@ export function NumericBucketEditor({
                   onChange({ ...rule, buckets });
                 }}
               />
-              <span className="text-xs text-[#8688a0]">→</span>
+              <span className="text-xs text-[var(--muted)]">→</span>
               <input
                 type="number"
                 min={-100}
@@ -94,11 +94,11 @@ export function NumericBucketEditor({
                   onChange({ ...rule, buckets });
                 }}
               />
-              <span className="text-xs text-[#8688a0]">pts</span>
+              <span className="text-xs text-[var(--muted)]">pts</span>
               <button
                 type="button"
                 aria-label="Remove range"
-                className="btn btn-ghost px-2 text-[#b3b4c6] hover:text-[var(--danger)]"
+                className="btn btn-ghost px-2 text-[var(--muted-soft)] hover:text-[var(--danger)]"
                 onClick={() =>
                   onChange({
                     ...rule,
@@ -122,7 +122,7 @@ export function NumericBucketEditor({
           >
             + Add range
           </button>
-          <p className="text-xs text-[#8688a0]">
+          <p className="text-xs text-[var(--muted)]">
             Leave min or max blank for &ldquo;unbounded&rdquo;. The first
             matching range wins.
           </p>
@@ -157,7 +157,7 @@ export function NumericBucketEditor({
           </div>
           {rule.percentileScores.map((score, i) => (
             <div key={i} className="flex items-center gap-2">
-              <span className="w-24 text-xs text-[#6b6d85]">{labels[i]}</span>
+              <span className="w-24 text-xs text-[var(--muted-strong)]">{labels[i]}</span>
               <input
                 type="number"
                 min={-100}
@@ -170,10 +170,10 @@ export function NumericBucketEditor({
                   onChange({ ...rule, percentileScores });
                 }}
               />
-              <span className="text-xs text-[#8688a0]">pts</span>
+              <span className="text-xs text-[var(--muted)]">pts</span>
             </div>
           ))}
-          <p className="text-xs text-[#8688a0]">
+          <p className="text-xs text-[var(--muted)]">
             Percentile edges are computed automatically from whatever data
             you upload, each time you run the model.
           </p>

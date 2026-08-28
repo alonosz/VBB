@@ -50,7 +50,7 @@ export function RuleBlockCard({
         <button
           type="button"
           aria-label="Drag to reorder"
-          className="mt-0.5 cursor-grab touch-none text-[#c7c8d6] hover:text-[#8688a0] active:cursor-grabbing"
+          className="mt-0.5 cursor-grab touch-none text-[var(--border-strong)] hover:text-[var(--muted)] active:cursor-grabbing"
           {...attributes}
           {...listeners}
         >
@@ -63,7 +63,7 @@ export function RuleBlockCard({
 
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-[10px] font-bold uppercase tracking-wide text-[#8688a0]">
+            <span className="text-[10px] font-bold uppercase tracking-wide text-[var(--muted)]">
               Step {index + 1} · {meta.label}
             </span>
           </div>
@@ -81,7 +81,7 @@ export function RuleBlockCard({
             title={block.enabled ? "Disable block" : "Enable block"}
             className={
               "relative h-5 w-9 rounded-full transition-colors " +
-              (block.enabled ? "bg-[var(--accent)]" : "bg-[#dcdde8]")
+              (block.enabled ? "bg-[var(--accent)]" : "bg-[var(--border)]")
             }
           >
             <span
@@ -95,7 +95,7 @@ export function RuleBlockCard({
             type="button"
             aria-label="Remove block"
             onClick={onRemove}
-            className="btn btn-ghost px-2 text-[#b3b4c6] hover:text-[var(--danger)]"
+            className="btn btn-ghost px-2 text-[var(--muted-soft)] hover:text-[var(--danger)]"
           >
             ✕
           </button>
@@ -124,7 +124,7 @@ export function RuleBlockCard({
             max={100}
             value={block.weight}
             onChange={(e) => onChange({ ...block, weight: Number(e.target.value) })}
-            className="h-1.5 flex-1 cursor-pointer appearance-none rounded-full bg-[#e6e7f2] accent-[var(--primary)]"
+            className="h-1.5 flex-1 cursor-pointer appearance-none rounded-full bg-[var(--background-deep)] accent-[var(--primary)]"
           />
           <span className="w-12 text-right text-sm font-semibold tabular-nums">
             {block.weight}%

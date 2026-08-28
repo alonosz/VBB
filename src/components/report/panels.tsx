@@ -53,7 +53,7 @@ export function HookPanel({
   // Log-spaced buckets: realised deal values span orders of magnitude, so a
   // linear histogram would pile everything into the first bar.
   const values = valued.map((v) => v.value).filter((v) => v > 0).sort((a, b) => a - b);
-  const BUCKETS = 18;
+  const BUCKETS = 24;
   const lo = Math.log(Math.max(1, values[0] ?? 1));
   const hi = Math.log(Math.max(2, values[values.length - 1] ?? 2));
   const counts = new Array(BUCKETS).fill(0);
@@ -63,57 +63,138 @@ export function HookPanel({
   }
   const peak = Math.max(...counts, 1);
 
+  const low = values[0] ?? 0;
+  const high = values.at(-1) ?? 0;
+  const mean = values.length
+    ? values.reduce((a, b) => a + b, 0) / values.length
+    : 0;
+
   return (
-    <section className="rounded-2xl border border-[var(--border)] bg-white p-6 sm:p-8">
-      <p className="text-[11px] font-bold uppercase tracking-[.1em] text-[var(--muted)]">
-        What your leads are worth
-      </p>
-
-      <h2 className="mt-3 max-w-[26ch] text-[clamp(24px,3.4vw,36px)] font-extrabold leading-[1.12] tracking-[-.025em] text-balance">
-        Your leads range from{" "}
-        <span className="mono">{money(spread.min, currency)}</span> to{" "}
-        <span className="mono">{money(spread.max, currency)}</span> in real value
-        {spread.blindnessRatio !== null && (
-          <>
-            {" ("}
-            <span className="text-[var(--primary)]">{spread.blindnessRatio}×</span>
-            {" spread)"}
-          </>
-        )}
-        .
-      </h2>
-      <p className="mt-2.5 max-w-[52ch] text-[15px] text-[var(--muted)]">
-        Google Ads currently treats every single one of them as identical.
-      </p>
-
-      {/* The realised range above is what deals turned out to be worth. This is
-          a different quantity — what the model will actually send per lead —
-          so it gets its own heading rather than sitting under the headline
-          number and looking like a contradiction. */}
-      <div className="mt-7 border-t border-[var(--border)] pt-5">
-        <div className="mb-3 flex flex-wrap items-baseline justify-between gap-3">
-          <p className="text-[13.5px] font-bold">
-            What your model will send instead
-          </p>
-          <p className="mono text-[13px] text-[var(--muted)]">
-            {money(values[0] ?? 0, currency)} – {money(values.at(-1) ?? 0, currency)} per lead
-          </p>
-        </div>
-        <div className="flex h-20 items-end gap-[3px]" role="img"
-          aria-label={`Distribution of modelled lead values from ${money(values[0] ?? 0, currency)} to ${money(values.at(-1) ?? 0, currency)}`}>
-          {counts.map((c, i) => (
-            <div
-              key={i}
-              className="flex-1 rounded-t-[3px] bg-[var(--primary)] transition-all"
-              style={{ height: `${Math.max(2, (c / peak) * 100)}%`, opacity: 0.35 + 0.65 * (i / BUCKETS) }}
-            />
-          ))}
-        </div>
-        <p className="mt-2 text-[12px] text-[var(--muted)]">
-          {values.length.toLocaleString()} leads, priced individually. The range is
-          narrower than your realised deal values because a value is an expectation at
-          lead creation, not a closed deal.
+    <section className="panel-navy overflow-hidden">
+      <div className="p-6 sm:p-9">
+        <p className="label" style={{ color: "var(--on-navy-muted)" }}>
+          The spread Google cannot see
         </p>
+
+        {/*
+          The headline is the product's whole argument in one sentence, so it
+          gets display type and the figures get the mono treatment that makes
+          them read as measurements rather than marketing.
+        */}
+        <h2 className="display mt-3 max-w-[22ch]" style={{ color: "var(--on-navy)" }}>
+          Your closed deals run from{" "}
+          <span className="mono text-[.86em] text-[var(--primary-soft)]">
+            {money(spread.min, currency)}
+          </span>{" "}
+          to{" "}
+          <span className="mono text-[.86em] text-[var(--primary-soft)]">
+            {money(spread.max, currency)}
+          </span>
+          .
+        </h2>
+
+        <p
+          className="lede mt-3 max-w-[48ch]"
+          style={{ color: "var(--on-navy-muted)" }}
+        >
+          Google Ads gets one number for every lead that produced them, so it
+          bids as if they were all the same.
+        </p>
+
+        {spread.blindnessRatio !== null && (
+          <div className="mt-6 inline-flex items-baseline gap-2.5 rounded-full border border-[var(--navy-line)] bg-[var(--surface)]/[.05] px-4 py-2">
+            <span
+              className="mono text-[22px] font-bold leading-none"
+              style={{ color: "var(--primary-on-navy)" }}
+            >
+              {spread.blindnessRatio}×
+            </span>
+            <span
+              className="text-[12.5px] font-semibold"
+              style={{ color: "var(--on-navy-muted)" }}
+            >
+              between your smallest and largest closed deal
+            </span>
+          </div>
+        )}
+      </div>
+
+      {/*
+        The blindness comparison. Flat grey is what Google sees today — one
+        number for every lead — against the real distribution in brand blue.
+        The grey reading as grey is the message.
+      */}
+      <div className="border-t border-[var(--navy-line)] bg-black/15 p-6 sm:p-9">
+        <div className="grid gap-8 md:grid-cols-[minmax(0,1fr)_minmax(0,1.6fr)]">
+          <figure className="min-w-0">
+            <figcaption className="mb-3">
+              <p
+                className="text-[13px] font-bold"
+                style={{ color: "var(--on-navy-muted)" }}
+              >
+                What one flat value looks like
+              </p>
+              <p className="mono mt-0.5 text-[12px]" style={{ color: "var(--on-navy-faint)" }}>
+                {money(mean, currency)} × {values.length.toLocaleString()} leads
+              </p>
+            </figcaption>
+            <div
+              className="flex h-24 items-end gap-[2px]"
+              role="img"
+              aria-label={`Every lead reported at the same value, ${money(mean, currency)}`}
+            >
+              {counts.map((_, i) => (
+                <div key={i} className="bar-flat h-1/2 flex-1" />
+              ))}
+            </div>
+            <p
+              className="mt-2.5 max-w-[36ch] text-[12px]"
+              style={{ color: "var(--on-navy-faint)" }}
+            >
+              The best a single number can do is your average. Nothing in it
+              separates a good lead from a bad one.
+            </p>
+          </figure>
+
+          <figure className="min-w-0">
+            <figcaption className="mb-3">
+              <p className="text-[13px] font-bold" style={{ color: "var(--on-navy)" }}>
+                What your model will send instead
+              </p>
+              <p
+                className="mono mt-0.5 text-[12px]"
+                style={{ color: "var(--on-navy-muted)" }}
+              >
+                {money(low, currency)} – {money(high, currency)} per lead
+              </p>
+            </figcaption>
+            <div
+              className="flex h-24 items-end gap-[2px]"
+              role="img"
+              aria-label={`Distribution of modelled lead values from ${money(low, currency)} to ${money(high, currency)}`}
+            >
+              {counts.map((c, i) => (
+                <div
+                  key={i}
+                  className="bar flex-1"
+                  style={{
+                    height: `${Math.max(3, (c / peak) * 100)}%`,
+                    background: `linear-gradient(180deg, var(--primary-on-navy) 0%, var(--primary) 100%)`,
+                    opacity: 0.45 + 0.55 * (i / BUCKETS),
+                  }}
+                />
+              ))}
+            </div>
+            <p
+              className="mt-2.5 max-w-[58ch] text-[12px]"
+              style={{ color: "var(--on-navy-muted)" }}
+            >
+              {values.length.toLocaleString()} leads, priced individually. The range is
+              narrower than your realised deal values because a value is an expectation
+              at lead creation, not a closed deal.
+            </p>
+          </figure>
+        </div>
       </div>
     </section>
   );
@@ -157,8 +238,8 @@ function MultiplierCell({
         className={
           "mono shrink-0 rounded-full px-2 py-0.5 text-[12px] font-bold " +
           (current >= 1
-            ? "bg-[var(--primary-soft)] text-[var(--primary)]"
-            : "bg-[#f1f3f8] text-[var(--muted)]")
+            ? "bg-[var(--primary-soft)] text-[var(--primary-deep)]"
+            : "bg-[var(--surface-sunken)] text-[var(--muted-strong)]")
         }
       >
         ×{current}
@@ -185,8 +266,10 @@ function MultiplierCell({
         className={
           "mono flex items-center rounded-full border px-1.5 py-0.5 text-[12px] font-bold transition-colors " +
           (edited
-            ? "border-[var(--warn)] bg-amber-50 text-amber-700"
-            : "border-transparent bg-[var(--primary-soft)] text-[var(--primary)]")
+            ? "border-[var(--warn)] bg-[var(--warn-soft)] text-[var(--warn)]"
+            : current >= 1
+              ? "border-transparent bg-[var(--primary-soft)] text-[var(--primary-deep)]"
+              : "border-transparent bg-[var(--surface-sunken)] text-[var(--muted-strong)]")
         }
       >
         ×
@@ -233,7 +316,7 @@ function FactorRow({
   const thin = factor.levels.filter((l) => !l.usable);
 
   return (
-    <div className="border-t border-[var(--border)] px-4 py-3.5 first:border-t-0">
+    <div className="border-t border-[var(--border)] px-4 py-3.5 first:border-t-0 sm:px-5">
       <p className="text-[13px] font-bold">{factor.label}</p>
       <div className="mt-2 grid gap-1.5">
         {usable.map((l) => (
@@ -288,9 +371,9 @@ export function ValueModelPanel({
 
   return (
     <section>
-      <div className="mb-3.5">
-        <h2 className="text-xl font-bold tracking-tight">Your value model</h2>
-        <p className="mt-1 max-w-[72ch] text-[14px] text-[var(--muted)]">
+      <div className="mb-4">
+        <h2 className="h2">Your value model</h2>
+        <p className="mt-1.5 max-w-[72ch] text-[14px] text-[var(--muted)]">
           Built only from what is knowable the moment a lead arrives. Every multiplier
           comes from your own closed deals, and no number here is one you cannot trace
           back to rows in your file.{" "}
@@ -299,14 +382,14 @@ export function ValueModelPanel({
       </div>
 
       {editCount > 0 && onResetAll && (
-        <div className="mb-3.5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[var(--warn)]/40 bg-amber-50/60 px-4 py-2.5">
+        <div className="alert alert-warn mb-4 flex flex-wrap items-center justify-between gap-3">
           <p className="text-[13px]">
             <span className="font-semibold">
               {editCount} multiplier{editCount === 1 ? "" : "s"} edited.
             </span>{" "}
             <span className="text-[var(--muted)]">
               We rescaled the model to{" "}
-              <span className="mono">×{model.calibrationFactor}</span> so your leads still
+              <span className="mono">×{model.calibrationFactor.toFixed(3)}</span> so your leads still
               average out to what your data actually shows.
             </span>
           </p>
@@ -321,7 +404,7 @@ export function ValueModelPanel({
       )}
 
       {model.isFlat ? (
-        <div className="rounded-2xl border border-amber-300/60 bg-amber-50/60 p-5">
+        <div className="alert alert-warn">
           <p className="text-[14px] font-bold">
             No attribute in this file predicts value strongly enough to use.
           </p>
@@ -336,10 +419,12 @@ export function ValueModelPanel({
           </p>
         </div>
       ) : (
-        <div className="grid gap-4 lg:grid-cols-[1.05fr_.95fr]">
+        <div className="grid items-start gap-4 lg:grid-cols-[1.05fr_.95fr]">
           {/* The rule stack */}
-          <div className="rounded-2xl border border-[var(--border)] bg-white p-5">
-            <p className="label mb-3">The rule stack — best case</p>
+          {/* The stack is the summary the signals list explains, so it stays
+              in view while that list scrolls past it. */}
+          <div className="card p-5 sm:p-6 lg:sticky lg:top-20">
+            <p className="label mb-3.5">The rule stack — best case</p>
             <div className="grid gap-1.5">
               <div className="flex items-baseline justify-between gap-3 pb-1">
                 <span className="text-[13.5px] font-semibold">Base value</span>
@@ -382,13 +467,15 @@ export function ValueModelPanel({
                   {editCount > 0 && " (after your edits)"}
                 </span>
                 <span className="mono text-[13px] text-[var(--muted)]">
-                  ×{stack.calibrationFactor}
+                  ×{stack.calibrationFactor.toFixed(3)}
                 </span>
               </div>
 
-              <div className="mt-1 flex items-baseline justify-between gap-3 border-t-2 border-[var(--foreground)]/15 pt-2.5">
-                <span className="text-[13.5px] font-bold">Highest value sent</span>
-                <span className="mono text-[19px] font-extrabold tracking-tight">
+              <div className="mt-2 flex items-baseline justify-between gap-3 rounded-[var(--radius-sm)] bg-[var(--primary-soft)] px-3 py-2.5">
+                <span className="text-[13.5px] font-bold text-[var(--primary-deep)]">
+                  Highest value sent
+                </span>
+                <span className="mono text-[20px] font-extrabold tracking-tight text-[var(--primary-deep)]">
                   {money(stack.finalValue, currency, 2)}
                 </span>
               </div>
@@ -412,8 +499,8 @@ export function ValueModelPanel({
           </div>
 
           {/* Factors and their levels */}
-          <div className="rounded-2xl border border-[var(--border)] bg-white">
-            <p className="label px-4 pb-1 pt-4">
+          <div className="card overflow-hidden">
+            <p className="label px-4 pb-1 pt-4 sm:px-5">
               Signals in the model · fitted on {model.fittedOn.toLocaleString()} resolved deals
             </p>
             <div className="mt-1">
@@ -433,26 +520,26 @@ export function ValueModelPanel({
 
       {/* Worked examples from their own file */}
       {examples.length > 0 && (
-        <div className="mt-4 overflow-hidden rounded-2xl border border-[var(--border)] bg-white">
-          <p className="label px-4 pb-2 pt-4">
+        <div className="card mt-5 overflow-hidden p-0">
+          <p className="label px-4 pb-2.5 pt-4 sm:px-5">
             Applied to your leads{editCount > 0 && " · updated with your edits"}
           </p>
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[620px] text-left text-[13px]">
+          <div className="scroll-x">
+            <table className="table min-w-[620px]">
               <thead>
-                <tr className="bg-[#f8fafd] text-[10.5px] uppercase tracking-[.07em] text-[var(--muted)]">
-                  <th className="px-4 py-2 font-bold">Lead</th>
-                  <th className="px-4 py-2 font-bold">What drove the value</th>
-                  <th className="px-4 py-2 text-right font-bold">Value sent</th>
+                <tr>
+                  <th>Lead</th>
+                  <th>What drove the value</th>
+                  <th className="num">Value sent</th>
                 </tr>
               </thead>
               <tbody>
                 {examples.map((v) => (
-                  <tr key={v.deal.id} className="border-t border-[var(--border)]">
-                    <td className="mono px-4 py-2.5 text-[12px] text-[var(--muted)]">
+                  <tr key={v.deal.id}>
+                    <td className="mono text-[12px] text-[var(--muted)]">
                       {v.deal.email ?? v.deal.id}
                     </td>
-                    <td className="px-4 py-2.5">
+                    <td>
                       {v.steps.length === 0 ? (
                         <span className="text-[12.5px] italic text-[var(--muted)]">
                           no priced signals — base value
@@ -462,7 +549,7 @@ export function ValueModelPanel({
                           {v.steps.map((s) => (
                             <span
                               key={s.factorKey}
-                              className="rounded-full border border-[var(--border)] bg-[#f8fafd] px-2 py-0.5 text-[11.5px]"
+                              className="rounded-full border border-[var(--border)] bg-[var(--surface-sunken)] px-2 py-0.5 text-[11.5px]"
                             >
                               {s.level}{" "}
                               <span className="mono text-[var(--muted)]">×{s.multiplier}</span>
@@ -471,7 +558,7 @@ export function ValueModelPanel({
                         </span>
                       )}
                     </td>
-                    <td className="mono px-4 py-2.5 text-right text-[14px] font-bold">
+                    <td className="num text-[14px] font-bold">
                       {money(v.value, currency, 2)}
                     </td>
                   </tr>
@@ -502,16 +589,16 @@ export function WiringPanel({
 }) {
   const tone =
     verdict.mode === "MEASURED"
-      ? "border-emerald-300/60 bg-emerald-50/60"
+      ? "border-[var(--accent-line)] bg-[var(--accent-soft)]"
       : verdict.mode === "PREDICTED"
       ? "border-[var(--primary)]/30 bg-[var(--primary-soft)]"
-      : "border-amber-300/60 bg-amber-50/60";
+      : "border-[var(--warn-line)] bg-[var(--warn-soft)]";
 
   return (
     <section>
-      <div className="mb-3.5">
-        <h2 className="text-xl font-bold tracking-tight">Wiring it up</h2>
-        <p className="mt-1 max-w-[72ch] text-[14px] text-[var(--muted)]">
+      <div className="mb-4">
+        <h2 className="h2">Wiring it up</h2>
+        <p className="mt-1.5 max-w-[72ch] text-[14px] text-[var(--muted)]">
           What has to be true before these values reach Google, and what to do next.
         </p>
       </div>
@@ -519,8 +606,8 @@ export function WiringPanel({
       <div className="grid gap-3 sm:grid-cols-2">
         <div
           className={
-            "rounded-2xl border p-4 " +
-            (match.isTrackingGap ? "border-amber-300/60 bg-amber-50/60" : "border-[var(--border)] bg-white")
+            "card p-5 " +
+            (match.isTrackingGap ? "border-[var(--warn-line)] bg-[var(--warn-soft)]" : "")
           }
         >
           <p className="label">Match rate</p>
@@ -543,7 +630,7 @@ export function WiringPanel({
           </p>
         </div>
 
-        <div className="rounded-2xl border border-[var(--border)] bg-white p-4">
+        <div className="card p-5">
           <p className="label">Volume</p>
           <p className="mono mt-1 text-[26px] font-extrabold leading-none tracking-tight">
             {volume.leadsPerMonth}
@@ -562,9 +649,9 @@ export function WiringPanel({
         </div>
       </div>
 
-      <div className={`mt-3 rounded-2xl border p-5 ${tone}`}>
+      <div className={`mt-3.5 rounded-[var(--radius-lg)] border p-5 sm:p-6 ${tone}`}>
         <div className="flex flex-wrap items-center gap-3">
-          <span className="mono rounded-lg bg-[var(--foreground)] px-3 py-1.5 text-[11.5px] font-bold tracking-[.06em] text-white">
+          <span className="mono rounded-[var(--radius-sm)] bg-[var(--navy)] px-3 py-1.5 text-[11.5px] font-bold tracking-[.06em] text-[var(--on-navy)]">
             {verdict.mode.replace("_", " ")}
           </span>
           <p className="text-[15px] font-bold">{verdict.headline}</p>
@@ -574,7 +661,7 @@ export function WiringPanel({
         {verdict.blockers.length > 0 && (
           <ul className="mt-3 grid gap-2">
             {verdict.blockers.map((b, i) => (
-              <li key={i} className="flex gap-2.5 rounded-lg bg-white/70 px-3.5 py-2.5 text-[13.5px] text-[var(--muted)]">
+              <li key={i} className="flex gap-2.5 rounded-[var(--radius-sm)] bg-[var(--surface)]/75 px-3.5 py-2.5 text-[13.5px] text-[var(--muted-strong)]">
                 <span className="font-bold text-[var(--warn)]">!</span>
                 {b}
               </li>
@@ -607,7 +694,7 @@ export function AnalysisExpander({ children }: { children: React.ReactNode }) {
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
-        className="flex w-full items-center justify-between gap-4 rounded-2xl border border-[var(--border)] bg-white px-5 py-4 text-left transition-colors hover:border-[var(--primary)]/40"
+        className="card card-hover flex w-full items-center justify-between gap-4 px-5 py-4 text-left"
       >
         <span>
           <span className="text-[15px] font-bold">See the full analysis</span>
@@ -616,7 +703,13 @@ export function AnalysisExpander({ children }: { children: React.ReactNode }) {
             and dropped.
           </span>
         </span>
-        <span className={"shrink-0 text-[var(--muted)] transition-transform " + (open ? "rotate-180" : "")}>
+        <span
+          aria-hidden
+          className={
+            "flex size-7 shrink-0 items-center justify-center rounded-full bg-[var(--primary-soft)] text-[var(--primary-deep)] transition-transform duration-[var(--base)] ease-[var(--ease)] " +
+            (open ? "rotate-180" : "")
+          }
+        >
           ▾
         </span>
       </button>
@@ -636,10 +729,10 @@ export function DroppedFactorsSection({ model }: { model: ValueModel }) {
   if (dropped.length === 0) return null;
   return (
     <section>
-      <h3 className="mb-3 text-lg font-bold tracking-tight">Signals we tested and dropped</h3>
+      <h3 className="h3 mb-3">Signals we tested and dropped</h3>
       <div className="grid gap-2">
         {dropped.map((f) => (
-          <div key={f.key} className="rounded-xl border border-[var(--border)] bg-white px-4 py-3">
+          <div key={f.key} className="card px-4 py-3">
             <p className="text-[13.5px] font-semibold">{f.label}</p>
             <p className="mt-0.5 max-w-[74ch] text-[13px] text-[var(--muted)]">
               We tested it and {f.droppedReason}.
@@ -662,7 +755,7 @@ export function ClaimsTestedSection({ model }: { model: ValueModel }) {
 
   return (
     <section>
-      <h3 className="mb-1 text-lg font-bold tracking-tight">What you said, tested</h3>
+      <h3 className="h3 mb-1">What you said, tested</h3>
       <p className="mb-3 max-w-[74ch] text-[13.5px] text-[var(--muted)]">
         Each of these came from your description. We fitted it against your own
         resolved deals under the same thresholds as everything else.
@@ -674,7 +767,7 @@ export function ClaimsTestedSection({ model }: { model: ValueModel }) {
             <div
               key={f.key}
               className={
-                "rounded-xl border bg-white px-4 py-3 " +
+                "rounded-xl border bg-[var(--surface)] px-4 py-3 " +
                 (f.included ? "border-[var(--accent)]/40" : "border-[var(--border)]")
               }
             >
@@ -686,8 +779,8 @@ export function ClaimsTestedSection({ model }: { model: ValueModel }) {
                   className={
                     "shrink-0 rounded-full px-2.5 py-1 text-[11px] font-bold tracking-wide " +
                     (f.included
-                      ? "bg-emerald-50 text-emerald-700"
-                      : "bg-[#eef1f7] text-[var(--muted)]")
+                      ? "bg-[var(--accent-soft)] text-[var(--accent)]"
+                      : "bg-[var(--background-deep)] text-[var(--muted)]")
                   }
                 >
                   {f.included ? "In your model" : "Not in your model"}
@@ -714,7 +807,7 @@ export function ClaimsTestedSection({ model }: { model: ValueModel }) {
                   {f.statedLevels.map((l) => (
                     <span
                       key={l}
-                      className="mono mr-1 inline-block rounded-full border border-[var(--border)] bg-[#f8fafd] px-2 py-0.5 text-[11px]"
+                      className="mono mr-1 inline-block rounded-full border border-[var(--border)] bg-[var(--surface-sunken)] px-2 py-0.5 text-[11px]"
                     >
                       {l}
                     </span>
@@ -759,7 +852,7 @@ export function ClippedOutliersSection({
 
   return (
     <section>
-      <h3 className="mb-1 text-lg font-bold tracking-tight">What the safety cap clipped</h3>
+      <h3 className="h3 mb-1">What the safety cap clipped</h3>
       <p className="mb-3 max-w-[74ch] text-[13.5px] text-[var(--muted)]">
         The cap sits at{" "}
         <span className="mono font-semibold text-[var(--foreground)]">
@@ -771,17 +864,17 @@ export function ClippedOutliersSection({
       </p>
 
       {clippedWon.length === 0 && clippedSends.length === 0 ? (
-        <div className="rounded-xl border border-[var(--border)] bg-white px-4 py-3">
+        <div className="card px-4 py-3">
           <p className="text-[13px] text-[var(--muted)]">
             Nothing in this file was above the cap. It is doing no work here — it is
             protection against the deal you have not closed yet.
           </p>
         </div>
       ) : (
-        <div className="overflow-hidden rounded-xl border border-[var(--border)] bg-white">
+        <div className="card overflow-hidden">
           <table className="w-full min-w-[480px] text-left text-[13px]">
             <thead>
-              <tr className="bg-[#f8fafd] text-[10.5px] uppercase tracking-[.07em] text-[var(--muted)]">
+              <tr className="bg-[var(--surface-sunken)] text-[10.5px] uppercase tracking-[.07em] text-[var(--muted)]">
                 <th className="px-4 py-2 font-bold">Deal</th>
                 <th className="px-4 py-2 font-bold">Closed for</th>
                 <th className="px-4 py-2 text-right font-bold">Counted as</th>
@@ -855,7 +948,7 @@ export function EarlyGateSection({
 
   return (
     <section>
-      <h3 className="mb-1 text-lg font-bold tracking-tight">
+      <h3 className="h3 mb-1">
         When a lead proves itself
       </h3>
       <p className="mb-3 max-w-[74ch] text-[13.5px] text-[var(--muted)]">
@@ -865,7 +958,7 @@ export function EarlyGateSection({
       </p>
 
       {gate.available ? (
-        <div className="rounded-xl border border-[var(--accent)]/40 bg-white px-4 py-3.5">
+        <div className="rounded-xl border border-[var(--accent)]/40 bg-[var(--surface)] px-4 py-3.5">
           <div className="flex flex-wrap items-baseline justify-between gap-2">
             <p className="text-[14px] font-bold">
               Reaching <span className="mono">{gate.stage}</span> is worth{" "}
@@ -914,7 +1007,7 @@ export function EarlyGateSection({
           </p>
         </div>
       ) : (
-        <div className="rounded-xl border border-[var(--border)] bg-white px-4 py-3.5">
+        <div className="card px-4 py-3.5">
           <p className="text-[13.5px] font-semibold">
             Nothing in this file can sharpen a lead&apos;s value in time
           </p>
@@ -934,7 +1027,7 @@ export function EarlyGateSection({
 
 export function AttributionNote() {
   return (
-    <div className="rounded-2xl border border-[var(--border)] bg-[#f8fafd] p-5">
+    <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface-sunken)] p-5">
       <p className="text-[13.5px] font-bold">How we treat your source data</p>
       <p className="mt-1 max-w-[76ch] text-[13.5px] leading-relaxed text-[var(--muted)]">
         Your CRM&apos;s source labels are used for channel insight only. They are not used

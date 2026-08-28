@@ -350,7 +350,7 @@ export default function ConnectPage() {
                 {!publishing && <ArrowIcon />}
               </button>
               {error && (
-                <p className="mt-3 rounded-xl border border-[var(--danger)]/30 bg-red-50 px-3.5 py-2.5 text-[13px] text-[var(--danger)]">
+                <p className="mt-3 rounded-xl border border-[var(--danger)]/30 bg-[var(--danger-soft)] px-3.5 py-2.5 text-[13px] text-[var(--danger)]">
                   {error}
                 </p>
               )}
@@ -367,7 +367,7 @@ export default function ConnectPage() {
             </>
           ) : (
             <>
-              <div className="mt-4 rounded-xl border border-[var(--border)] bg-[#f8fafd] p-4">
+              <div className="mt-4 rounded-xl border border-[var(--border)] bg-[var(--surface-sunken)] p-4">
                 <div className="flex flex-wrap items-baseline justify-between gap-2">
                   <p className="text-[13.5px] font-bold text-[var(--accent)]">
                     ✓ Your feed is live
@@ -386,7 +386,7 @@ export default function ConnectPage() {
                   </button>
                 </div>
                 {isDeploymentOrigin(feed.feedUrl) && (
-                  <p className="mt-2.5 max-w-[70ch] rounded-lg border border-[var(--warn)]/40 bg-amber-50 px-3 py-2 text-[12.5px] text-[var(--foreground)]">
+                  <p className="mt-2.5 max-w-[70ch] rounded-lg border border-[var(--warn)]/40 bg-[var(--warn-soft)] px-3 py-2 text-[12.5px] text-[var(--foreground)]">
                     This link points at a single deployment rather than your live
                     site, so it will stop reflecting changes the next time you
                     ship — and it may be behind hosting protection Google
@@ -395,7 +395,7 @@ export default function ConnectPage() {
                   </p>
                 )}
                 {!feed.modelStored && (
-                  <p className="mt-2.5 max-w-[70ch] rounded-lg border border-[var(--warn)]/40 bg-amber-50 px-3 py-2 text-[12.5px] text-[var(--foreground)]">
+                  <p className="mt-2.5 max-w-[70ch] rounded-lg border border-[var(--warn)]/40 bg-[var(--warn-soft)] px-3 py-2 text-[12.5px] text-[var(--foreground)]">
                     Google will fetch these values normally, but the rule stack
                     behind them was not stored with the feed. That only matters
                     later: this feed cannot price new leads on its own, so
@@ -452,7 +452,7 @@ export default function ConnectPage() {
                   Google matches each row in your feed to a conversion action{" "}
                   <span className="font-semibold text-[var(--foreground)]">by name</span>.
                   If it doesn&apos;t already have one called{" "}
-                  <span className="mono rounded bg-[#f1f3f8] px-1.5 py-0.5 text-[12.5px]">
+                  <span className="mono rounded bg-[var(--surface-sunken)] px-1.5 py-0.5 text-[12.5px]">
                     {CONVERSION_NAME}
                   </span>
                   , the upload succeeds and every row is thrown away — which looks
@@ -493,7 +493,7 @@ export default function ConnectPage() {
                   ))}
                 </ol>
 
-                <div className="mt-4 rounded-xl border border-[var(--border)] bg-[#f8fafd] px-4 py-3">
+                <div className="mt-4 rounded-xl border border-[var(--border)] bg-[var(--surface-sunken)] px-4 py-3">
                   <p className="text-[13px] font-semibold">If Google shows an error</p>
                   <ul className="mt-1.5 grid gap-1 text-[13px] text-[var(--muted)]">
                     <li>

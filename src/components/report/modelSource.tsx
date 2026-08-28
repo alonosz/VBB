@@ -47,13 +47,13 @@ export function ModelSourcePanel({
   const fileRef = useRef<HTMLInputElement>(null);
 
   return (
-    <section className="rounded-2xl border border-[var(--border)] bg-white p-5 sm:p-6">
+    <section className="card p-5 sm:p-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <p className="text-[11px] font-bold uppercase tracking-[.1em] text-[var(--muted)]">
             Pricing these leads with
           </p>
-          <div className="mt-2.5 inline-flex rounded-full border border-[var(--border)] bg-[#f8fafd] p-1">
+          <div className="mt-2.5 inline-flex rounded-full border border-[var(--border)] bg-[var(--surface-sunken)] p-1">
             <button
               type="button"
               onClick={() => onUse("fresh")}
@@ -61,7 +61,7 @@ export function ModelSourcePanel({
               className={
                 "rounded-full px-3.5 py-1.5 text-[13px] font-semibold transition-colors " +
                 (active === "fresh"
-                  ? "bg-white text-[var(--foreground)] shadow-sm"
+                  ? "bg-[var(--surface)] text-[var(--foreground)] shadow-sm"
                   : "text-[var(--muted)] hover:text-[var(--foreground)]")
               }
             >
@@ -75,7 +75,7 @@ export function ModelSourcePanel({
               className={
                 "rounded-full px-3.5 py-1.5 text-[13px] font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-45 " +
                 (active === "saved"
-                  ? "bg-white text-[var(--foreground)] shadow-sm"
+                  ? "bg-[var(--surface)] text-[var(--foreground)] shadow-sm"
                   : "text-[var(--muted)] hover:text-[var(--foreground)]")
               }
             >
@@ -138,7 +138,7 @@ export function ModelSourcePanel({
       )}
 
       {saved && currencyMismatch && (
-        <div className="mt-4 rounded-xl border border-[var(--danger)]/30 bg-red-50 px-4 py-3">
+        <div className="mt-4 rounded-xl border border-[var(--danger)]/30 bg-[var(--danger-soft)] px-4 py-3">
           <p className="text-[13.5px] font-semibold text-[var(--danger)]">
             Currency mismatch
           </p>
@@ -149,7 +149,7 @@ export function ModelSourcePanel({
       )}
 
       {saved && inert.length > 0 && (
-        <div className="mt-4 rounded-xl border border-amber-300/60 bg-amber-50/60 px-4 py-3">
+        <div className="mt-4 rounded-xl border border-[var(--warn-line)] bg-[var(--warn-soft)] px-4 py-3">
           <p className="text-[13.5px] font-semibold">
             {inert.length === 1 ? "One saved rule" : `${inert.length} saved rules`} cannot
             fire on this file
@@ -179,7 +179,7 @@ function DriftBlock({ drift, onForget }: { drift: ModelDrift; onForget: () => vo
         <span
           className={
             "rounded-full px-2.5 py-1 text-[11px] font-bold tracking-wide " +
-            (refit ? "bg-amber-50 text-amber-700" : "bg-emerald-50 text-emerald-700")
+            (refit ? "bg-[var(--warn-soft)] text-[var(--warn)]" : "bg-[var(--accent-soft)] text-[var(--accent)]")
           }
         >
           {refit ? "Refit recommended" : "Still holding"}
@@ -244,7 +244,7 @@ function DriftBlock({ drift, onForget }: { drift: ModelDrift; onForget: () => vo
                       </span>
                     )}
                     {i === 0 && f.status === "removed" && (
-                      <span className="ml-2 rounded-full bg-[#eef1f7] px-2 py-0.5 text-[10.5px] font-bold text-[var(--muted)]">
+                      <span className="ml-2 rounded-full bg-[var(--background-deep)] px-2 py-0.5 text-[10.5px] font-bold text-[var(--muted)]">
                         gone
                       </span>
                     )}

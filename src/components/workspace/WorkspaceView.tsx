@@ -49,9 +49,9 @@ interface Overview {
 
 
 const TONE: Record<ActionItem["severity"], { border: string; bg: string; dot: string; label: string }> = {
-  blocked:   { border: "var(--danger)", bg: "#fef2f2", dot: "●", label: "Needs fixing" },
-  attention: { border: "var(--warn)",   bg: "#fffbeb", dot: "●", label: "Worth a look" },
-  info:      { border: "var(--accent)", bg: "#ecfdf5", dot: "✓", label: "Working" },
+  blocked:   { border: "var(--danger)", bg: "var(--danger-soft)", dot: "●", label: "Needs fixing" },
+  attention: { border: "var(--warn)",   bg: "var(--warn-soft)", dot: "●", label: "Worth a look" },
+  info:      { border: "var(--accent)", bg: "var(--accent-soft)", dot: "✓", label: "Working" },
 };
 
 function when(iso: string | null): string {
@@ -170,7 +170,7 @@ export function WorkspaceView() {
               </button>
             </div>
             {error && (
-              <p className="mt-3 rounded-xl border border-[var(--danger)]/30 bg-red-50 px-3.5 py-2.5 text-[13px] text-[var(--danger)]">
+              <p className="mt-3 rounded-xl border border-[var(--danger)]/30 bg-[var(--danger-soft)] px-3.5 py-2.5 text-[13px] text-[var(--danger)]">
                 {error}
               </p>
             )}
@@ -270,7 +270,7 @@ export function WorkspaceView() {
             )}
           </div>
           {connection.lastSyncError && (
-            <p className="mt-3 rounded-lg border border-[var(--border)] bg-[#f8fafd] px-3 py-2 text-[12.5px]">
+            <p className="mt-3 rounded-lg border border-[var(--border)] bg-[var(--surface-sunken)] px-3 py-2 text-[12.5px]">
               {connection.lastSyncError}
             </p>
           )}

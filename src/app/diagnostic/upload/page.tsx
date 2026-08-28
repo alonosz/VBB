@@ -119,7 +119,7 @@ export default function UploadPage() {
         {/* Reached by refreshing with an export too large to keep in the tab.
             The mapping survived; only the rows did not. */}
         {needsFile && (
-          <p className="mt-4 max-w-[70ch] rounded-xl border border-[var(--warn)]/40 bg-amber-50 px-4 py-3 text-[13.5px]">
+          <p className="mt-4 max-w-[70ch] rounded-xl border border-[var(--warn)]/40 bg-[var(--warn-soft)] px-4 py-3 text-[13.5px]">
             <span className="font-semibold">Your column mapping is still here.</span>{" "}
             Your export was too large to keep in the browser across a refresh, so
             select the same file again — your choices will be waiting.
@@ -166,7 +166,7 @@ export default function UploadPage() {
               <p className="mt-1 text-[13px] text-[var(--muted)]">
                 HubSpot, Salesforce, Pipedrive, Close, or a plain spreadsheet export
               </p>
-              <p className="mt-4 inline-flex items-center gap-2 rounded-full border border-[var(--border)] bg-[#f8fafd] px-3.5 py-1.5 text-xs text-[var(--muted)]">
+              <p className="mt-4 inline-flex items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--surface-sunken)] px-3.5 py-1.5 text-xs text-[var(--muted)]">
                 {assisted
                   ? "Parsed in your browser — your rows stay on your machine"
                   : "Parsed in your browser — the file never leaves your machine"}
@@ -220,7 +220,7 @@ export default function UploadPage() {
             )}
 
             {error && (
-              <p className="mt-4 rounded-xl border border-[var(--danger)]/30 bg-red-50 px-4 py-3 text-sm text-[var(--danger)]">
+              <p className="mt-4 rounded-xl border border-[var(--danger)]/30 bg-[var(--danger-soft)] px-4 py-3 text-sm text-[var(--danger)]">
                 {error}
               </p>
             )}

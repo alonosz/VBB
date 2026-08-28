@@ -150,7 +150,7 @@ export function AdminView() {
               </button>
             </div>
             {error && (
-              <p className="mt-3 rounded-xl border border-[var(--danger)]/30 bg-red-50 px-3.5 py-2.5 text-[13px] text-[var(--danger)]">
+              <p className="mt-3 rounded-xl border border-[var(--danger)]/30 bg-[var(--danger-soft)] px-3.5 py-2.5 text-[13px] text-[var(--danger)]">
                 {error}
               </p>
             )}
@@ -237,7 +237,7 @@ export function AdminView() {
             </button>
           </div>
           {error && (
-            <p className="mt-3 rounded-xl border border-[var(--danger)]/30 bg-red-50 px-3.5 py-2.5 text-[13px] text-[var(--danger)]">
+            <p className="mt-3 rounded-xl border border-[var(--danger)]/30 bg-[var(--danger-soft)] px-3.5 py-2.5 text-[13px] text-[var(--danger)]">
               {error}
             </p>
           )}
@@ -284,7 +284,7 @@ export function AdminView() {
                           <button
                             type="button"
                             onClick={() => void suspend(w.id, w.name)}
-                            className="rounded-lg px-2 py-1 text-[12.5px] font-semibold text-[var(--muted)] hover:bg-[#f1f3f8] hover:text-[var(--danger)]"
+                            className="rounded-lg px-2 py-1 text-[12.5px] font-semibold text-[var(--muted)] hover:bg-[var(--surface-sunken)] hover:text-[var(--danger)]"
                           >
                             Suspend
                           </button>

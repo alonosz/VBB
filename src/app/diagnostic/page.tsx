@@ -184,7 +184,7 @@ export default function IntakePage() {
             value={businessContext}
             onChange={(e) => setBusinessContext(e.target.value)}
             placeholder="e.g. We sell workflow software to manufacturers. Our buyers are ops directors and plant managers — the ones with a budget line for downtime. Our best customers run more than one site…"
-            className="input mt-3.5 min-h-[150px] resize-y bg-[#f8fafd] p-3.5 text-[15px] leading-relaxed"
+            className="input mt-3.5 min-h-[150px] resize-y bg-[var(--surface-sunken)] p-3.5 text-[15px] leading-relaxed"
           />
           <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
             <button

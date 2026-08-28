@@ -55,7 +55,7 @@ export function BooleanFlagEditor({
           />
         </div>
       </div>
-      <p className="text-xs text-[#8688a0]">
+      <p className="text-xs text-[var(--muted)]">
         A record counts as &ldquo;present&rdquo; when the field is non-empty
         (and not &ldquo;no&rdquo;/&ldquo;false&rdquo;/&ldquo;0&rdquo;).
       </p>

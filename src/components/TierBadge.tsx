@@ -1,7 +1,7 @@
 const STYLES: Record<string, string> = {
-  High: "bg-emerald-50 text-emerald-700 border-emerald-200",
-  Medium: "bg-amber-50 text-amber-700 border-amber-200",
-  Low: "bg-rose-50 text-rose-700 border-rose-200",
+  High: "bg-[var(--accent-soft)] text-[var(--accent)] border-[var(--accent-line)]",
+  Medium: "bg-[var(--warn-soft)] text-[var(--warn)] border-[var(--warn-line)]",
+  Low: "bg-[var(--danger-soft)] text-[var(--danger)] border-[var(--danger-line)]",
 };
 
 export function TierBadge({ tier }: { tier: "High" | "Medium" | "Low" }) {

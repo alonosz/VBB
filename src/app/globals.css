@@ -31,6 +31,14 @@
   /* Ink for use on navy. */
   --on-navy: #f3f5fb;
   --on-navy-muted: #a3adca;
+  /* Third step down on navy: axis labels and chart footnotes. */
+  --on-navy-faint: #7d88a8;
+  /* The data hue read on navy — brand indigo is too dark against it. */
+  --primary-on-navy: #8fa6ff;
+
+  /* Ink light enough to recede but still legible: disabled steps, empty
+     states, the grey in the blindness chart. */
+  --muted-soft: #97a1b8;
 
   --border: #dfe4ef;
   --border-strong: #c8d0e2;
@@ -100,6 +108,9 @@
   --color-border-strong: var(--border-strong);
   --color-muted: var(--muted);
   --color-muted-strong: var(--muted-strong);
+  --color-muted-soft: var(--muted-soft);
+  --color-on-navy: var(--on-navy);
+  --color-on-navy-muted: var(--on-navy-muted);
   --color-primary: var(--primary);
   --color-primary-hover: var(--primary-hover);
   --color-primary-soft: var(--primary-soft);
@@ -518,7 +529,13 @@ body {
 
   .table .num {
     text-align: right;
+    font-family: var(--font-jetbrains-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
     font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum" 1;
+  }
+
+  .table thead th.num {
+    font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
   }
 
   /* Any wide content scrolls inside its own box; the page never does. */
@@ -563,14 +580,14 @@ body {
   /* One hue for magnitude. The title names the series, so no legend. */
   .bar {
     background: var(--primary);
-    border-radius: 0 0 4px 4px;
+    border-radius: 4px 4px 0 0;
     transition: opacity var(--fast) ease;
   }
 
   /* What Google sees without this product: deliberately grey. */
   .bar-flat {
-    background: #aab3c7;
-    border-radius: 0 0 4px 4px;
+    background: var(--muted-soft);
+    border-radius: 4px 4px 0 0;
   }
 
   /* ---------------------------------------------------------------------- */
@@ -580,7 +597,7 @@ body {
   .skeleton {
     position: relative;
     overflow: hidden;
-    background: #e6eaf3;
+    background: var(--background-deep);
     border-radius: var(--radius-sm);
   }
 

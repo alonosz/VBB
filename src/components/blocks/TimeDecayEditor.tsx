@@ -72,7 +72,7 @@ export function TimeDecayEditor({
           />
         </div>
       </div>
-      <p className="text-xs text-[#8688a0]">
+      <p className="text-xs text-[var(--muted)]">
         Points start at {rule.maxPoints} when the two dates are the same day,
         and halve every {rule.halfLifeDays || 0} day(s) after that.
       </p>

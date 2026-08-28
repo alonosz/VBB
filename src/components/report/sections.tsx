@@ -35,7 +35,7 @@ export function SectionHead({
   return (
     <div className="mb-3.5 flex flex-wrap items-baseline justify-between gap-3">
       <div>
-        <h2 className="text-lg font-bold tracking-tight">{title}</h2>
+        <h2 className="h3">{title}</h2>
         {children}
       </div>
       {note && <span className="text-[12.5px] text-[var(--muted)]">{note}</span>}
@@ -64,7 +64,7 @@ export function ShadowRoasSection({
     <section className="gradient-navy overflow-hidden rounded-2xl p-6 text-white sm:p-7">
       <div className="mb-6 flex flex-wrap items-end justify-between gap-5">
         <div>
-          <p className="mb-2 text-[11px] font-bold uppercase tracking-[.1em] text-[#8593ac]">
+          <p className="mb-2 text-[11px] font-bold uppercase tracking-[.1em] text-[var(--muted)]">
             What Google sees vs. what happened
           </p>
           <h2 className="max-w-[30ch] text-[clamp(20px,2.6vw,26px)] font-bold leading-tight tracking-tight text-balance">
@@ -76,7 +76,7 @@ export function ShadowRoasSection({
             <span className="mono block text-[clamp(38px,6vw,56px)] font-bold leading-none tracking-tighter">
               {blindnessRatio}×
             </span>
-            <span className="mt-1.5 block text-[11px] font-semibold uppercase tracking-[.09em] text-[#8593ac]">
+            <span className="mt-1.5 block text-[11px] font-semibold uppercase tracking-[.09em] text-[var(--muted)]">
               Best won deal vs. smallest
             </span>
           </div>
@@ -86,7 +86,7 @@ export function ShadowRoasSection({
       <div className="overflow-x-auto">
         <table className="w-full min-w-[620px] border-collapse text-left text-[13.5px]">
           <thead>
-            <tr className="text-[10.5px] uppercase tracking-[.07em] text-[#8593ac]">
+            <tr className="text-[10.5px] uppercase tracking-[.07em] text-[var(--muted)]">
               <th className="pb-2.5 pr-3 font-bold">Source</th>
               <th className="pb-2.5 pr-3 text-right font-bold">Leads</th>
               <th className="pb-2.5 pr-3 text-right font-bold">Google sees</th>
@@ -99,20 +99,20 @@ export function ShadowRoasSection({
             {rows.map((r) => (
               <tr key={r.source} className="border-t border-white/10">
                 <td className="py-2.5 pr-3 font-semibold">{r.source}</td>
-                <td className="mono py-2.5 pr-3 text-right text-[#a7b3c9]">{r.leads}</td>
+                <td className="mono py-2.5 pr-3 text-right text-[var(--muted-soft)]">{r.leads}</td>
                 {/* Identical for every row — that is the entire point. */}
-                <td className="mono py-2.5 pr-3 text-right text-[#6b7a91]">
+                <td className="mono py-2.5 pr-3 text-right text-[var(--muted)]">
                   {r.leads} × 1
                 </td>
-                <td className="mono py-2.5 pr-3 text-right text-[#a7b3c9]">{r.wonDeals}</td>
+                <td className="mono py-2.5 pr-3 text-right text-[var(--muted-soft)]">{r.wonDeals}</td>
                 <td className="mono py-2.5 pr-3 text-right font-semibold">
                   {money(r.actualValue, currency)}
                 </td>
                 <td className="py-2.5">
                   <div className="flex items-center gap-2.5">
-                    <div className="h-1.5 w-full max-w-[110px] overflow-hidden rounded-full bg-white/10">
+                    <div className="h-1.5 w-full max-w-[110px] overflow-hidden rounded-full bg-[var(--surface)]/10">
                       <div
-                        className="h-full rounded-full bg-[#5C86FF]"
+                        className="h-full rounded-full bg-[var(--primary-on-navy)]"
                         style={{ width: `${(r.actualValuePerLead / maxPerLead) * 100}%` }}
                       />
                     </div>
@@ -124,11 +124,11 @@ export function ShadowRoasSection({
               </tr>
             ))}
             <tr className="border-t-2 border-white/20">
-              <td className="py-2.5 pr-3 text-[11px] font-bold uppercase tracking-wider text-[#8593ac]">
+              <td className="py-2.5 pr-3 text-[11px] font-bold uppercase tracking-wider text-[var(--muted)]">
                 Total
               </td>
               <td className="mono py-2.5 pr-3 text-right font-semibold">{totalLeads}</td>
-              <td className="mono py-2.5 pr-3 text-right text-[#6b7a91]">all equal</td>
+              <td className="mono py-2.5 pr-3 text-right text-[var(--muted)]">all equal</td>
               <td />
               <td className="mono py-2.5 pr-3 text-right font-bold">
                 {money(totalValue, currency)}
@@ -156,21 +156,21 @@ export function StatedVsActual({
   if (!businessContext.trim() || comparisons.length === 0) return null;
 
   const tone: Record<Comparison["verdict"], { badge: string; label: string; rail: string }> = {
-    gap: { badge: "bg-amber-100 text-amber-800", label: "Big gap", rail: "bg-[var(--warn)]" },
-    confirmed: { badge: "bg-emerald-100 text-emerald-800", label: "Confirmed", rail: "bg-[var(--accent)]" },
-    partial: { badge: "bg-amber-100 text-amber-800", label: "Partial", rail: "bg-[var(--warn)]" },
+    gap: { badge: "bg-[var(--warn-soft)] text-[var(--warn)]", label: "Big gap", rail: "bg-[var(--warn)]" },
+    confirmed: { badge: "bg-[var(--accent-soft)] text-[var(--accent)]", label: "Confirmed", rail: "bg-[var(--accent)]" },
+    partial: { badge: "bg-[var(--warn-soft)] text-[var(--warn)]", label: "Partial", rail: "bg-[var(--warn)]" },
   };
 
   return (
     <section>
       <div className="grid overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--border)] gap-px md:grid-cols-[.82fr_1.18fr]">
-        <div className="bg-white p-5">
+        <div className="bg-[var(--surface)] p-5">
           <p className="label mb-3">What you told us</p>
           <blockquote className="border-l-2 border-[var(--primary)] pl-3.5 text-[14.5px] italic leading-relaxed text-[var(--muted)]">
             {businessContext}
           </blockquote>
         </div>
-        <div className="bg-white p-5">
+        <div className="bg-[var(--surface)] p-5">
           <p className="label mb-3">What your data shows</p>
           <div className="grid gap-3.5">
             {comparisons.map((c) => (
@@ -215,10 +215,10 @@ export function StatedVsActual({
 export function VerdictBanner({ verdict }: { verdict: Verdict }) {
   const style =
     verdict.mode === "MEASURED"
-      ? "border-emerald-300/60 bg-emerald-50/70"
+      ? "border-[var(--accent-line)] bg-[var(--accent-soft)]"
       : verdict.mode === "PREDICTED"
       ? "border-[var(--primary)]/30 bg-[var(--primary-soft)]"
-      : "border-amber-300/60 bg-amber-50/70";
+      : "border-[var(--warn-line)] bg-[var(--warn-soft)]";
 
   const badge =
     verdict.mode === "MEASURED"
@@ -252,7 +252,7 @@ export function VerdictBanner({ verdict }: { verdict: Verdict }) {
               {verdict.blockers.map((b, i) => (
                 <li
                   key={i}
-                  className="flex gap-2.5 rounded-lg bg-white/70 px-3.5 py-2.5 text-[13.5px] text-[var(--muted)]"
+                  className="flex gap-2.5 rounded-lg bg-[var(--surface)]/75 px-3.5 py-2.5 text-[13.5px] text-[var(--muted)]"
                 >
                   <span className="font-bold text-[var(--warn)]">!</span>
                   {b}
@@ -268,8 +268,8 @@ export function VerdictBanner({ verdict }: { verdict: Verdict }) {
                 className={
                   "rounded-full border px-2.5 py-1 text-[11px] font-semibold " +
                   (m.key === verdict.mode
-                    ? "border-current bg-white text-[var(--foreground)]"
-                    : "border-[var(--border)] bg-white/50 text-[#a8b0c2]")
+                    ? "border-current bg-[var(--surface)] text-[var(--foreground)]"
+                    : "border-[var(--border)] bg-[var(--surface)]/50 text-[var(--muted-soft)]")
                 }
               >
                 {m.key === verdict.mode ? "✓ " : ""}
@@ -298,7 +298,7 @@ export function TrackingGapSection({ match }: { match: MatchRateReadiness }) {
       <div
         className={
           "rounded-2xl border p-5 " +
-          (healthy ? "border-[var(--border)] bg-white" : "border-amber-300/60 bg-amber-50/60")
+          (healthy ? "border-[var(--border)] bg-[var(--surface)]" : "border-[var(--warn-line)] bg-[var(--warn-soft)]")
         }
       >
         <div className="flex flex-wrap items-baseline gap-x-6 gap-y-3">
@@ -322,7 +322,7 @@ export function TrackingGapSection({ match }: { match: MatchRateReadiness }) {
             { k: "Valid email", v: match.withValidEmail },
             { k: "Either", v: match.withAnyIdentifier },
           ].map((s) => (
-            <div key={s.k} className="rounded-lg border border-[var(--border)] bg-white px-3 py-2">
+            <div key={s.k} className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2">
               <p className="text-[11px] font-semibold uppercase tracking-wider text-[var(--muted)]">
                 {s.k}
               </p>
@@ -400,7 +400,7 @@ export function CycleSection({ cycle }: { cycle: CycleLengthStats }) {
               <span className="mono text-right text-[12.5px] text-[var(--muted)]">
                 {b.label}
               </span>
-              <div className="h-[22px] overflow-hidden rounded bg-[#f2f5fa]">
+              <div className="h-[22px] overflow-hidden rounded bg-[var(--surface-sunken)]">
                 <div
                   className={
                     "h-full rounded-r transition-all " +
@@ -452,7 +452,7 @@ export function SourceEconomicsSection({
         <div className="overflow-x-auto">
           <table className="w-full min-w-[620px] text-left text-[13.5px]">
             <thead>
-              <tr className="bg-[#f8fafd] text-[10.5px] uppercase tracking-[.07em] text-[var(--muted)]">
+              <tr className="bg-[var(--surface-sunken)] text-[10.5px] uppercase tracking-[.07em] text-[var(--muted)]">
                 <th className="px-4 py-2.5 font-bold">Source</th>
                 <th className="px-4 py-2.5 text-right font-bold">Leads</th>
                 <th className="px-4 py-2.5 text-right font-bold">Won</th>
@@ -465,7 +465,7 @@ export function SourceEconomicsSection({
             </thead>
             <tbody>
               {sources.map((s) => (
-                <tr key={s.source} className="border-t border-[var(--border)] hover:bg-[#f8fafd]">
+                <tr key={s.source} className="border-t border-[var(--border)] hover:bg-[var(--surface-sunken)]">
                   <td className="px-4 py-2.5 font-semibold">{s.source}</td>
                   <td className="mono px-4 py-2.5 text-right text-[var(--muted)]">{s.total}</td>
                   <td className="mono px-4 py-2.5 text-right text-[var(--muted)]">{s.won}</td>
@@ -480,7 +480,7 @@ export function SourceEconomicsSection({
                     {money(s.totalWonValue, currency)}
                   </td>
                   <td className="px-4 py-2.5">
-                    <div className="h-1.5 overflow-hidden rounded-full bg-[#eef1f7]">
+                    <div className="h-1.5 overflow-hidden rounded-full bg-[var(--background-deep)]">
                       <div
                         className="h-full rounded-full bg-[var(--primary)]"
                         style={{ width: `${(s.totalWonValue / maxValue) * 100}%` }}
@@ -652,7 +652,7 @@ export function DataQualitySection({
             "rounded-xl border p-4 " +
             (gate.recommended
               ? "border-[var(--primary)]/25 bg-[var(--primary-soft)]/50"
-              : "border-[var(--border)] bg-white")
+              : "border-[var(--border)] bg-[var(--surface)]")
           }
         >
           <p className="text-[13.5px] font-bold">
@@ -679,7 +679,7 @@ export function DataQualitySection({
 
         {/* Stage trust */}
         {trust.available && trust.untrustedStages.length > 0 && (
-          <div className="rounded-xl border border-amber-300/60 bg-amber-50/60 p-4">
+          <div className="rounded-xl border border-[var(--warn-line)] bg-[var(--warn-soft)] p-4">
             <p className="text-[13.5px] font-bold">
               {trust.untrustedStages.length === 1
                 ? `"${trust.untrustedStages[0]}" stage timestamps look backfilled`
@@ -698,7 +698,7 @@ export function DataQualitySection({
         )}
 
         {/* Exclusions */}
-        <div className="rounded-xl border border-[var(--border)] bg-white p-4">
+        <div className="card p-4">
           <p className="text-[13.5px] font-bold">
             {excluded.length === 0
               ? "No rows were excluded"

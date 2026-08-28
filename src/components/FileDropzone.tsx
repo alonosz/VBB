@@ -58,7 +58,7 @@ export function FileDropzone({
       </span>
       <div>
         <p className="text-sm font-semibold">{title}</p>
-        <p className="mt-1 text-xs text-[#8688a0]">{subtitle}</p>
+        <p className="mt-1 text-xs text-[var(--muted)]">{subtitle}</p>
       </div>
       <input
         ref={inputRef}

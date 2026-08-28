@@ -16,7 +16,7 @@ export function WeightSummaryBar({
     <div className="card sticky top-[61px] z-10 flex items-center gap-4 px-4 py-3">
       <div className="flex-1">
         <div className="mb-1.5 flex items-center justify-between text-xs">
-          <span className="font-semibold text-[#6b6d85]">Total weight</span>
+          <span className="font-semibold text-[var(--muted-strong)]">Total weight</span>
           <span
             className={
               "font-bold tabular-nums " +
@@ -31,7 +31,7 @@ export function WeightSummaryBar({
             {isBalanced ? "· balanced" : isOver ? "· over 100%" : "· under 100%"}
           </span>
         </div>
-        <div className="h-2 w-full overflow-hidden rounded-full bg-[#eceeF7]">
+        <div className="h-2 w-full overflow-hidden rounded-full bg-[var(--background-deep)]">
           <div
             className={
               "h-full rounded-full transition-all duration-200 " +

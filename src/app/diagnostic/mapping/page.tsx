@@ -24,14 +24,14 @@ function ConfidenceBadge({ field }: { field: DetectedField }) {
   }
   if (field.column !== null && field.source === "user") {
     return (
-      <span className="inline-flex whitespace-nowrap rounded-full bg-[#eef1f7] px-2.5 py-1 text-[11px] font-bold tracking-wide text-[var(--foreground)]">
+      <span className="inline-flex whitespace-nowrap rounded-full bg-[var(--background-deep)] px-2.5 py-1 text-[11px] font-bold tracking-wide text-[var(--foreground)]">
         Your choice
       </span>
     );
   }
   if (field.column === null) {
     return (
-      <span className="inline-flex whitespace-nowrap rounded-full bg-[#eef1f7] px-2.5 py-1 text-[11px] font-bold tracking-wide text-[var(--muted)]">
+      <span className="inline-flex whitespace-nowrap rounded-full bg-[var(--background-deep)] px-2.5 py-1 text-[11px] font-bold tracking-wide text-[var(--muted)]">
         Not found
       </span>
     );
@@ -39,10 +39,10 @@ function ConfidenceBadge({ field }: { field: DetectedField }) {
   const pct = Math.round((field.confidence ?? 0) * 100);
   const tone =
     pct >= 90
-      ? "bg-emerald-50 text-emerald-700"
+      ? "bg-[var(--accent-soft)] text-[var(--accent)]"
       : pct >= 70
       ? "bg-[var(--primary-soft)] text-[var(--primary)]"
-      : "bg-amber-50 text-amber-700";
+      : "bg-[var(--warn-soft)] text-[var(--warn)]";
   return (
     <span className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-bold tracking-wide ${tone}`}>
       <span className="mono">{pct}%</span>
@@ -58,7 +58,7 @@ function IssueCard({ issue }: { issue: FileIssue }) {
     <div
       className={
         "rounded-xl border p-4 " +
-        (warn ? "border-amber-300/60 bg-amber-50/60" : "border-[var(--border)] bg-white")
+        (warn ? "border-[var(--warn-line)] bg-[var(--warn-soft)]" : "border-[var(--border)] bg-white")
       }
     >
       <div className="flex items-start gap-3">
@@ -122,7 +122,7 @@ function RowPreview({
       <div className="overflow-x-auto border-t border-[var(--border)]">
         <table className="w-full text-left text-[12.5px]">
           <thead>
-            <tr className="bg-[#f8fafd]">
+            <tr className="bg-[var(--surface-sunken)]">
               {headers.map((h) => (
                 <th key={h} className="whitespace-nowrap px-3 py-2 align-bottom">
                   <span className="mono block text-[11.5px] font-bold">{h}</span>
@@ -245,7 +245,7 @@ export default function MappingPage() {
           knows your CRM.
         </p>
 
-        <div className="mt-6 flex flex-wrap items-center gap-3 rounded-xl border border-emerald-300/50 bg-emerald-50/60 px-4 py-3.5">
+        <div className="mt-6 flex flex-wrap items-center gap-3 rounded-xl border border-[var(--accent-line)] bg-[var(--accent-soft)] px-4 py-3.5">
           <span>✓</span>
           <p className="text-[14px] text-[var(--muted)]">
             <span className="mono font-bold text-[var(--foreground)]">
@@ -273,7 +273,7 @@ export default function MappingPage() {
               <div
                 key={field.key}
                 className={
-                  "grid items-center gap-4 px-4 py-3 transition-colors hover:bg-[#f8fafd] md:grid-cols-[170px_1fr_1.15fr_auto] " +
+                  "grid items-center gap-4 px-4 py-3 transition-colors hover:bg-[var(--surface-sunken)] md:grid-cols-[170px_1fr_1.15fr_auto] " +
                   (i < fields.length - 1 ? "border-b border-[var(--border)]" : "")
                 }
               >
@@ -301,7 +301,7 @@ export default function MappingPage() {
 
                 <div className="text-[12.5px] leading-snug text-[var(--muted)]">
                   {field.disagreement && (
-                    <span className="mb-1 block rounded-lg bg-amber-50 px-2 py-1 text-[12px] text-amber-800">
+                    <span className="mb-1 block rounded-lg bg-[var(--warn-soft)] px-2 py-1 text-[12px] text-[var(--warn)]">
                       {field.disagreement}
                     </span>
                   )}
@@ -317,7 +317,7 @@ export default function MappingPage() {
                       {field.sampleValues.map((v) => (
                         <span
                           key={v}
-                          className="mono rounded-full border border-[var(--border)] bg-[#f8fafd] px-2 py-0.5 text-[11px]"
+                          className="mono rounded-full border border-[var(--border)] bg-[var(--surface-sunken)] px-2 py-0.5 text-[11px]"
                         >
                           {v}
                         </span>
@@ -332,7 +332,7 @@ export default function MappingPage() {
           </div>
 
           {missingRequired.length > 0 && (
-            <p className="mt-3 rounded-xl border border-[var(--danger)]/30 bg-red-50 px-4 py-3 text-[13px] text-[var(--danger)]">
+            <p className="mt-3 rounded-xl border border-[var(--danger)]/30 bg-[var(--danger-soft)] px-4 py-3 text-[13px] text-[var(--danger)]">
               Pick a column for{" "}
               {missingRequired.map((f) => f.label).join(", ")} before continuing —
               the analysis can&apos;t run without {missingRequired.length === 1 ? "it" : "them"}.
@@ -351,7 +351,7 @@ export default function MappingPage() {
                 We never convert without a rate you set
               </span>
             </div>
-            <div className="card border-amber-300/60 bg-amber-50/60 p-4">
+            <div className="card border-[var(--warn-line)] bg-[var(--warn-soft)] p-4">
               <p className="text-[13.5px] font-semibold">{mixedCurrency.title}</p>
               <p className="mt-0.5 text-[13px] text-[var(--muted)]">{mixedCurrency.detail}</p>
 
@@ -473,7 +473,7 @@ export default function MappingPage() {
                   {hypotheses.map((h) => (
                     <li
                       key={h.factorKey}
-                      className="rounded-xl border border-[var(--border)] bg-[#f8fafd] px-3.5 py-2.5"
+                      className="rounded-xl border border-[var(--border)] bg-[var(--surface-sunken)] px-3.5 py-2.5"
                     >
                       <p className="text-[13.5px] font-semibold">
                         &ldquo;{h.claim}&rdquo;

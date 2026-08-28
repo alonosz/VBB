@@ -31,7 +31,7 @@ export function StepHeader({ current }: { current: StepKey }) {
           </span>
         </Link>
 
-        <ol className="hidden md:flex items-center gap-1 text-xs font-medium text-[#8688a0]">
+        <ol className="hidden md:flex items-center gap-1 text-xs font-medium text-[var(--muted)]">
           {STEPS.map((step, i) => {
             const state =
               i < currentIdx ? "done" : i === currentIdx ? "active" : "todo";
@@ -44,7 +44,7 @@ export function StepHeader({ current }: { current: StepKey }) {
                       ? "bg-[var(--primary-soft)] text-[var(--primary)]"
                       : state === "done"
                       ? "text-[var(--foreground)]"
-                      : "text-[#b3b4c6]")
+                      : "text-[var(--muted-soft)]")
                   }
                 >
                   <span
@@ -54,7 +54,7 @@ export function StepHeader({ current }: { current: StepKey }) {
                         ? "bg-[var(--primary)] text-white"
                         : state === "done"
                         ? "bg-[var(--accent)] text-white"
-                        : "bg-[#e6e7f2] text-[#9698b3]")
+                        : "bg-[var(--background-deep)] text-[var(--muted-soft)]")
                     }
                   >
                     {state === "done" ? "✓" : i + 1}
