@@ -330,14 +330,8 @@ export default function ConnectPage() {
           This is the step that changes that.
         </p>
 
-        {volume && (
-          <div className="mt-8">
-            <VolumeFloorPanel volume={volume} currency={cur} />
-          </div>
-        )}
-
         {/* ---- the product: a URL Google fetches by itself ---- */}
-        <section className="card mt-4 border-[var(--primary)]/25 p-6 sm:p-7">
+        <section className="card mt-8 border-[var(--primary)]/25 p-6 sm:p-7">
           <p className="label" style={{ color: "var(--primary-deep)" }}>
             Recommended
           </p>
@@ -602,6 +596,12 @@ export default function ConnectPage() {
           </div>
           {csvNote && <p className="mono mt-2.5 text-[12px] text-[var(--muted)]">{csvNote}</p>}
         </section>
+
+        {volume && (
+          <div className="mt-4">
+            <VolumeFloorPanel volume={volume} currency={cur} />
+          </div>
+        )}
 
         {/* ---- the next thing worth doing ---- */}
         <section className="mt-4 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5">
