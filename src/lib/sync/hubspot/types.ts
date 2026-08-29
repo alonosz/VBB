@@ -29,4 +29,9 @@ export interface HubSpotPull {
   companiesById: Map<string, HubSpotObject>;
   /** Internal stage id → the label a person would recognise. */
   stageLabels?: Map<string, string>;
+  /**
+   * Contact properties this portal actually keeps a Google click ID in,
+   * discovered rather than assumed. Absent falls back to the known names.
+   */
+  clickIdProperties?: string[];
 }

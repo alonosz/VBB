@@ -29,6 +29,52 @@ export const CLICK_ID_PROPERTIES = [
   "wbraid",
 ];
 
+/**
+ * Picking the click-ID property out of a portal's own contact properties.
+ *
+ * The list above is a guess at what someone might have called it, and a guess
+ * is not good enough: a real portal stores it under a property *labelled*
+ * "Google Click ID", and if the internal name is not one we thought of, the
+ * connection quietly produces zero click IDs and falls back to email with
+ * nothing on screen saying why. So the portal is asked what it has.
+ *
+ * The exclusions matter as much as the matches. That same portal carries
+ * "Facebook Click ID" and "LinkedIn Click ID" beside the Google one, and
+ * sending an fbclid to Google Ads as though it were a gclid would attach a
+ * value to nothing at all — a silent, confident mismatch, which is the worst
+ * kind. Anything naming another network is left alone.
+ */
+const OTHER_NETWORKS = /facebook|fbclid|meta|linkedin|li_?fat|twitter|tiktok|ttclid|bing|microsoft|msclkid|reddit/i;
+
+/** Google's own click identifiers: search, plus the iOS app-campaign pair. */
+const GOOGLE_CLICK = /(^|[^a-z])(gclid|gbraid|wbraid)([^a-z]|$)|google.{0,12}click|click.{0,4}id/i;
+
+export interface HubSpotPropertyRef {
+  name: string;
+  label?: string;
+}
+
+export function googleClickIdProperties(properties: HubSpotPropertyRef[]): string[] {
+  const found: string[] = [];
+
+  for (const p of properties) {
+    const name = p.name ?? "";
+    const label = p.label ?? "";
+    const both = `${name} ${label}`;
+
+    if (OTHER_NETWORKS.test(both)) continue;
+    if (!GOOGLE_CLICK.test(name) && !GOOGLE_CLICK.test(label)) continue;
+    found.push(name);
+  }
+
+  // The names we already know go first, so a portal with both a standard
+  // property and a custom one is read in the order the old code would have.
+  return [
+    ...CLICK_ID_PROPERTIES.filter((k) => found.includes(k)),
+    ...found.filter((k) => !CLICK_ID_PROPERTIES.includes(k)),
+  ];
+}
+
 export const DEAL_PROPERTIES = [
   "dealname",
   "amount",
@@ -98,9 +144,12 @@ function firstAssociated(
   return undefined;
 }
 
-function clickIdOf(contact: HubSpotObject | undefined): string | null {
+function clickIdOf(
+  contact: HubSpotObject | undefined,
+  keys: readonly string[]
+): string | null {
   if (!contact) return null;
-  for (const key of CLICK_ID_PROPERTIES) {
+  for (const key of keys) {
     const value = text(contact, key);
     // The same shape the snippet enforces before storing one: long enough to
     // be a real token, and free of the punctuation an address carries.
@@ -213,7 +262,7 @@ export function hubspotToDeals(
       // HubSpot's own attribution, not ours to infer.
       source: text(contact, "hs_analytics_source") ?? null,
       email: text(contact, "email"),
-      clickId: clickIdOf(contact),
+      clickId: clickIdOf(contact, pull.clickIdProperties ?? CLICK_ID_PROPERTIES),
       employeeCount: number(company, "numberofemployees"),
       industry: text(company, "industry"),
       contactTitle: text(contact, "jobtitle"),

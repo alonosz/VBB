@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { currenciesInPull, hubspotToDeals, outcomeOf, stageTimingOf } from "./map";
+import {
+  currenciesInPull,
+  googleClickIdProperties,
+  hubspotToDeals,
+  outcomeOf,
+  stageTimingOf,
+} from "./map";
 import type { HubSpotObject, HubSpotPull } from "./types";
 
 const CREATED = "2026-05-01T09:00:00Z";
@@ -201,5 +207,82 @@ describe("currency", () => {
       { code: "USD", count: 2 },
       { code: "GBP", count: 1 },
     ]);
+  });
+});
+
+/**
+ * Drawn from a real portal. The gclid sits on the contact under a property
+ * labelled "Google Click ID", and the same portal carries Facebook and
+ * LinkedIn click IDs beside it.
+ *
+ * Two ways to fail here, and the second is worse than the first. Missing the
+ * Google property means no click IDs and a quiet fall back to email matching.
+ * Picking up the Facebook one means sending an fbclid to Google Ads as though
+ * it were a gclid — a value attached to nothing, reported as a success.
+ */
+describe("googleClickIdProperties", () => {
+  const REAL_PORTAL = [
+    { name: "email", label: "Email" },
+    { name: "jobtitle", label: "Job Title" },
+    { name: "google_click_id", label: "Google Click ID" },
+    { name: "facebook_click_id", label: "Facebook Click ID" },
+    { name: "linkedin_click_id", label: "LinkedIn Click ID" },
+  ];
+
+  it("finds the Google one", () => {
+    expect(googleClickIdProperties(REAL_PORTAL)).toContain("google_click_id");
+  });
+
+  it("NEVER PICKS UP ANOTHER NETWORK'S CLICK ID", () => {
+    const found = googleClickIdProperties(REAL_PORTAL);
+    expect(found).not.toContain("facebook_click_id");
+    expect(found).not.toContain("linkedin_click_id");
+  });
+
+  it("finds a property named nothing like the ones we guessed", () => {
+    // The whole reason this exists: a portal is free to call it anything.
+    expect(
+      googleClickIdProperties([{ name: "p_47281__c", label: "Google Click ID" }])
+    ).toEqual(["p_47281__c"]);
+  });
+
+  it("matches on the internal name when there is no label", () => {
+    expect(googleClickIdProperties([{ name: "gclid" }])).toEqual(["gclid"]);
+    expect(googleClickIdProperties([{ name: "gbraid" }])).toEqual(["gbraid"]);
+    expect(googleClickIdProperties([{ name: "wbraid" }])).toEqual(["wbraid"]);
+  });
+
+  it("leaves unrelated properties alone", () => {
+    expect(
+      googleClickIdProperties([
+        { name: "lifecyclestage", label: "Lifecycle Stage" },
+        { name: "hs_object_id", label: "Record ID" },
+        { name: "msclkid", label: "Microsoft Click ID" },
+      ])
+    ).toEqual([]);
+  });
+
+  it("puts a name we already knew before one we discovered", () => {
+    // So a portal carrying both is read in the order the old code would have.
+    expect(
+      googleClickIdProperties([
+        { name: "custom_google_click_id", label: "Google Click ID (legacy)" },
+        { name: "gclid", label: "GCLID" },
+      ])
+    ).toEqual(["gclid", "custom_google_click_id"]);
+  });
+
+  it("reads the click ID off whatever property the portal actually uses", () => {
+    const contact: HubSpotObject = {
+      id: "c-1",
+      properties: { email: "a@b.com", p_47281__c: "EAIaIQobChMIzfaU1aS0lQMV" },
+    };
+    const [mapped] = hubspotToDeals({
+      deals: [deal({}, { contacts: { results: [{ id: "c-1" }] } })],
+      contactsById: new Map([["c-1", contact]]),
+      companiesById: new Map(),
+      clickIdProperties: ["p_47281__c"],
+    });
+    expect(mapped.clickId).toBe("EAIaIQobChMIzfaU1aS0lQMV");
   });
 });

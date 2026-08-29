@@ -1,8 +1,10 @@
 import type { HubSpotObject, HubSpotPage, HubSpotPull } from "./types";
 import {
+  CLICK_ID_PROPERTIES,
   COMPANY_PROPERTIES,
   CONTACT_PROPERTIES,
   DEAL_PROPERTIES,
+  googleClickIdProperties,
 } from "./map";
 
 /**
@@ -68,14 +70,17 @@ export class HubSpotClient {
   }
 
   private async request<T>(path: string, body: unknown, attempt = 0): Promise<T> {
+    // A null body means GET. Everything else about the call — the retry on
+    // 429, the reconnect message on 401 — has to behave identically, so both
+    // verbs go through here rather than growing a second copy.
     const res = await this.fetchImpl(`${this.baseUrl}${path}`, {
-      method: "POST",
+      method: body === null ? "GET" : "POST",
       headers: {
         // Never logged. The token is the whole credential for someone's CRM.
         authorization: `Bearer ${this.opts.accessToken}`,
         "content-type": "application/json",
       },
-      body: JSON.stringify(body),
+      ...(body === null ? {} : { body: JSON.stringify(body) }),
     });
 
     if (res.status === 429 || res.status >= 500) {
@@ -107,6 +112,22 @@ export class HubSpotClient {
     }
 
     return (await res.json()) as T;
+  }
+
+  /**
+   * What contact properties this portal has.
+   *
+   * Read so the click ID can be found by what it is rather than by what we
+   * guessed someone would call it. Cheap — one request, no paging in practice
+   * — and the alternative is a connection that silently carries no click IDs.
+   */
+  async listContactProperties(): Promise<{ name: string; label?: string }[]> {
+    const res = await this.request<{ results?: { name?: string; label?: string }[] }>(
+      "/crm/v3/properties/contacts",
+      null
+    );
+    return (res.results ?? [])
+      .filter((p): p is { name: string; label?: string } => typeof p.name === "string");
   }
 
   /** Deals created inside the window, newest pages first as HubSpot orders them. */
@@ -281,17 +302,32 @@ export async function pullFromHubSpot(client: HubSpotClient): Promise<HubSpotPul
     };
   }
 
+  // Ask the portal where it keeps the click ID before reading contacts, so
+  // the batch request includes it. A failure here is not worth losing the run
+  // over: fall back to the names we know and carry on.
+  let clickIdProperties = [...CLICK_ID_PROPERTIES];
+  try {
+    const discovered = googleClickIdProperties(await client.listContactProperties());
+    if (discovered.length > 0) clickIdProperties = discovered;
+  } catch {
+    // Keep the defaults.
+  }
+
+  const contactProperties = [
+    ...new Set([...CONTACT_PROPERTIES, ...clickIdProperties]),
+  ];
+
   const contactIds = [...contactLinks.values()].flat();
   const companyIds = [...companyLinks.values()].flat();
 
   const [contactsById, companiesById] = await Promise.all([
     contactIds.length > 0
-      ? client.readBatch("contacts", contactIds, CONTACT_PROPERTIES)
+      ? client.readBatch("contacts", contactIds, contactProperties)
       : Promise.resolve(new Map<string, HubSpotObject>()),
     companyIds.length > 0
       ? client.readBatch("companies", companyIds, COMPANY_PROPERTIES)
       : Promise.resolve(new Map<string, HubSpotObject>()),
   ]);
 
-  return { deals, contactsById, companiesById };
+  return { deals, contactsById, companiesById, clickIdProperties };
 }
