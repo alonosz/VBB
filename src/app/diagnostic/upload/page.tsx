@@ -190,6 +190,34 @@ export default function UploadPage() {
               }}
             />
 
+            {/*
+              The second door, before it opens.
+              
+              Deliberately not a column beside the dropzone yet: HubSpot does
+              not work, so the CSV is the only way through, and halving the
+              primary action for something inert would be worse than saying
+              nothing. It moves up beside the dropzone the day it works — the
+              card is written so that is a content swap, not a redesign.
+
+              No button. A control that does nothing when clicked is worse than
+              no control, and "notify me" would need somewhere to put an email
+              address that does not exist yet.
+            */}
+            <div className="well mt-4 p-5 sm:p-6">
+              <div className="min-w-0">
+                <p className="flex flex-wrap items-center gap-2.5">
+                  <span className="text-[15px] font-bold">Connect HubSpot instead</span>
+                  <span className="badge badge-primary">Soon</span>
+                </p>
+                <p className="mt-1.5 max-w-[62ch] text-[13.5px] text-[var(--muted)]">
+                  We&apos;re building a direct connection, so there&apos;s no export to
+                  get right and no columns to map — your deals come straight across
+                  and the next screen is your model. Until then the CSV route above
+                  does the same job.
+                </p>
+              </div>
+            </div>
+
             <ExportGuide />
 
             {assisted && (
