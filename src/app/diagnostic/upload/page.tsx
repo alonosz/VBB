@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useDiagnostic } from "@/context/DiagnosticContext";
 import { Stepper } from "@/components/diagnostic/Stepper";
 import { Alert, PageHead } from "@/components/ui";
+import { ExportGuide } from "@/components/diagnostic/ExportGuide";
 import { generateDemoDeals, demoDealsToCsvRows } from "@/lib/fixtures/demoDataset";
 import { useIngest } from "@/lib/diagnostic/useIngest";
 
@@ -188,6 +189,8 @@ export default function UploadPage() {
                 if (f) handleFile(f);
               }}
             />
+
+            <ExportGuide />
 
             {assisted && (
               <details className="mt-4 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 py-3">
