@@ -248,8 +248,20 @@ export function FeedStatusChecker() {
               <p className="mt-0.5 max-w-[66ch] text-[13.5px] text-[var(--muted)]">
                 Connect HubSpot and this feed refreshes itself every night: we
                 read your new deals, price them with the model you already
-                saved, and add them for Google to collect. Read-only — nothing
-                in your CRM is changed, and no CRM record is stored.
+                saved, and add them for Google to collect. Read-only, so
+                nothing in your CRM is changed and no CRM record is stored.
+              </p>
+              {/*
+                The convenience argument is the smaller one. Reading nightly is
+                also the only way the early gate ever fires: an adjustment
+                counts for 7 days, and a file uploaded once never sees a lead
+                again.
+              */}
+              <p className="mt-1.5 max-w-[66ch] text-[13.5px] text-[var(--muted)]">
+                It is also the only way a lead&apos;s value can sharpen after it
+                arrives. Google stops accepting a new value for a conversion
+                after 7 days, so a stage change only counts if someone is
+                reading your pipeline inside that week.
               </p>
               {connected ? (
                 <p className="mt-3 rounded-xl border border-[var(--accent)]/30 bg-[var(--accent-soft)] px-3.5 py-2.5 text-[13px]">

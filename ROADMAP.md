@@ -180,8 +180,38 @@ on HubSpot.
 **Decided 28 Aug: submit the HubSpot public app now, build the screen later.**
 The app review is the long pole and it is the one part not under our control,
 so it starts while everything else waits. Step 2 stays CSV-only until it comes
-back approved — by which point we will also know whether Google Ads accepts a
+back approved, by which point we will also know whether Google Ads accepts a
 feed at all, which is the thing that decides if any of this matters.
+
+### Why this is not only convenience (added 29 Aug)
+
+The early gate does not work without it. That was not obvious when this section
+was written, so it is worth stating plainly.
+
+Every other figure in the report is fixed the moment a lead arrives, computed
+once from the file in front of us. The gate is the one number that fires later:
+a lead reaches a pipeline stage, and we send Google a higher value for a
+conversion it already has. Google accepts that for 7 days and then stops.
+
+So the gate needs the lead's stage to be **read again, inside that week, after
+the upload**. A one-time CSV cannot do it:
+
+| Setup | Adjustments the gate actually produces |
+|---|---|
+| One CSV, once | Only for leads already in the file and under 7 days old. **None ever** for a lead that arrives tomorrow. |
+| Re-upload weekly | Most of them. |
+| Re-upload monthly | Almost none. The window has closed by the time we look. |
+| Live connection, nightly | All of them. This is what the feature was designed against. |
+
+Nothing in the product was lying about this, but nothing was saying it either.
+A customer could read the gate panel, see a x1.7, publish once and reasonably
+believe their leads were sharpening as they progressed. The report now states
+the condition on the panel itself, and step 5 says the same next to the connect
+button.
+
+That does not move the HubSpot app off the critical path, but it does change
+what it is for. It is not a nicer way to avoid an export. It is the thing that
+makes a whole feature real.
 
 ### What already exists
 
@@ -254,7 +284,10 @@ door that touches nothing.
    churn list starts filling.
 5. **Stripe + the paywall at step 5.** Gate the feed URL, keep the CSV free.
 6. **Signup**, in the same modal as the paywall. One interruption, one moment.
-7. **Step 2 HubSpot connection**, once the app is approved.
+7. **Step 2 HubSpot connection**, once the app is approved. Note that the
+   nightly sync at step 2 in this list already delivers the early gate for
+   pilot customers; this item is about removing the export from the funnel,
+   not about making the gate work.
 8. **Real sessions** — email magic link, works on any device.
 
 Steps 5 and 6 land together because they are the same screen and the same

@@ -1039,9 +1039,9 @@ export function EarlyGateSection({
                 </span>
                 <p className="text-[13px] text-[var(--muted-strong)]">
                   <span className="font-semibold text-[var(--foreground)]">
-                    Reached in time
+                    Reached in time.
                   </span>{" "}
-                  — we send Google a higher value for the conversion it already
+                  We send Google a higher value for the conversion it already
                   has.
                 </p>
               </div>
@@ -1053,13 +1053,39 @@ export function EarlyGateSection({
                 </span>
                 <p className="text-[13px] text-[var(--muted-strong)]">
                   <span className="font-semibold text-[var(--foreground)]">
-                    Reached late
+                    Reached late.
                   </span>{" "}
-                  — we send nothing. Google discards a late adjustment, and
+                  We send nothing. Google discards a late adjustment, and
                   telling you we moved a bid we did not move would be worse than
                   saying nothing.
                 </p>
               </div>
+            </div>
+
+            {/*
+              The condition the rest of the report does not have.
+              Every day-0 figure is computed once from the file in front of
+              us and stays true. This one is not: it needs the lead's stage
+              to be read again, inside the week, after this upload. A single
+              CSV cannot do that for any lead that has not arrived yet, so a
+              reader could see the multiplier, publish once, and reasonably
+              believe their leads are being sharpened as they progress. They
+              would not be. Saying so here costs nothing; leaving it out
+              claims a bid we never moved.
+            */}
+            <div className="alert alert-warn">
+              <p className="text-[13.5px] font-bold text-[var(--warn)]">
+                Only if we are still reading your CRM when it happens
+              </p>
+              <p className="mt-1 max-w-[72ch] text-[13px] text-[var(--muted-strong)]">
+                The stage change has to reach us inside the same 7 days, which
+                means looking at your pipeline again after this file. A live
+                CRM connection looks every night. A one-time upload cannot:
+                leads that arrive after today are never seen again, so they
+                keep the value they were given on arrival and this multiplier
+                never fires for them. Connect your CRM, or upload a fresh
+                export at least once a week.
+              </p>
             </div>
           </div>
         </div>
@@ -1073,7 +1099,7 @@ export function EarlyGateSection({
           </p>
           <p className="mt-2.5 max-w-[74ch] text-[13.5px] text-[var(--muted)]">
             Every lead keeps the value it was given on arrival. That is not a
-            fault — it is what happens when a pipeline moves slower than the
+            fault. It is what happens when a pipeline moves slower than the
             week Google gives you.
           </p>
         </div>
