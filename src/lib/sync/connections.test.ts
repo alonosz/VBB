@@ -4,6 +4,7 @@ import { CrmConnectionStore } from "./connections";
 import { generateKey, parseKey } from "./secrets";
 
 const KEY = parseKey(generateKey())!;
+// The store is keyed on a workspace now; the constant is that id.
 const FEED = "feed-1";
 const TOKEN = "crm-token-placeholder-not-a-real-credential";
 const REFRESH = "refresh-9a8b7c6d";
@@ -23,12 +24,12 @@ function fakeSupabase() {
 
     const api: Record<string, unknown> = {
       upsert(row: Record<string, unknown>) {
-        rows.set(String(row.feed_id), { ...(rows.get(String(row.feed_id)) ?? {}), ...row });
+        rows.set(String(row.workspace_id), { ...(rows.get(String(row.workspace_id)) ?? {}), ...row });
         return Promise.resolve({ error: null });
       },
       select() {
         pending = "select";
-        // Unfiltered select, used by connectedFeedIds.
+        // Unfiltered select, used by connectedWorkspaceIds.
         const all = [...rows.values()];
         return Object.assign(Promise.resolve({ data: all, error: null }), api);
       },
@@ -73,7 +74,7 @@ describe("CrmConnectionStore", () => {
     const { client, rows } = fakeSupabase();
     const store = new CrmConnectionStore(client, KEY);
 
-    await store.save({ feedId: FEED, provider: "hubspot", accessToken: TOKEN, refreshToken: REFRESH });
+    await store.save({ workspaceId: FEED, provider: "hubspot", accessToken: TOKEN, refreshToken: REFRESH });
 
     const written = JSON.stringify(rows.get(FEED));
     // The promise, checked against what actually reached the row.
@@ -88,14 +89,14 @@ describe("CrmConnectionStore", () => {
     const { client } = fakeSupabase();
     const store = new CrmConnectionStore(client, KEY);
     await store.save({
-      feedId: FEED, provider: "hubspot", accessToken: TOKEN, refreshToken: REFRESH,
+      workspaceId: FEED, provider: "hubspot", accessToken: TOKEN, refreshToken: REFRESH,
       externalAccountId: "portal-42", scopes: "crm.objects.deals.read",
     });
 
     const { connection, error } = await store.load(FEED);
     expect(error).toBeNull();
     expect(connection).toMatchObject({
-      feedId: FEED,
+      workspaceId: FEED,
       accessToken: TOKEN,
       refreshToken: REFRESH,
       externalAccountId: "portal-42",
@@ -106,7 +107,7 @@ describe("CrmConnectionStore", () => {
   it("asks for a reconnection when the key has rotated", async () => {
     const { client } = fakeSupabase();
     await new CrmConnectionStore(client, KEY).save({
-      feedId: FEED, provider: "hubspot", accessToken: TOKEN,
+      workspaceId: FEED, provider: "hubspot", accessToken: TOKEN,
     });
 
     const other = parseKey(generateKey())!;
@@ -124,7 +125,7 @@ describe("CrmConnectionStore", () => {
 
     expect(store.configured).toBe(false);
     await expect(
-      store.save({ feedId: FEED, provider: "hubspot", accessToken: TOKEN })
+      store.save({ workspaceId: FEED, provider: "hubspot", accessToken: TOKEN })
     ).rejects.toThrow(/VBB_TOKEN_KEY/);
     // Nothing written in the clear as a fallback.
     expect(rows.size).toBe(0);
@@ -140,7 +141,7 @@ describe("CrmConnectionStore", () => {
   it("records what happened on the last run", async () => {
     const { client, rows } = fakeSupabase();
     const store = new CrmConnectionStore(client, KEY);
-    await store.save({ feedId: FEED, provider: "hubspot", accessToken: TOKEN });
+    await store.save({ workspaceId: FEED, provider: "hubspot", accessToken: TOKEN });
 
     await store.recordRun(FEED, { status: "ok", rows: 42 });
     expect(rows.get(FEED)).toMatchObject({ last_sync_status: "ok", last_sync_rows: 42 });
@@ -153,7 +154,7 @@ describe("CrmConnectionStore", () => {
   it("truncates an error to a sentence, never a stack trace", async () => {
     const { client, rows } = fakeSupabase();
     const store = new CrmConnectionStore(client, KEY);
-    await store.save({ feedId: FEED, provider: "hubspot", accessToken: TOKEN });
+    await store.save({ workspaceId: FEED, provider: "hubspot", accessToken: TOKEN });
 
     await store.recordRun(FEED, { status: "failed", error: "x".repeat(2000) });
     expect(String(rows.get(FEED)!.last_sync_error)).toHaveLength(500);
@@ -162,7 +163,7 @@ describe("CrmConnectionStore", () => {
   it("forgets a connection completely on disconnect", async () => {
     const { client, rows } = fakeSupabase();
     const store = new CrmConnectionStore(client, KEY);
-    await store.save({ feedId: FEED, provider: "hubspot", accessToken: TOKEN });
+    await store.save({ workspaceId: FEED, provider: "hubspot", accessToken: TOKEN });
 
     await store.disconnect(FEED);
     expect(rows.size).toBe(0);

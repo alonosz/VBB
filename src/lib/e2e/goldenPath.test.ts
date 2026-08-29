@@ -139,7 +139,7 @@ describe("the golden path", () => {
     const { client } = fakeSupabase();
     const connections = new CrmConnectionStore(client, ENCRYPTION_KEY);
     await connections.save({
-      feedId, provider: "hubspot", accessToken: "portal-token-placeholder",
+      workspaceId: auth.workspace.id, provider: "hubspot", accessToken: "portal-token-placeholder",
       refreshToken: null, expiresAt: null, scopes: "private-app",
     });
 

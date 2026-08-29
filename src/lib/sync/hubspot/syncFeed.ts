@@ -95,10 +95,14 @@ export async function syncFeed(opts: SyncFeedOptions): Promise<FeedSyncOutcome> 
     return failed(feedId, why);
   }
 
-  const { connection, error: connectionError } = await connections.load(feedId);
+  // The connection belongs to the customer, not this feed. The feed is loaded
+  // above, so its owner is known by the time any of this runs.
+  const workspaceId = feed.clientId;
+
+  const { connection, error: connectionError } = await connections.load(workspaceId);
   if (!connection) {
     const why = connectionError ?? "No CRM is connected.";
-    await connections.recordRun(feedId, { status: "refused", error: why, at: now });
+    await connections.recordRun(workspaceId, { status: "refused", error: why, at: now });
     await record("refused", why);
     return failed(feedId, why);
   }
@@ -106,7 +110,7 @@ export async function syncFeed(opts: SyncFeedOptions): Promise<FeedSyncOutcome> 
   const { model, error: modelError } = await repo.modelFor(feedId);
   if (!model) {
     const why = modelError ?? "This feed has no saved model, so nothing can be priced.";
-    await connections.recordRun(feedId, { status: "refused", error: why, at: now });
+    await connections.recordRun(workspaceId, { status: "refused", error: why, at: now });
     await record("refused", why);
     return failed(feedId, why);
   }
@@ -118,12 +122,12 @@ export async function syncFeed(opts: SyncFeedOptions): Promise<FeedSyncOutcome> 
     const refreshed = await refreshAccessToken(oauth, connection.refreshToken, fetchImpl, now);
     if (!refreshed) {
       const why = "HubSpot would not renew the connection. Reconnect the account.";
-      await connections.recordRun(feedId, { status: "refused", error: why, at: now });
+      await connections.recordRun(workspaceId, { status: "refused", error: why, at: now });
       await record("refused", why);
       return failed(feedId, why);
     }
     await connections.save({
-      feedId,
+      workspaceId,
       provider: "hubspot",
       externalAccountId: connection.externalAccountId,
       accessToken: refreshed.accessToken,
@@ -160,14 +164,14 @@ export async function syncFeed(opts: SyncFeedOptions): Promise<FeedSyncOutcome> 
       error instanceof HubSpotError
         ? error.message
         : "The CRM could not be read. Nothing was published; the next run will pick these up.";
-    await connections.recordRun(feedId, { status: "failed", error: why, at: now });
+    await connections.recordRun(workspaceId, { status: "failed", error: why, at: now });
     await record("failed", why);
     return failed(feedId, why);
   }
 
   const report = await runSync({ repo, feed, model, deals, now });
 
-  await connections.recordRun(feedId, {
+  await connections.recordRun(workspaceId, {
     status: report.refusedBecause ? "refused" : "ok",
     rows: report.rowsAdded,
     error: report.refusedBecause,
@@ -179,15 +183,30 @@ export async function syncFeed(opts: SyncFeedOptions): Promise<FeedSyncOutcome> 
 }
 
 /**
- * Every connected feed, one run each.
+ * Every live feed belonging to a connected customer, one run each.
  *
- * One feed's failure must not stop the rest: a portal that revoked access
- * should not cost every other advertiser their night.
+ * A connection hangs off the customer now, so the walk is customer → their
+ * feeds rather than straight down a list of feeds. Every active feed they own
+ * is refreshed: each carries its own rows and its own frozen model, and a live
+ * feed Google is still collecting from should not go stale because a newer one
+ * exists beside it. `syncFeed` skips anything not active.
+ *
+ * One failure must not stop the rest — a portal that revoked access should not
+ * cost every other advertiser their night.
  */
 export async function syncAllFeeds(
   opts: Omit<SyncFeedOptions, "feedId">
 ): Promise<FeedSyncOutcome[]> {
-  const feedIds = await opts.connections.connectedFeedIds();
+  const workspaceIds = await opts.connections.connectedWorkspaceIds();
+
+  const feedIds: string[] = [];
+  for (const workspaceId of workspaceIds) {
+    const feeds = await opts.repo.listForWorkspace(workspaceId);
+    for (const feed of feeds) {
+      if (feed.status === "active") feedIds.push(feed.id);
+    }
+  }
+
   const outcomes: FeedSyncOutcome[] = [];
 
   for (const feedId of feedIds) {

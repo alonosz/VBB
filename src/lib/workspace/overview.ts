@@ -104,7 +104,10 @@ export async function buildOverview(
   const [feedSummary, model, connection, runs] = await Promise.all([
     feed ? summariseFeed(feed, sources.feeds, now) : Promise.resolve(null),
     feed ? summariseModel(feed, sources.feeds) : Promise.resolve(null),
-    feed ? summariseConnection(feed, sources.connections) : Promise.resolve(noConnection()),
+    // Not conditional on a feed any more. A customer can connect HubSpot at
+    // step 2 and publish later, and an Overview that reported "no CRM" until
+    // they published would be telling them the opposite of what is true.
+    summariseConnection(workspace.id, sources.connections),
     sources.runs.recentForWorkspace(workspace.id, RUNS_SHOWN),
   ]);
 
@@ -183,10 +186,10 @@ function noConnection(): ConnectionSummary {
 }
 
 async function summariseConnection(
-  feed: FeedRecord,
+  workspaceId: string,
   connections: CrmConnectionStore
 ): Promise<ConnectionSummary> {
-  const { connection, error } = await connections.load(feed.id);
+  const { connection, error } = await connections.load(workspaceId);
   if (!connection) {
     return {
       ...noConnection(),

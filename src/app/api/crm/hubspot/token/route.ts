@@ -67,18 +67,21 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, error: "Paste the private app token." }, { status: 400 });
   }
 
-  const found = await repo.findByTokenHash(await hashToken(feedToken));
-  if (!found || found.status !== "active") {
-    return NextResponse.json({ ok: false, error: "No feed found for that URL." }, { status: 404 });
+  // A feed URL, if one was sent, is still checked against this workspace —
+  // the page that has one should not be able to quietly connect somewhere
+  // else. But it is no longer *required*: the connection belongs to the
+  // customer, and the workspace key already says which customer this is.
+  // That is what lets HubSpot be connected at step 2, before a feed exists.
+  if (feedToken) {
+    const found = await repo.findByTokenHash(await hashToken(feedToken));
+    if (!found || found.status !== "active") {
+      return NextResponse.json({ ok: false, error: "No feed found for that URL." }, { status: 404 });
+    }
+    const owned = await feedInWorkspace(repo, found.id, auth.workspace);
+    if (!owned.ok) {
+      return NextResponse.json({ ok: false, error: owned.error }, { status: owned.status });
+    }
   }
-
-  // The key alone is not enough: it has to be the key for the workspace that
-  // owns this feed.
-  const owned = await feedInWorkspace(repo, found.id, auth.workspace);
-  if (!owned.ok) {
-    return NextResponse.json({ ok: false, error: owned.error }, { status: owned.status });
-  }
-  const feed = owned.feed;
 
   const verified = await verifyAccess(new HubSpotClient({ accessToken }));
   if (!verified.ok) {
@@ -88,7 +91,7 @@ export async function POST(request: Request) {
 
   try {
     await new CrmConnectionStore(client, key).save({
-      feedId: feed.id,
+      workspaceId: auth.workspace.id,
       provider: "hubspot",
       accessToken,
       // Neither applies to a private app token, and saying so beats storing a

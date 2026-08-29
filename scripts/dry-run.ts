@@ -73,7 +73,7 @@ async function main() {
   step(1, "Operator creates a workspace");
   const workspaces = new InMemoryWorkspaceRepository(() => NOW);
   const generated = await generateWorkspaceKey();
-  await workspaces.create({ name: "Northridge Fabrication", keyHash: generated.keyHash, keyPrefix: generated.keyPrefix });
+  const workspace = await workspaces.create({ name: "Northridge Fabrication", keyHash: generated.keyHash, keyPrefix: generated.keyPrefix });
   const auth = await authorizeWorkspace(workspaces, generated.key);
   if (!auth.ok) throw new Error(auth.error);
   line("workspace", auth.workspace.name);
@@ -131,7 +131,7 @@ async function main() {
   const { client, rows: connRows } = fakeSupabase();
   const connections = new CrmConnectionStore(client, parseKey(generateKey())!);
   await connections.save({
-    feedId, provider: "hubspot", accessToken: "portal-token-placeholder",
+    workspaceId: workspace.id, provider: "hubspot", accessToken: "portal-token-placeholder",
     refreshToken: null, expiresAt: null, scopes: "private-app",
   });
   line("stored", "yes");

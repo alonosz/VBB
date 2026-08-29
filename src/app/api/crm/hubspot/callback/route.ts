@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { feedOriginFromEnv } from "@/lib/feed/origin";
-import { feedRepositoryFromEnv, supabaseFromEnv } from "@/lib/feed/supabaseRepository";
+import { supabaseFromEnv } from "@/lib/feed/supabaseRepository";
+import { workspaceRepositoryFromEnv } from "@/lib/workspace/env";
 import { keyFromEnv } from "@/lib/sync/secrets";
 import { CrmConnectionStore } from "@/lib/sync/connections";
 import { exchangeCode, oauthConfigFromEnv, SCOPES, verifyState } from "@/lib/sync/hubspot/oauth";
@@ -31,10 +32,10 @@ export async function GET(request: Request) {
 
   const oauth = oauthConfigFromEnv(`${origin}/api/crm/hubspot/callback`);
   const key = keyFromEnv();
-  const repo = feedRepositoryFromEnv();
+  const workspaces = workspaceRepositoryFromEnv();
   const client = supabaseFromEnv();
 
-  if (!repo || !oauth || !key || !client) {
+  if (!workspaces || !oauth || !key || !client) {
     return back(origin, { status: "error", reason: "Connecting a CRM is not set up on this deployment." });
   }
 
@@ -50,17 +51,17 @@ export async function GET(request: Request) {
     return back(origin, { status: "error", reason: "That link is incomplete. Start the connection again." });
   }
 
-  const feedId = verifyState(state, key);
-  if (!feedId) {
+  const workspaceId = verifyState(state, key);
+  if (!workspaceId) {
     return back(origin, {
       status: "error",
-      reason: "That connection link has expired or was altered. Start it again from your feed.",
+      reason: "That connection link has expired or was altered. Start it again.",
     });
   }
 
-  const feed = await repo.findById(feedId);
-  if (!feed || feed.status !== "active") {
-    return back(origin, { status: "error", reason: "That feed no longer exists." });
+  const workspace = await workspaces.findById(workspaceId);
+  if (!workspace || workspace.status !== "active") {
+    return back(origin, { status: "error", reason: "That workspace is no longer active." });
   }
 
   const tokens = await exchangeCode(oauth, code, fetch);
@@ -70,7 +71,7 @@ export async function GET(request: Request) {
 
   try {
     await new CrmConnectionStore(client, key).save({
-      feedId,
+      workspaceId,
       provider: "hubspot",
       accessToken: tokens.accessToken,
       refreshToken: tokens.refreshToken,

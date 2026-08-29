@@ -4,6 +4,12 @@ import { decryptSecret, encryptSecret, keyFromEnv, MissingKeyError } from "./sec
 /**
  * Where a CRM connection is kept.
  *
+ * Keyed on the workspace, not on a feed. A feed does not exist until a model
+ * has been published, and the analysis wants to read a CRM well before that —
+ * connecting HubSpot at step 2 replaces the CSV export, which is the easiest
+ * thing in this product for a human to get wrong. One customer, one portal,
+ * read by whatever needs it.
+ *
  * Tokens are encrypted on the way in and decrypted on the way out, so no
  * caller ever has the option of writing one down in the clear — the database
  * would refuse it anyway, but the refusal should never be reached.
@@ -17,7 +23,7 @@ import { decryptSecret, encryptSecret, keyFromEnv, MissingKeyError } from "./sec
 export type SyncStatus = "ok" | "refused" | "failed";
 
 export interface CrmConnection {
-  feedId: string;
+  workspaceId: string;
   provider: "hubspot";
   externalAccountId: string | null;
   accessToken: string;
@@ -31,7 +37,7 @@ export interface CrmConnection {
 }
 
 export interface NewCrmConnection {
-  feedId: string;
+  workspaceId: string;
   provider: "hubspot";
   externalAccountId?: string | null;
   accessToken: string;
@@ -50,7 +56,7 @@ export interface ConnectionLoad {
 const MAX_ERROR = 500;
 
 interface ConnectionDto {
-  feed_id: string;
+  workspace_id: string;
   provider: "hubspot";
   external_account_id: string | null;
   access_token: string;
@@ -64,7 +70,7 @@ interface ConnectionDto {
 }
 
 const COLUMNS =
-  "feed_id, provider, external_account_id, access_token, refresh_token, expires_at, scopes, last_sync_at, last_sync_status, last_sync_error, last_sync_rows";
+  "workspace_id, provider, external_account_id, access_token, refresh_token, expires_at, scopes, last_sync_at, last_sync_status, last_sync_error, last_sync_rows";
 
 export class CrmConnectionStore {
   constructor(
@@ -81,7 +87,7 @@ export class CrmConnectionStore {
 
     const { error } = await this.client.from("crm_connections").upsert(
       {
-        feed_id: connection.feedId,
+        workspace_id: connection.workspaceId,
         provider: connection.provider,
         external_account_id: connection.externalAccountId ?? null,
         access_token: encryptSecret(connection.accessToken, this.key),
@@ -92,13 +98,13 @@ export class CrmConnectionStore {
         scopes: connection.scopes ?? null,
         updated_at: new Date().toISOString(),
       },
-      { onConflict: "feed_id" }
+      { onConflict: "workspace_id" }
     );
 
     if (error) throw new Error(error.message);
   }
 
-  async load(feedId: string): Promise<ConnectionLoad> {
+  async load(workspaceId: string): Promise<ConnectionLoad> {
     if (!this.key) {
       return { connection: null, error: new MissingKeyError().message };
     }
@@ -106,7 +112,7 @@ export class CrmConnectionStore {
     const { data, error } = await this.client
       .from("crm_connections")
       .select(COLUMNS)
-      .eq("feed_id", feedId)
+      .eq("workspace_id", workspaceId)
       .maybeSingle();
 
     if (error) throw new Error(error.message);
@@ -125,7 +131,7 @@ export class CrmConnectionStore {
 
     return {
       connection: {
-        feedId: dto.feed_id,
+        workspaceId: dto.workspace_id,
         provider: dto.provider,
         externalAccountId: dto.external_account_id,
         accessToken,
@@ -143,7 +149,7 @@ export class CrmConnectionStore {
 
   /** What happened on the last run, so a connection that stopped working shows. */
   async recordRun(
-    feedId: string,
+    workspaceId: string,
     outcome: { status: SyncStatus; rows?: number; error?: string | null; at?: Date }
   ): Promise<void> {
     const { error } = await this.client
@@ -155,22 +161,22 @@ export class CrmConnectionStore {
         last_sync_error: outcome.error ? outcome.error.slice(0, MAX_ERROR) : null,
         updated_at: new Date().toISOString(),
       })
-      .eq("feed_id", feedId);
+      .eq("workspace_id", workspaceId);
 
     // A failure to record the outcome must not turn a good run into a bad one,
     // but it does need to be visible rather than swallowed.
     if (error) console.error("recording a sync outcome failed:", error.message);
   }
 
-  async disconnect(feedId: string): Promise<void> {
-    const { error } = await this.client.from("crm_connections").delete().eq("feed_id", feedId);
+  async disconnect(workspaceId: string): Promise<void> {
+    const { error } = await this.client.from("crm_connections").delete().eq("workspace_id", workspaceId);
     if (error) throw new Error(error.message);
   }
 
   /** All feeds with a connection, for the scheduled run to walk. */
-  async connectedFeedIds(): Promise<string[]> {
-    const { data, error } = await this.client.from("crm_connections").select("feed_id");
+  async connectedWorkspaceIds(): Promise<string[]> {
+    const { data, error } = await this.client.from("crm_connections").select("workspace_id");
     if (error) throw new Error(error.message);
-    return (data as { feed_id: string }[]).map((r) => r.feed_id);
+    return (data as { workspace_id: string }[]).map((r) => r.workspace_id);
   }
 }

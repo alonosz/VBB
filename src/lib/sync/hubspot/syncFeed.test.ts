@@ -109,7 +109,7 @@ async function scenario(opts: { expiresAt?: Date | null; withModel?: boolean } =
   if (opts.withModel !== false) await repo.saveModel(feed.id, model);
 
   await connections.save({
-    feedId: feed.id, provider: "hubspot",
+    workspaceId: WORKSPACE, provider: "hubspot",
     accessToken: "stored-access", refreshToken: "stored-refresh",
     expiresAt: opts.expiresAt === undefined ? new Date(NOW.getTime() + 3_600_000) : opts.expiresAt,
   });
@@ -140,7 +140,7 @@ describe("syncFeed", () => {
   it("records the run so a connection that stopped working is visible", async () => {
     const { repo, connections, feed, rows } = await scenario();
     await syncFeed({ feedId: feed.id, repo, connections, oauth: OAUTH, fetchImpl: portal().fetchImpl, now: NOW });
-    expect(rows.get(feed.id)).toMatchObject({ last_sync_status: "ok", last_sync_rows: 1 });
+    expect(rows.get(WORKSPACE)).toMatchObject({ last_sync_status: "ok", last_sync_rows: 1 });
   });
 
   it("renews an expired token and stores the new one before pulling", async () => {
@@ -158,11 +158,11 @@ describe("syncFeed", () => {
     expect(paths[0]).toBe("/oauth/v1/token");
     expect(paths).toContain("/crm/v3/objects/deals/search");
 
-    const stored = await connections.load(feed.id);
+    const stored = await connections.load(WORKSPACE);
     expect(stored.connection?.accessToken).toBe("renewed-access");
     expect(stored.connection?.refreshToken).toBe("renewed-refresh");
     // And still never in the clear.
-    expect(JSON.stringify(rows.get(feed.id))).not.toContain("renewed-access");
+    expect(JSON.stringify(rows.get(WORKSPACE))).not.toContain("renewed-access");
   });
 
   it("does not renew a token that is still good", async () => {
@@ -184,7 +184,7 @@ describe("syncFeed", () => {
 
     expect(outcome.error).toMatch(/[Rr]econnect/);
     expect(await repo.rowsFor(feed.id)).toHaveLength(0);
-    expect(rows.get(feed.id)).toMatchObject({ last_sync_status: "refused" });
+    expect(rows.get(WORKSPACE)).toMatchObject({ last_sync_status: "refused" });
   });
 
   it("treats an unreachable CRM as a night missed, not a failure to hide", async () => {
@@ -201,7 +201,7 @@ describe("syncFeed", () => {
     // drop a day of leads on one bad response.
     expect(waits.length).toBeGreaterThan(0);
     expect(outcome.error).toMatch(/next run will pick these up/);
-    expect(rows.get(feed.id)).toMatchObject({ last_sync_status: "failed" });
+    expect(rows.get(WORKSPACE)).toMatchObject({ last_sync_status: "failed" });
     expect(await repo.rowsFor(feed.id)).toHaveLength(0);
   });
 
@@ -257,19 +257,19 @@ describe("syncAllFeeds", () => {
       tokenHash: "a".repeat(64), tokenPrefix: "vbb_live_aaaa",
       modelId: "model-1", currencyCode: "USD", identifier: "clickId",
     });
-    const broken = await repo.createFeed({
+    // Same customer, no saved model — it must refuse while the other runs.
+    await repo.createFeed({
       clientId: WORKSPACE,
       tokenHash: "b".repeat(64), tokenPrefix: "vbb_live_bbbb",
       modelId: "model-1", currencyCode: "USD", identifier: "clickId",
     });
     await repo.saveModel(good.id, model);
-    // broken has a connection but no model, so it refuses.
-    for (const id of [good.id, broken.id]) {
-      await connections.save({
-        feedId: id, provider: "hubspot", accessToken: "a", refreshToken: "r",
-        expiresAt: new Date(NOW.getTime() + 3_600_000),
-      });
-    }
+    // Both feeds belong to one customer, so one connection covers both. broken
+    // has no model, so it refuses while good still runs.
+    await connections.save({
+      workspaceId: WORKSPACE, provider: "hubspot", accessToken: "a", refreshToken: "r",
+      expiresAt: new Date(NOW.getTime() + 3_600_000),
+    });
 
     const outcomes = await syncAllFeeds({
       repo, connections, oauth: OAUTH, fetchImpl: portal().fetchImpl, now: NOW,

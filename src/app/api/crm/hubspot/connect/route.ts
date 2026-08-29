@@ -1,10 +1,9 @@
 import { NextResponse } from "next/server";
 import { feedRepositoryFromEnv } from "@/lib/feed/supabaseRepository";
-import { hashToken, tokenFromInput } from "@/lib/feed/token";
 import { feedOriginFromEnv } from "@/lib/feed/origin";
 import { keyFromEnv } from "@/lib/sync/secrets";
 import { workspaceRepositoryFromEnv } from "@/lib/workspace/env";
-import { authorizeWorkspace, feedInWorkspace } from "@/lib/workspace/authorize";
+import { authorizeWorkspace } from "@/lib/workspace/authorize";
 import { authorizeUrl, oauthConfigFromEnv, signState } from "@/lib/sync/hubspot/oauth";
 
 /**
@@ -47,29 +46,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
   }
 
-  const token = tokenFromInput(typeof body.url === "string" ? body.url : "");
-  if (!token) {
-    return NextResponse.json(
-      { ok: false, error: "Paste your feed URL so we know which feed to connect." },
-      { status: 400 }
-    );
-  }
-
-  const found = await repo.findByTokenHash(await hashToken(token));
-  if (!found || found.status !== "active") {
-    return NextResponse.json({ ok: false, error: "No feed found for that URL." }, { status: 404 });
-  }
-
-  const owned = await feedInWorkspace(repo, found.id, auth.workspace);
-  if (!owned.ok) {
-    return NextResponse.json({ ok: false, error: owned.error }, { status: owned.status });
-  }
-  const feed = owned.feed;
-
-  // The feed id travels through HubSpot, signed. The feed *token* does not
-  // travel at all.
+  // No feed URL any more. A connection belongs to the customer, and the
+  // workspace key already says which customer this is — which is what lets
+  // HubSpot be connected at step 2, before any feed exists.
+  //
+  // The workspace id travels through HubSpot, signed. No credential travels.
   return NextResponse.json({
     ok: true,
-    authorizeUrl: authorizeUrl(oauth, signState(feed.id, key)),
+    authorizeUrl: authorizeUrl(oauth, signState(auth.workspace.id, key)),
   });
 }

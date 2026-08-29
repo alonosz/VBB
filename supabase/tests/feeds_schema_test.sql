@@ -266,35 +266,53 @@ $$;
 -- --- crm_connections -------------------------------------------------------
 
 select pg_temp.must_pass($$
-  insert into public.crm_connections (feed_id, provider, access_token, refresh_token)
+  insert into public.crm_connections (workspace_id, provider, access_token, refresh_token)
   values (
-    '11111111-1111-1111-1111-111111111111', 'hubspot',
+    '99999999-9999-9999-9999-999999999999', 'hubspot',
     'v1.aBcDeFgHiJkL.mNoPqRsTuVwXyZ01.Zm9vYmFyYmF6cXV4',
     'v1.QQQQQQQQQQQQ.WWWWWWWWWWWWWWWW.ZWVlZWVlZWVlZQ'
   )$$,
   'an encrypted CRM token is stored');
 
+-- The connection belongs to the customer now, not to one of their feeds, so a
+-- second portal for the same customer is a reconnection rather than a new row.
 select pg_temp.must_fail($$
-  insert into public.crm_connections (feed_id, provider, access_token)
+  insert into public.crm_connections (workspace_id, provider, access_token)
   values (
-    '11111111-1111-1111-1111-111111111111', 'hubspot',
+    '99999999-9999-9999-9999-999999999999', 'hubspot',
+    'v1.zZzZzZzZzZzZ.yYyYyYyYyYyYyYyY.Zm9vYmFyYmF6cXV4'
+  )$$,
+  'a customer cannot hold two CRM connections at once');
+
+select pg_temp.must_fail($$
+  insert into public.crm_connections (workspace_id, provider, access_token)
+  values (
+    '00000000-0000-0000-0000-000000000000', 'hubspot',
+    'v1.aBcDeFgHiJkL.mNoPqRsTuVwXyZ01.Zm9vYmFyYmF6cXV4'
+  )$$,
+  'a connection for a customer that does not exist is rejected');
+
+select pg_temp.must_fail($$
+  insert into public.crm_connections (workspace_id, provider, access_token)
+  values (
+    '99999999-9999-9999-9999-999999999999', 'hubspot',
     'crm-token-placeholder-not-a-real-credential'
   )$$,
   'A PLAINTEXT CRM TOKEN CANNOT BE STORED');
 
 select pg_temp.must_fail($$
-  insert into public.crm_connections (feed_id, provider, access_token, refresh_token)
+  insert into public.crm_connections (workspace_id, provider, access_token, refresh_token)
   values (
-    '11111111-1111-1111-1111-111111111111', 'hubspot',
+    '99999999-9999-9999-9999-999999999999', 'hubspot',
     'v1.aBcDeFgHiJkL.mNoPqRsTuVwXyZ01.Zm9vYmFyYmF6cXV4',
     'refresh-token-in-the-clear'
   )$$,
   'a plaintext refresh token is rejected too');
 
 select pg_temp.must_fail($$
-  insert into public.crm_connections (feed_id, provider, access_token)
+  insert into public.crm_connections (workspace_id, provider, access_token)
   values (
-    '11111111-1111-1111-1111-111111111111', 'salesforce',
+    '99999999-9999-9999-9999-999999999999', 'salesforce',
     'v1.aBcDeFgHiJkL.mNoPqRsTuVwXyZ01.Zm9vYmFyYmF6cXV4'
   )$$,
   'a provider we have not built is rejected');
@@ -302,12 +320,12 @@ select pg_temp.must_fail($$
 select pg_temp.must_fail($$
   update public.crm_connections
      set last_sync_error = repeat('x', 501)
-   where feed_id = '11111111-1111-1111-1111-111111111111'$$,
+   where workspace_id = '99999999-9999-9999-9999-999999999999'$$,
   'an error field long enough to hold a stack trace is rejected');
 
 select pg_temp.must_fail($$
   update public.crm_connections set last_sync_status = 'weird'
-   where feed_id = '11111111-1111-1111-1111-111111111111'$$,
+   where workspace_id = '99999999-9999-9999-9999-999999999999'$$,
   'an unknown sync status is rejected');
 
 -- --- sync_runs -------------------------------------------------------------

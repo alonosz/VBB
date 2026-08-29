@@ -15,7 +15,7 @@ export function fakeSupabase() {
 
     const api: Record<string, unknown> = {
       upsert(row: Record<string, unknown>) {
-        rows.set(String(row.feed_id), { ...(rows.get(String(row.feed_id)) ?? {}), ...row });
+        rows.set(String(row.workspace_id), { ...(rows.get(String(row.workspace_id)) ?? {}), ...row });
         return Promise.resolve({ error: null });
       },
       select() {
