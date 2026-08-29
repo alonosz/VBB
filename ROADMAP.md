@@ -101,8 +101,27 @@ per month, not at zero. Leave it.
 Not code, and not optional if selling into the EU: a sentence at the point of
 collection saying you may get in touch, and a delete-on-request path.
 
-**Status: undecided.** The trade-off is between a slightly heavier step 1 and
-having a churn list at all.
+**Status: built, 29 Aug.** Two boxes, neither of them at step 1.
+
+The suggestion on the day was an email box above the fold, beside the hero
+button. It went at the bottom of the landing page instead, and at the bottom of
+the report, for three reasons:
+
+- Above the fold it competes with the only action on that screen that matters,
+  and two asks reliably lowers the number of people who do either.
+- It would sit a few pixels under the line promising no account needed.
+- It is the weakest address the product can collect. Someone who has seen
+  nothing owes nothing. Someone who reached their own model and stopped is
+  worth a phone call.
+
+So: the **report** box is the good one, and the **landing page bottom** box is
+the exit ramp for a reader who was never going to start today, which costs no
+starts because they had already not started.
+
+Step 1 and 2 stay clean. `leads` holds an address, a moment and a one-word
+label, and the schema has no numeric or free-text column, so nothing derived
+from their file can be put there later without a migration somebody has to
+argue for.
 
 ### Note on sessions
 

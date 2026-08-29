@@ -14,7 +14,7 @@ text. A lead exists server-side as a hashed identifier, a timestamp, and a
 number.
 
 This is not a policy anyone has to remember. Database CHECK constraints make
-the alternative impossible to store, and 39 assertions run against a real
+the alternative impossible to store, and 46 assertions run against a real
 Postgres to prove it.
 
 ---
@@ -30,6 +30,7 @@ Postgres to prove it.
 | `feed_fetches` | Timestamp, HTTP status, hashed IP | Raw IPs |
 | `crm_connections` | AES-256-GCM encrypted tokens | Plaintext credentials |
 | `sync_runs` | Counts, one-sentence outcome | Any lead, any value |
+| `leads` | An email a visitor typed, and where they stopped | Anything from their file |
 
 ### The one place worth explaining
 
@@ -42,6 +43,31 @@ take on faith.
 
 Level labels are category names from the customer's own CRM - "Manufacturing",
 "201–1,000". Never notes, never free text.
+
+### The other place worth explaining
+
+`leads` is the one table that holds an address in the clear, and the only one
+that is not about a customer. Somebody types their email into a box on the
+landing page or at the bottom of their report, and we store that address, the
+moment, and a one-word label for where they were.
+
+It is in the clear deliberately. Every identifier in the feed tables is hashed
+because it belongs to somebody who never agreed to be here. This one was typed
+by the person it belongs to, for the purpose of being contacted, and a hash
+cannot be emailed.
+
+What it must never hold is anything derived from their file. Not the spread
+ratio, not the lead count, not a deal value, not a segment name, not the
+verdict. Nothing touches this server until a customer publishes a feed, and
+storing facts about a non-customer's revenue would be a materially larger
+commitment than storing an address. The schema is the enforcement: there is no
+numeric column and no free-text column, so a figure has nowhere to go without a
+migration somebody has to argue for.
+
+Two supporting details. The caller's IP is stored only as a salted hash, and
+only so that counting recent rows can be the rate limiter. And the box says at
+the point of collection what the address is for, because that is what consent
+means in practice.
 
 ---
 
@@ -181,6 +207,10 @@ Stated plainly rather than discovered later.
 
 Deleting the workspace row removes everything by cascade - feeds, rows, models,
 fetch log, CRM connection, run history.
+
+`leads` is separate, because someone who left an address never became a
+workspace. Deleting on request there is a delete from that one table, by
+email, and nothing else references it.
 
 The customer's own data was never on our servers to begin with; what is deleted
 is the hashed identifiers, the values sent to Google, and the model.

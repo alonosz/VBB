@@ -383,6 +383,45 @@ begin
 end;
 $$;
 
+-- --- leads ----------------------------------------------------------------
+--
+-- This table is the one place an address is stored in the clear, so what it
+-- refuses matters more than what it accepts. There is no numeric column and no
+-- free-text column, which is the real guarantee; these check the bounds on the
+-- columns that do exist.
+
+select pg_temp.must_pass($$
+  insert into public.leads (email, source, furthest_step)
+  values ('someone@example.com', 'report', 'report')$$,
+  'an address left on the report is stored');
+
+select pg_temp.must_fail($$
+  insert into public.leads (email, source)
+  values ('Someone@Example.com', 'report')$$,
+  'an address that was not lowercased is rejected - one person, one row');
+
+select pg_temp.must_fail($$
+  insert into public.leads (email, source) values ('not-an-address', 'report')$$,
+  'a string that is not an address is rejected');
+
+select pg_temp.must_fail($$
+  insert into public.leads (email, source) values ('a@b.co', 'crm')$$,
+  'a source that is not one of our boxes is rejected');
+
+select pg_temp.must_fail($$
+  insert into public.leads (email, source, furthest_step)
+  values ('a@b.co', 'report', repeat('x', 41))$$,
+  'a step label long enough to be a note is rejected');
+
+select pg_temp.must_fail($$
+  insert into public.leads (email, source, ip_hash)
+  values ('a@b.co', 'report', '203.0.113.7')$$,
+  'AN UNHASHED CALLER ADDRESS CANNOT BE STORED');
+
+select pg_temp.must_fail($$
+  insert into public.leads (email, source) values ('someone@example.com', 'landing')$$,
+  'the same person cannot become two rows');
+
 -- --- cascade --------------------------------------------------------------
 
 delete from public.workspaces where id = '99999999-9999-9999-9999-999999999999';
