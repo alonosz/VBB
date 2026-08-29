@@ -145,7 +145,16 @@ export async function syncFeed(opts: SyncFeedOptions): Promise<FeedSyncOutcome> 
     });
     // CRM records exist here and nowhere else — in memory, for the length of
     // this call. Only feed rows are written down.
-    deals = hubspotToDeals(await pullFromHubSpot(client));
+    //
+    // The feed declares one currency, so a deal booked in another is left
+    // unpriced rather than counted as though it were the same money. Nobody
+    // can set a rate at three in the morning, and a wrong amount that looks
+    // right is worse than a missing one the report can show as excluded.
+    deals = hubspotToDeals(await pullFromHubSpot(client), {
+      reportingCurrency: feed.currencyCode,
+      rates: {},
+      excludeUnconvertible: true,
+    });
   } catch (error) {
     const why =
       error instanceof HubSpotError

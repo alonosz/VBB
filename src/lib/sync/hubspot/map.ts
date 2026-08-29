@@ -1,4 +1,5 @@
 import type { MappedDeal, DealOutcome } from "@/lib/analysis/types";
+import type { CurrencyPolicy } from "@/lib/mapping/toDeals";
 import type { HubSpotObject, HubSpotPull } from "./types";
 
 /**
@@ -31,6 +32,10 @@ export const CLICK_ID_PROPERTIES = [
 export const DEAL_PROPERTIES = [
   "dealname",
   "amount",
+  // Without this, a portal that sells in more than one currency hands back
+  // amounts that look comparable and are not. MappedDeal.amount is a
+  // reporting-currency figure by contract, so the code has to come with it.
+  "deal_currency_code",
   "dealstage",
   "pipeline",
   "closedate",
@@ -140,7 +145,52 @@ export function stageTimingOf(
   return Object.keys(out).length > 0 ? out : undefined;
 }
 
-export function hubspotToDeals(pull: HubSpotPull): MappedDeal[] {
+/**
+ * Which currencies this portal actually deals in, commonest first.
+ *
+ * Asked for before anything is priced, so a mixed portal can be given the same
+ * treatment a mixed CSV gets — pick a reporting currency, set a rate, or leave
+ * the minority out — rather than having its amounts quietly added together.
+ */
+export function currenciesInPull(pull: HubSpotPull): { code: string; count: number }[] {
+  const counts = new Map<string, number>();
+  for (const deal of pull.deals) {
+    if (number(deal, "amount") === null) continue;
+    const code = (text(deal, "deal_currency_code") ?? "").toUpperCase();
+    if (!code) continue;
+    counts.set(code, (counts.get(code) ?? 0) + 1);
+  }
+  return [...counts.entries()]
+    .map(([code, count]) => ({ code, count }))
+    .sort((a, b) => b.count - a.count);
+}
+
+/**
+ * The same conversion rule the CSV path uses, so the two sources cannot
+ * disagree about what an amount means.
+ *
+ * A deal with no currency code is taken at face value. Older portals and
+ * single-currency ones do not always return the property, and nulling every
+ * amount because HubSpot omitted a field would break the common case to guard
+ * against the rare one.
+ */
+function convertAmount(
+  amount: number,
+  code: string | null,
+  policy: CurrencyPolicy | null | undefined
+): number | null {
+  if (!policy || !code) return amount;
+  const from = code.trim().toUpperCase();
+  if (!from || from === policy.reportingCurrency.toUpperCase()) return amount;
+  const rate = policy.rates[from];
+  if (typeof rate !== "number" || !Number.isFinite(rate) || rate <= 0) return null;
+  return Math.round(amount * rate * 100) / 100;
+}
+
+export function hubspotToDeals(
+  pull: HubSpotPull,
+  currency?: CurrencyPolicy | null
+): MappedDeal[] {
   const deals: MappedDeal[] = [];
 
   for (const deal of pull.deals) {
@@ -154,7 +204,11 @@ export function hubspotToDeals(pull: HubSpotPull): MappedDeal[] {
       createdAt,
       closedAt: date(deal, "closedate"),
       outcome: outcomeOf(deal),
-      amount: number(deal, "amount"),
+      amount: (() => {
+        const raw = number(deal, "amount");
+        if (raw === null) return null;
+        return convertAmount(raw, text(deal, "deal_currency_code"), currency);
+      })(),
       stage: stageId ? pull.stageLabels?.get(stageId) ?? stageId : null,
       // HubSpot's own attribution, not ours to infer.
       source: text(contact, "hs_analytics_source") ?? null,

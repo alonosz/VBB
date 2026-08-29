@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { hubspotToDeals, outcomeOf, stageTimingOf } from "./map";
+import { currenciesInPull, hubspotToDeals, outcomeOf, stageTimingOf } from "./map";
 import type { HubSpotObject, HubSpotPull } from "./types";
 
 const CREATED = "2026-05-01T09:00:00Z";
@@ -139,5 +139,67 @@ describe("stageTimingOf", () => {
   it("returns nothing when there is no create date to measure from", () => {
     const d = deal({ hs_date_entered_stage_2: "2026-05-04T09:00:00Z" });
     expect(stageTimingOf(d, null)).toBeUndefined();
+  });
+});
+
+/**
+ * The bug these exist for: MappedDeal.amount is a reporting-currency figure by
+ * contract, and this mapper used to take HubSpot's `amount` raw. A portal
+ * selling in two currencies produced amounts that looked comparable and were
+ * not, which is the failure the CSV path has guarded against since it shipped.
+ */
+describe("currency", () => {
+  const usd = { reportingCurrency: "USD", rates: {}, excludeUnconvertible: true };
+
+  function priced(amount: string, code?: string): HubSpotObject {
+    return deal(code ? { amount, deal_currency_code: code } : { amount });
+  }
+
+  it("takes an amount already in the reporting currency at face value", () => {
+    const [mapped] = hubspotToDeals(pull(priced("1000", "USD")), usd);
+    expect(mapped.amount).toBe(1000);
+  });
+
+  it("converts with a rate that was set", () => {
+    const [mapped] = hubspotToDeals(pull(priced("1000", "GBP")), {
+      ...usd,
+      rates: { GBP: 1.27 },
+    });
+    expect(mapped.amount).toBe(1270);
+  });
+
+  it("leaves a foreign amount unpriced rather than counting it as the reporting currency", () => {
+    const [mapped] = hubspotToDeals(pull(priced("1000", "GBP")), usd);
+    expect(mapped.amount).toBeNull();
+  });
+
+  it("takes an amount at face value when HubSpot returns no currency code", () => {
+    // Single-currency portals do not always send the property. Nulling every
+    // amount over a missing field would break the common case.
+    const [mapped] = hubspotToDeals(pull(priced("1000")), usd);
+    expect(mapped.amount).toBe(1000);
+  });
+
+  it("leaves amounts alone when no policy is supplied", () => {
+    const [mapped] = hubspotToDeals(pull(priced("1000", "GBP")));
+    expect(mapped.amount).toBe(1000);
+  });
+
+  it("reports the currencies a portal actually deals in, commonest first", () => {
+    const p: HubSpotPull = {
+      deals: [
+        { id: "a", properties: { amount: "10", deal_currency_code: "GBP" } },
+        { id: "b", properties: { amount: "10", deal_currency_code: "USD" } },
+        { id: "c", properties: { amount: "10", deal_currency_code: "USD" } },
+        // No amount, so nothing to convert and nothing to ask a rate for.
+        { id: "d", properties: { deal_currency_code: "EUR" } },
+      ],
+      contactsById: new Map(),
+      companiesById: new Map(),
+    };
+    expect(currenciesInPull(p)).toEqual([
+      { code: "USD", count: 2 },
+      { code: "GBP", count: 1 },
+    ]);
   });
 });
