@@ -178,10 +178,26 @@ step in the funnel - export a file, find it, upload it - disappears for anyone
 on HubSpot.
 
 **Decided 28 Aug: submit the HubSpot public app now, build the screen later.**
-The app review is the long pole and it is the one part not under our control,
-so it starts while everything else waits. Step 2 stays CSV-only until it comes
-back approved, by which point we will also know whether Google Ads accepts a
-feed at all, which is the thing that decides if any of this matters.
+The reasoning was that app review is the long pole and the one part not under
+our control, so it should start while everything else waits.
+
+**Corrected 29 Aug: there is no wait.** A public app does not have to be listed
+in the App Marketplace before a customer can install it. You hand them the
+OAuth link, they approve, it works. Listing is a distribution channel, for
+being found by strangers browsing HubSpot's directory. It is not a permission
+gate, and it never blocked us.
+
+So the sequence is: create the app, put `HUBSPOT_CLIENT_ID` and
+`HUBSPOT_CLIENT_SECRET` in the environment, and pilot customers can one-click
+connect the same week. Marketplace submission becomes an ordinary growth item,
+scheduled whenever being discoverable is worth the listing work.
+
+One caveat left open: installing an app that is not listed may still require
+the customer's Super Admin, or the "App Marketplace Access" permission that
+Super Admins carry automatically. Reports conflict on whether an unlisted app
+is stricter than a listed one. Worst case that is a marketer forwarding one
+link to their admin, which is still far short of the private app token path
+(create an app, find the scopes screen, tick three boxes, copy a token).
 
 ### Why this is not only convenience (added 29 Aug)
 
@@ -228,7 +244,8 @@ nightly window is a call-site change rather than new code.
 | A history pull - `listRecentDeals()` with `windowDays: 365` | ~1 hour |
 | Step 2 UI, and mapping auto-filled from known HubSpot properties | ~half a day |
 
-**Estimate: ~1.5 days**, and none of it can ship before the app is approved.
+**Estimate: ~1.5 days**, and it can ship as soon as the app exists. Approval
+was never the blocker; see the correction above.
 
 A feed belongs to a workspace anyway, so the re-scoping is a simplification
 rather than a workaround - worth doing even if this screen never gets built.
@@ -277,18 +294,22 @@ door that touches nothing.
    core mechanic doesn't work in a real account.
 2. **HubSpot nightly sync** for the pilot customers. Needs `VBB_TOKEN_KEY` and
    `CRON_SECRET`. The code is built and tested; only configuration is missing.
-3. **Submit the HubSpot public app.** Free, parallel, and the slowest thing
-   here. Settle the domain first so the redirect URI does not have to change.
+3. **Create the HubSpot public app.** Free, and it makes one-click OAuth work
+   immediately: no marketplace review stands between the app existing and a
+   customer installing it. Settle the domain first so the redirect URI does
+   not have to change, because changing it later means editing a live app.
 4. **Contact capture at step 1**, if that decision goes that way. Half a day,
    independent of everything below it, and the sooner it exists the sooner the
    churn list starts filling.
 5. **Stripe + the paywall at step 5.** Gate the feed URL, keep the CSV free.
 6. **Signup**, in the same modal as the paywall. One interruption, one moment.
-7. **Step 2 HubSpot connection**, once the app is approved. Note that the
+7. **Step 2 HubSpot connection**, any time after the app exists. Note that the
    nightly sync at step 2 in this list already delivers the early gate for
    pilot customers; this item is about removing the export from the funnel,
    not about making the gate work.
-8. **Real sessions** - email magic link, works on any device.
+8. **Marketplace listing**, if and when being discoverable is worth the
+   listing work. Nothing depends on it.
+9. **Real sessions** - email magic link, works on any device.
 
 Steps 5 and 6 land together because they are the same screen and the same
 moment. Splitting them means interrupting the customer twice.
