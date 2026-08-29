@@ -41,5 +41,5 @@ yarn-error.log*
 next-env.d.ts
 !.env.example
 
-# Generated review bundles — regenerate with ./scripts/bundle.sh
+# Generated review bundles - regenerate with ./scripts/bundle.sh
 vbb-bundle*.md

@@ -59,7 +59,7 @@ export function monthsSpanned(dates: Date[]): number {
 // ---------------------------------------------------------------------------
 
 /**
- * Free webmail providers, hardcoded on purpose — the spec forbids enrichment
+ * Free webmail providers, hardcoded on purpose - the spec forbids enrichment
  * APIs. This list only needs to cover the common cases; anything unrecognized
  * is treated as corporate, which is the conservative direction (it avoids
  * inflating the corporate-vs-free gap with misclassified rare providers).
@@ -110,7 +110,7 @@ export function hasIdentifier(deal: MappedDeal): boolean {
 
 /**
  * Aggregates a set of deals into the stats every segment view shares.
- * `expectedValue` is intentionally uncapped here — capping is applied later,
+ * `expectedValue` is intentionally uncapped here - capping is applied later,
  * only where a value is actually emitted for bidding.
  */
 export function summarizeSegment(segment: string, deals: MappedDeal[]): SegmentStats {
@@ -149,7 +149,7 @@ export function groupBy<T>(items: T[], key: (item: T) => string): Map<string, T[
   return out;
 }
 
-/** Won deals carrying a usable amount — the basis of every value figure. */
+/** Won deals carrying a usable amount - the basis of every value figure. */
 export function wonWithAmount(deals: MappedDeal[]): MappedDeal[] {
   return deals.filter((d) => d.outcome === "won" && d.amount !== null);
 }

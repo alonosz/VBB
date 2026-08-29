@@ -13,18 +13,18 @@ import { useState } from "react";
  *     separate anything from anything;
  *   - a date range too recent for deals to have resolved;
  *   - the default column set, which in every CRM omits the email and the
- *     click ID — the two things that let a value reach the right ad click.
+ *     click ID - the two things that let a value reach the right ad click.
  *
  * None of those produce an error. The report just comes back flat, and the
  * advertiser concludes the product does not work.
  *
  * Menu paths are given at the level that stays true. CRM interfaces move, and
- * a confidently wrong instruction is worse than a general one — so the shape
+ * a confidently wrong instruction is worse than a general one - so the shape
  * of the task is described and the exact wording is left to their screen.
  */
 
 const REQUIRED = [
-  { label: "Create date", why: "when the lead arrived — every cohort is built from this" },
+  { label: "Create date", why: "when the lead arrived - every cohort is built from this" },
   { label: "Deal amount", why: "what it was worth" },
   { label: "Stage", why: "pipeline position, and what the early gate is measured on" },
   { label: "Lead source", why: "where it came from" },
@@ -48,9 +48,9 @@ const CRMS = [
     name: "HubSpot",
     steps: [
       "Open Deals and switch to the table view.",
-      "Filter to a date range of at least 6–12 months, and make sure closed-lost deals are included — the default view often hides them.",
+      "Filter to a date range of at least 6–12 months, and make sure closed-lost deals are included - the default view often hides them.",
       "Export, then add the properties below rather than accepting the default set.",
-      "Contact and company properties (email, job title, employee count, industry) have to be ticked explicitly — they are not on a deal export by default.",
+      "Contact and company properties (email, job title, employee count, industry) have to be ticked explicitly - they are not on a deal export by default.",
     ],
   },
   {
@@ -58,7 +58,7 @@ const CRMS = [
     steps: [
       "Build a report on Opportunities, not a list view export.",
       "Set the date range on Created Date, and clear any filter that limits it to open or won.",
-      "Add the Contact and Account columns you want — Email, Title, Employees, Industry.",
+      "Add the Contact and Account columns you want - Email, Title, Employees, Industry.",
       "Export as Details Only, formatted as CSV.",
     ],
   },
@@ -74,7 +74,7 @@ const CRMS = [
     name: "Something else",
     steps: [
       "Any CRM that exports deals or opportunities as a CSV works, including a spreadsheet you keep by hand.",
-      "Column names do not matter — the next step works out which is which and lets you correct it.",
+      "Column names do not matter - the next step works out which is which and lets you correct it.",
       "What matters is that the four required fields are present, and that both won and lost deals are in the file.",
     ],
   },
@@ -113,7 +113,7 @@ function Group({
         {items.map((f) => (
           <li key={f.label} className="text-[13px] leading-snug">
             <span className="font-semibold">{f.label}</span>
-            {f.why && <span className="text-[var(--muted)]"> — {f.why}</span>}
+            {f.why && <span className="text-[var(--muted)]"> - {f.why}</span>}
           </li>
         ))}
       </ul>
@@ -208,7 +208,7 @@ export function ExportGuide() {
         </div>
 
         <p className="hint mt-5">
-          Column names don&apos;t matter — the next step works out which is
+          Column names don&apos;t matter - the next step works out which is
           which and lets you correct anything it gets wrong. Missing a field
           only costs you the findings that depend on it, and the report says
           which those are.

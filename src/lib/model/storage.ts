@@ -4,7 +4,7 @@ import { readWorkspaceKey } from "@/lib/workspace/clientKey";
 /**
  * Where a saved model lives.
  *
- * The downloaded JSON is the real artifact — it is the thing an advertiser
+ * The downloaded JSON is the real artifact - it is the thing an advertiser
  * keeps, versions, and hands to the next person. The browser copy exists so
  * that coming back tomorrow does not mean finding a file first, which is the
  * difference between a model people actually reuse and one they refit every
@@ -12,8 +12,8 @@ import { readWorkspaceKey } from "@/lib/workspace/clientKey";
  *
  * Scoped per workspace, because the browser copy was one fixed key. An
  * operator onboarding five customers from one laptop would overwrite each
- * customer's model with the next, and the symptom — the wrong multipliers
- * quietly applied to the wrong advertiser — is one nobody would catch by
+ * customer's model with the next, and the symptom - the wrong multipliers
+ * quietly applied to the wrong advertiser - is one nobody would catch by
  * looking at the screen.
  */
 
@@ -24,7 +24,7 @@ const LEGACY_KEY = "vbb.savedModel.v1";
  *
  * Derived from the workspace key rather than being the key, so a stored model
  * cannot be read back into a credential. Anyone with the storage already has
- * the key sitting beside it — this is about not colliding, not about secrecy.
+ * the key sitting beside it - this is about not colliding, not about secrecy.
  */
 function slot(): string {
   try {

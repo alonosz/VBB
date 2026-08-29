@@ -6,7 +6,7 @@
  *
  * The mark is two overlapping leaf forms: a flat violet one behind, and a
  * gradient blue "J" in front whose foot sweeps left and tapers to a point. The
- * gradient is part of the identity — a flat fill reads as a different logo.
+ * gradient is part of the identity - a flat fill reads as a different logo.
  *
  * Colours here were read off the artwork, not taken from a brand file. They
  * live in `--brand-violet`, `--brand-mark-from` and `--brand-mark-to` in
@@ -17,7 +17,7 @@
  * Every instance of the mark uses the same gradient, so they can share one id.
  * A counter incremented during render would be a side effect, and useId is not
  * available here because the mark renders inside server components. Callers
- * needing a distinct id — an inlined mark in an exported SVG, say — can pass
+ * needing a distinct id - an inlined mark in an exported SVG, say - can pass
  * one.
  */
 export function LogoMark({

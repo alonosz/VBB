@@ -13,7 +13,7 @@ import type { Workspace, WorkspaceRepository } from "./repository";
  * Refusals say what to do rather than what went wrong. "Not found" is correct
  * and useless; an operator supporting five customers needs to know whether the
  * key is wrong, the workspace is suspended, or the feed belongs to someone
- * else — and a customer who pasted their feed URL into the key box needs to be
+ * else - and a customer who pasted their feed URL into the key box needs to be
  * told that, because both credentials arrive in the same email.
  */
 
@@ -47,7 +47,7 @@ export async function authorizeWorkspace(
   if (looksLikeFeedToken(key)) {
     return refuse(
       401,
-      "That is your feed URL, which is the link Google reads. This needs your workspace key instead — the one starting vbb_ws_."
+      "That is your feed URL, which is the link Google reads. This needs your workspace key instead - the one starting vbb_ws_."
     );
   }
 

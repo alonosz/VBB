@@ -43,7 +43,7 @@ describe("pricing the gate", () => {
     const g = gateValue(SEPARATING, GATE);
     expect(g.available).toBe(true);
     expect(g.stage).toBe("Qualified");
-    // 60% close against an overall 37.5% — 1.6x, not the 4x you get by
+    // 60% close against an overall 37.5% - 1.6x, not the 4x you get by
     // comparing only against the leads that never qualified.
     expect(g.multiplier).toBeCloseTo(1.6, 1);
     expect(g.closeRateReached).toBeCloseTo(0.6, 2);
@@ -67,7 +67,7 @@ describe("pricing the gate", () => {
     // A small gate group that always wins, against a large one that rarely
     // does. Measuring against the overall population is self-limiting when the
     // gate group is half the file, so the bound only binds when it is a
-    // minority — which is exactly when a marginal lift is least trustworthy.
+    // minority - which is exactly when a marginal lift is least trustworthy.
     const skewed = [
       ...Array.from({ length: 30 }, (_, i) => deal({ id: `r${i}`, won: true, amount: 50_000, gateDays: 2 })),
       ...Array.from({ length: 200 }, (_, i) => deal({ id: `n${i}`, won: i < 2, amount: 500 })),
@@ -109,7 +109,7 @@ describe("pricing the gate", () => {
   it("says so when no stage fires inside the window at all", () => {
     const noGate: EarlyGateResult = {
       available: false, candidates: [], recommended: null,
-      message: "No reliable early gate found — this export has no stage-timing data to measure.",
+      message: "No reliable early gate found - this export has no stage-timing data to measure.",
     };
     const g = gateValue(SEPARATING, noGate);
     expect(g.available).toBe(false);
@@ -128,7 +128,7 @@ describe("pricing the gate", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Whether it fired in time — the half that decides if Google listens
+// Whether it fired in time - the half that decides if Google listens
 // ---------------------------------------------------------------------------
 
 describe("gateStatusFor", () => {
@@ -145,7 +145,7 @@ describe("gateStatusFor", () => {
   });
 
   it("a quick gate on an old conversion is still too late", () => {
-    // It reached the gate on day 1 — but that was forty days ago, and the
+    // It reached the gate on day 1 - but that was forty days ago, and the
     // window is measured from the conversion, not from the gate.
     const s = gateStatusFor(deal({ id: "a", won: false, gateDays: 1, createdDaysAgo: 40 }), "Qualified", NOW);
     expect(s.reached).toBe(true);

@@ -63,7 +63,7 @@ describe("sizeFit", () => {
     expect(r.wonOutside).toBe(1);
   });
 
-  it("ignores deals that are not won — an open deal has produced nothing", () => {
+  it("ignores deals that are not won - an open deal has produced nothing", () => {
     const r = sizeFit(deals, ["100-1000"]);
     expect(r.wonInside + r.wonOutside).toBe(3);
   });

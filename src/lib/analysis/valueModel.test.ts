@@ -136,7 +136,7 @@ describe("minimum sample size", () => {
   it("marks a level under the floor unusable", () => {
     const deals = [
       ...cohort("big", 40, 20, 10_000, { email: "a@acme.com" }),
-      // Only 10 free-webmail deals — under the 25 floor.
+      // Only 10 free-webmail deals - under the 25 floor.
       ...cohort("small", 10, 1, 1_000, { email: "b@gmail.com" }),
     ];
     const model = buildValueModel({ deals, cap: null, currencyCode: "USD" });
@@ -218,7 +218,7 @@ describe("weak factor dropping", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Calibration — the guard against double-counting correlated factors
+// Calibration - the guard against double-counting correlated factors
 // ---------------------------------------------------------------------------
 
 describe("calibration", () => {
@@ -269,7 +269,7 @@ describe("calibration", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Stack deviation bound — the guard against compounding overlapping factors
+// Stack deviation bound - the guard against compounding overlapping factors
 // ---------------------------------------------------------------------------
 
 describe("stack deviation bound", () => {
@@ -383,7 +383,7 @@ describe("cap", () => {
     const uncapped = buildValueModel({ deals: DEALS, cap: null, currencyCode: "USD" });
     const capped = buildValueModel({ deals: DEALS, cap: 900, currencyCode: "USD" });
     // Calibration is computed from raw values, so introducing a cap must not
-    // change it — otherwise capping would silently re-inflate everything else.
+    // change it - otherwise capping would silently re-inflate everything else.
     expect(capped.calibrationFactor).toBe(uncapped.calibrationFactor);
   });
 });
@@ -511,7 +511,7 @@ describe("claims from the intake step", () => {
     expect(model.refutedClaims).toEqual([]);
   });
 
-  it("a claim never becomes a multiplier — the data does", () => {
+  it("a claim never becomes a multiplier - the data does", () => {
     const deals = [
       ...cohort("dir", 60, 18, 10_000, { contactTitle: "Director of Operations" }),
       ...cohort("eng", 60, 18, 10_000, { contactTitle: "Process Engineer" }),

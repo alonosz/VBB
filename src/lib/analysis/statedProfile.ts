@@ -8,7 +8,7 @@ import { round } from "./helpers";
  * A sales cycle typed into a field and a headcount picked from a list are the
  * same kind of thing as a sentence in the free text: a belief, to be held up
  * against the data. Structured input makes them easier to read and easier to
- * check — it does not make them true, and none of it reaches the value model.
+ * check - it does not make them true, and none of it reaches the value model.
  */
 
 export interface SizeBand {
@@ -69,7 +69,7 @@ const MIN_DEALS_FOR_FIT = 20;
 
 /**
  * How much of the revenue actually came from the size of company the
- * advertiser named. Won deals only — an open deal has produced nothing yet.
+ * advertiser named. Won deals only - an open deal has produced nothing yet.
  */
 export function sizeFit(deals: MappedDeal[], selectedIds: string[]): SizeFitResult {
   const bands = selectedIds.map(sizeBandById).filter((b): b is SizeBand => !!b);

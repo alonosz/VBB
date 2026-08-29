@@ -7,7 +7,7 @@
  *
  *   npx tsx scripts/dry-run.ts
  *
- * Touches no network and no database — in-memory throughout.
+ * Touches no network and no database - in-memory throughout.
  */
 
 import { InMemoryWorkspaceRepository } from "../src/lib/workspace/repository";
@@ -67,7 +67,7 @@ function hubspotPortal(): typeof fetch {
 }
 
 async function main() {
-  console.log("VBB Engine — dry run against synthetic data");
+  console.log("VBB Engine - dry run against synthetic data");
   console.log(`Started ${NOW.toISOString()}`);
 
   step(1, "Operator creates a workspace");
@@ -96,7 +96,7 @@ async function main() {
   line("model id", artifact.modelId);
   line("fitted on", `${artifact.fittedOn} resolved deals`);
   line("size", `${JSON.stringify(artifact).length} bytes`);
-  line("contains an '@'", JSON.stringify(artifact).includes("@") ? "YES — PROBLEM" : "no");
+  line("contains an '@'", JSON.stringify(artifact).includes("@") ? "YES - PROBLEM" : "no");
 
   step(4, "Feed published");
   const feeds = new InMemoryFeedRepository(() => NOW);
@@ -118,13 +118,13 @@ async function main() {
   line("rows published", newConversions);
   line("skipped", skipped.map((s) => `${s.count} (${s.reason})`).join("; ") || "none");
   line("model stored", String(body.modelStored));
-  line("URL ends in .csv", feedUrl.endsWith(".csv") ? "yes" : "NO — PROBLEM");
+  line("URL ends in .csv", feedUrl.endsWith(".csv") ? "yes" : "NO - PROBLEM");
 
   step(5, "Isolation checked");
   const other = await generateWorkspaceKey();
   const acme = await workspaces.create({ name: "Acme", keyHash: other.keyHash, keyPrefix: other.keyPrefix });
   const crossed = await feedInWorkspace(feeds, feedId, acme);
-  line("another workspace reaches this feed", crossed.ok ? "YES — PROBLEM" : "no");
+  line("another workspace reaches this feed", crossed.ok ? "YES - PROBLEM" : "no");
   line("answer given", crossed.ok ? "-" : `${crossed.status} ${crossed.error}`);
 
   step(6, "CRM connected");
@@ -135,7 +135,7 @@ async function main() {
     refreshToken: null, expiresAt: null, scopes: "private-app",
   });
   line("stored", "yes");
-  line("plaintext token in row", JSON.stringify([...connRows.values()]).includes("portal-token-placeholder") ? "YES — PROBLEM" : "no");
+  line("plaintext token in row", JSON.stringify([...connRows.values()]).includes("portal-token-placeholder") ? "YES - PROBLEM" : "no");
 
   step(7, "Nightly sync runs unattended");
   const runs = new InMemorySyncRunStore();
@@ -146,7 +146,7 @@ async function main() {
   line("deals pulled", outcome.report?.dealsPulled ?? 0);
   line("rows before / after", `${before} / ${after.length}`);
   line("run recorded", `${runs.runs.length} (status ${runs.runs[0]?.status})`);
-  line("priced by", after.find((r) => r.modelId !== artifact.modelId) ? "MIXED — PROBLEM" : artifact.modelId);
+  line("priced by", after.find((r) => r.modelId !== artifact.modelId) ? "MIXED - PROBLEM" : artifact.modelId);
 
   step(8, "Google collects the file");
   const token = new URL(feedUrl).pathname.split("/").pop()!.replace(/\.csv$/, "");
@@ -155,8 +155,8 @@ async function main() {
   line("status", served.status);
   line("content type", served.headers["content-type"]);
   line("rows in file", csv.trim().split("\n").length - 1);
-  line("contains an email address", /[A-Za-z0-9._%-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/.test(csv) ? "YES — PROBLEM" : "no");
-  line("contains a job title", csv.includes("Operations Manager") ? "YES — PROBLEM" : "no");
+  line("contains an email address", /[A-Za-z0-9._%-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/.test(csv) ? "YES - PROBLEM" : "no");
+  line("contains a job title", csv.includes("Operations Manager") ? "YES - PROBLEM" : "no");
 
   step(9, "Workspace page reports");
   const overview = await buildOverview(auth.workspace, { feeds, connections, runs, now: NOW });
@@ -169,7 +169,7 @@ async function main() {
   line("top message", overview.actions[0].title);
 
   console.log(`\n${"─".repeat(64)}`);
-  console.log(overview.working ? "DRY RUN PASSED — the journey completes end to end." : "DRY RUN FAILED");
+  console.log(overview.working ? "DRY RUN PASSED - the journey completes end to end." : "DRY RUN FAILED");
   console.log(`${"─".repeat(64)}\n`);
   if (!overview.working) process.exit(1);
 }

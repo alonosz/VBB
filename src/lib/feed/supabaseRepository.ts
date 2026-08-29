@@ -19,7 +19,7 @@ import type { FeedRepository } from "./repository";
  *
  * Uses the service-role key, so it must only ever be constructed on the
  * server. Row-level security is on with no policies, which means this is the
- * only way in — there is deliberately no browser path to these tables.
+ * only way in - there is deliberately no browser path to these tables.
  */
 
 interface FeedRowDto {
@@ -294,7 +294,7 @@ export function feedRepositoryFromEnv(): FeedRepository | null {
 }
 
 /**
- * The raw client, for the tables that are not the feed's own — the CRM
+ * The raw client, for the tables that are not the feed's own - the CRM
  * connection store reaches Supabase directly rather than through a repository
  * shaped around feeds.
  */
@@ -304,7 +304,7 @@ export function supabaseFromEnv(): SupabaseClient | null {
     process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY;
   if (!url || !key) return null;
 
-  // The publishable key is the easy one to grab by mistake — it sits directly
+  // The publishable key is the easy one to grab by mistake - it sits directly
   // above the secret key in the dashboard. It would fail on every single query
   // against tables with row-level security and no policies, which reads as
   // "the database is broken" rather than "wrong key". Say which it is.

@@ -92,7 +92,7 @@ describe("buildValueModelCsv", () => {
       ...BASE,
     });
     expect(r.included).toBe(2);
-    // Two leads, two different values — the point of the whole product.
+    // Two leads, two different values - the point of the whole product.
     expect(r.csv).toMatch(/6270\.83/);
     expect(r.csv).toMatch(/118\.40/);
   });

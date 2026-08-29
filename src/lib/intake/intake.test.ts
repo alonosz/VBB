@@ -6,7 +6,7 @@ import { buildIntakeUserMessage } from "./prompt";
 import type { DetectedField } from "@/lib/mapping/detect";
 
 // ---------------------------------------------------------------------------
-// Column profiling — what leaves the machine
+// Column profiling - what leaves the machine
 // ---------------------------------------------------------------------------
 
 const ROWS = [
@@ -87,7 +87,7 @@ describe("buildIntakeUserMessage", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Sanitizing — model output is untrusted input
+// Sanitizing - model output is untrusted input
 // ---------------------------------------------------------------------------
 
 const HEADERS = ["Create Date", "Amount", "Contact Job Title", "Company Size", "Deal Source"];
@@ -170,7 +170,7 @@ describe("sanitizeProposal", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Merging — heuristics measured the values, the assistant read the sentence
+// Merging - heuristics measured the values, the assistant read the sentence
 // ---------------------------------------------------------------------------
 
 function field(p: Partial<DetectedField> & { key: DetectedField["key"] }): DetectedField {
@@ -273,7 +273,7 @@ describe("applyProposal", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Hypotheses — claims become factors the engine already knows how to fit
+// Hypotheses - claims become factors the engine already knows how to fit
 // ---------------------------------------------------------------------------
 
 describe("resolveHypotheses", () => {

@@ -221,19 +221,22 @@ must support both themes (the viewer's theme is not ours to control).
 **Never use an em dash on this project.** Not in UI copy, not in code comments,
 not in docs, not in commit messages, not in chat.
 
-Rewrite instead of substituting. An em dash is usually standing in for a
-comma, a colon, brackets, or a full stop, and the right replacement depends on
-the sentence:
+**Use a plain hyphen instead**, spaced: `like this - here`. That is the house
+substitute and it applies everywhere, including where an em dash was doing the
+work of a comma, a colon, brackets, or a full stop.
 
-| Doing the job of | Use |
+Rewriting the sentence is still welcome where it reads better, and often it
+does:
+
+| Doing the job of | Reads better as |
 |---|---|
 | A pause or aside | a comma |
 | Introducing a consequence or a list | a colon |
 | A parenthetical | brackets |
 | Joining two thoughts | a full stop, and two sentences |
 
-A hyphen is fine where a hyphen belongs (well-formed, day-0). This rule is
-about the long dash only.
+The rule is about the long dash only. A hyphen where a hyphen belongs
+(well-formed, day-0) was never in question.
 
 ---
 

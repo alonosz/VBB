@@ -31,7 +31,7 @@ export interface SyncFeedOptions {
   repo: FeedRepository;
   connections: CrmConnectionStore;
   /**
-   * Absent when the deployment has no OAuth app configured — a portal
+   * Absent when the deployment has no OAuth app configured - a portal
    * connected with a private app token has nothing to refresh, so a run needs
    * no client credentials at all.
    */
@@ -147,7 +147,7 @@ export async function syncFeed(opts: SyncFeedOptions): Promise<FeedSyncOutcome> 
       windowDays: opts.windowDays,
       sleep: opts.sleep,
     });
-    // CRM records exist here and nowhere else — in memory, for the length of
+    // CRM records exist here and nowhere else - in memory, for the length of
     // this call. Only feed rows are written down.
     //
     // The feed declares one currency, so a deal booked in another is left
@@ -191,7 +191,7 @@ export async function syncFeed(opts: SyncFeedOptions): Promise<FeedSyncOutcome> 
  * feed Google is still collecting from should not go stale because a newer one
  * exists beside it. `syncFeed` skips anything not active.
  *
- * One failure must not stop the rest — a portal that revoked access should not
+ * One failure must not stop the rest - a portal that revoked access should not
  * cost every other advertiser their night.
  */
 export async function syncAllFeeds(

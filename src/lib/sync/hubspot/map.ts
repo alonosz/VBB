@@ -10,7 +10,7 @@ import type { HubSpotObject, HubSpotPull } from "./types";
  * properties have fixed names, so the mapping is known in advance and there is
  * no mapping screen to get wrong.
  *
- * One thing genuinely is not standard — the ad click ID. HubSpot has no
+ * One thing genuinely is not standard - the ad click ID. HubSpot has no
  * property for it, so it arrives under whatever name the advertiser's form
  * used. We look under the names our own snippet writes and the ones the common
  * integrations use, and if none is present the leads simply match on email
@@ -41,7 +41,7 @@ export const CLICK_ID_PROPERTIES = [
  * The exclusions matter as much as the matches. That same portal carries
  * "Facebook Click ID" and "LinkedIn Click ID" beside the Google one, and
  * sending an fbclid to Google Ads as though it were a gclid would attach a
- * value to nothing at all — a silent, confident mismatch, which is the worst
+ * value to nothing at all - a silent, confident mismatch, which is the worst
  * kind. Anything naming another network is left alone.
  */
 const OTHER_NETWORKS = /facebook|fbclid|meta|linkedin|li_?fat|twitter|tiktok|ttclid|bing|microsoft|msclkid|reddit/i;
@@ -164,7 +164,7 @@ function clickIdOf(
  * HubSpot records this as hs_date_entered_<stageId>, one property per stage of
  * every pipeline, so the names are portal-specific and are discovered from the
  * payload rather than listed. Stage ids are opaque, so labels are used when the
- * pipeline metadata came along and the id is kept when it did not — an
+ * pipeline metadata came along and the id is kept when it did not - an
  * unreadable stage name is better than a wrong one.
  */
 export function stageTimingOf(
@@ -198,8 +198,8 @@ export function stageTimingOf(
  * Which currencies this portal actually deals in, commonest first.
  *
  * Asked for before anything is priced, so a mixed portal can be given the same
- * treatment a mixed CSV gets — pick a reporting currency, set a rate, or leave
- * the minority out — rather than having its amounts quietly added together.
+ * treatment a mixed CSV gets - pick a reporting currency, set a rate, or leave
+ * the minority out - rather than having its amounts quietly added together.
  */
 export function currenciesInPull(pull: HubSpotPull): { code: string; count: number }[] {
   const counts = new Map<string, number>();

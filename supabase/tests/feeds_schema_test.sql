@@ -20,7 +20,7 @@ begin
     raise notice 'PASS  %', what;
     return;
   end;
-  raise exception 'FAIL  % — the database accepted it', what;
+  raise exception 'FAIL  % - the database accepted it', what;
 end;
 $$;
 
@@ -141,7 +141,7 @@ select pg_temp.must_fail($$
     (feed_id, click_id, conversion_time, value, currency_code, model_id, row_key)
   values ('11111111-1111-1111-1111-111111111111', 'Cj0KCQiAxxxxxxxx',
     '2026-05-01T09:07:05Z', 0, 'USD', 'model-1', 'k6')$$,
-  'a zero value is rejected — never tell Google a lead was worthless');
+  'a zero value is rejected - never tell Google a lead was worthless');
 
 -- --- feed_rows: republishing ---------------------------------------------
 
@@ -218,7 +218,7 @@ select pg_temp.must_fail($$
     '{"formatVersion":1,"modelId":"model-3","currencyCode":"USD","baseValue":0,
       "factors":[]}'::jsonb
   )$$,
-  'a model with no base value is rejected — it would price every lead at zero');
+  'a model with no base value is rejected - it would price every lead at zero');
 
 select pg_temp.must_fail($$
   insert into public.feed_models (feed_id, model_id, format_version, currency_code, model)
@@ -346,12 +346,12 @@ select pg_temp.must_pass($$
     '99999999-9999-9999-9999-999999999999',
     'ok', 0
   )$$,
-  'a run that published nothing is fine — there may have been no new leads');
+  'a run that published nothing is fine - there may have been no new leads');
 
 select pg_temp.must_fail($$
   insert into public.sync_runs (client_id, status)
   values ('99999999-9999-9999-9999-999999999999', 'refused')$$,
-  'a refusal with no reason is rejected — a silent refusal is the bug');
+  'a refusal with no reason is rejected - a silent refusal is the bug');
 
 select pg_temp.must_fail($$
   insert into public.sync_runs (client_id, status, message)

@@ -41,7 +41,7 @@ export function DataTable({ headers, rows, maxRows, highlightColumn }: DataTable
                   }
                   title={row[h]}
                 >
-                  {row[h] || <span className="text-[var(--border-strong)]">—</span>}
+                  {row[h] || <span className="text-[var(--border-strong)]">-</span>}
                 </td>
               ))}
             </tr>

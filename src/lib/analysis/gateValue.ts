@@ -8,7 +8,7 @@ import { ADJUSTMENT_WINDOW_DAYS } from "./earlyGate";
  * Every other factor in the model is knowable the moment a lead arrives. This
  * one is not: it is knowable only once the lead has done something. That makes
  * it a different kind of signal, and it is only worth anything if it fires
- * before Google stops listening — a gate that typically trips on day twelve
+ * before Google stops listening - a gate that typically trips on day twelve
  * cannot move a bid, however predictive it is.
  *
  * So the gate is priced separately from the day-0 stack, and refused outright
@@ -25,7 +25,7 @@ export const MIN_GATE_LIFT = 1.3;
  * The furthest the gate may move a lead from its day-0 value.
  *
  * The lift is measured marginally, against the whole resolved population, but
- * the gate overlaps heavily with the day-0 factors — a lead with a corporate
+ * the gate overlaps heavily with the day-0 factors - a lead with a corporate
  * email at a real company both qualifies more often *and* was already priced
  * up for it. Multiplying the two counts that shared signal twice.
  *
@@ -47,7 +47,7 @@ export interface GateValue {
   medianWonReached: number | null;
   /** Share of leads reaching the gate that do so inside Google's window. */
   withinWindowRate: number;
-  /** Before the bound — shown so a clipped multiplier is never silent. */
+  /** Before the bound - shown so a clipped multiplier is never silent. */
   rawMultiplier: number | null;
   wasBounded: boolean;
   /** Plain-English reason, present whenever the gate cannot be used. */
@@ -109,7 +109,7 @@ export function gateValue(deals: MappedDeal[], gate: EarlyGateResult): GateValue
   if (reached.length < MIN_GATE_SAMPLE || notReached.length < MIN_GATE_SAMPLE) {
     return {
       ...base,
-      unusableReason: `Only ${reached.length} resolved deals reached "${stage}" and ${notReached.length} did not — too few on one side to price the difference.`,
+      unusableReason: `Only ${reached.length} resolved deals reached "${stage}" and ${notReached.length} did not - too few on one side to price the difference.`,
     };
   }
 
@@ -117,7 +117,7 @@ export function gateValue(deals: MappedDeal[], gate: EarlyGateResult): GateValue
   const miss = expectedValue(notReached);
   // Measured against every resolved lead, not against the ones that never
   // qualified. Those barely close at all, so using them as the denominator
-  // produces a multiplier in the dozens off a baseline near zero — arithmetic,
+  // produces a multiplier in the dozens off a baseline near zero - arithmetic,
   // not evidence. The day-0 value is calibrated to the overall population, so
   // that is the population the gate has to be relative to.
   const overall = expectedValue(resolved);
@@ -142,7 +142,7 @@ export function gateValue(deals: MappedDeal[], gate: EarlyGateResult): GateValue
     return {
       ...priced,
       multiplier,
-      unusableReason: `Reaching "${stage}" moves expected value by only ${multiplier}x — below the ${MIN_GATE_LIFT}x threshold, so an adjustment would be noise.`,
+      unusableReason: `Reaching "${stage}" moves expected value by only ${multiplier}x - below the ${MIN_GATE_LIFT}x threshold, so an adjustment would be noise.`,
     };
   }
 

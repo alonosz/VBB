@@ -20,15 +20,15 @@ export function ruleDescription(block: RuleBlock): string {
   const rule = block.rule;
   switch (rule.type) {
     case "value_tier":
-      return `values of "${rule.column || "—"}"`;
+      return `values of "${rule.column || "-"}"`;
     case "numeric_bucket":
       return rule.mode === "percentile"
-        ? `where "${rule.column || "—"}" ranks against other records`
-        : `the range "${rule.column || "—"}" falls into`;
+        ? `where "${rule.column || "-"}" ranks against other records`
+        : `the range "${rule.column || "-"}" falls into`;
     case "boolean_flag":
-      return `whether "${rule.column || "—"}" is filled in`;
+      return `whether "${rule.column || "-"}" is filled in`;
     case "time_decay":
-      return `time between "${rule.startColumn || "—"}" and "${rule.endColumn || "—"}"`;
+      return `time between "${rule.startColumn || "-"}" and "${rule.endColumn || "-"}"`;
   }
 }
 

@@ -203,7 +203,7 @@ describe("shadowRoas", () => {
 
     expect(webinar.googleSeesValue).toBe(10);
     expect(social.googleSeesValue).toBe(10);
-    // Identical to Google, 25x apart in reality — the whole pitch.
+    // Identical to Google, 25x apart in reality - the whole pitch.
     expect(webinar.actualValue).toBe(50_000);
     expect(social.actualValue).toBe(2_000);
     expect(webinar.actualValuePerLead).toBe(5_000);
@@ -309,7 +309,7 @@ describe("applyCap", () => {
 
 describe("volumeCheck", () => {
   it("reports lead volume above won volume when most deals never close", () => {
-    // 20 leads, only 5 of them won — the two numbers must not be conflated.
+    // 20 leads, only 5 of them won - the two numbers must not be conflated.
     const deals = [
       ...Array.from({ length: 5 }, (_, i) => ({
         ...LONG_CYCLE[0], id: `w-${i}`, outcome: "won" as const,

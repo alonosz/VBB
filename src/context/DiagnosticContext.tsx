@@ -44,7 +44,7 @@ interface DiagnosticState {
   fields: DetectedField[];
   /**
    * Accepts an updater, because the assisted intake can land after the user is
-   * already editing the mapping — it has to merge into whatever is current
+   * already editing the mapping - it has to merge into whatever is current
    * rather than overwrite a snapshot taken before they touched it.
    */
   setFields: Dispatch<SetStateAction<DetectedField[]>>;
@@ -94,7 +94,7 @@ export function DiagnosticProvider({ children }: { children: ReactNode }) {
    * Restoring in an effect would paint an empty flow and then replace it,
    * which is both a cascading render and a visible flicker back to the upload
    * step. Guarded on window because session storage does not exist during
-   * server rendering — there the flow is simply empty, which is correct.
+   * server rendering - there the flow is simply empty, which is correct.
    */
   const [snapshot] = useState(() => (typeof window === "undefined" ? null : loadFlow()));
 
@@ -129,7 +129,7 @@ export function DiagnosticProvider({ children }: { children: ReactNode }) {
    * straight away would produce different markup on each side and React would
    * reject the hydration. Screens render a skeleton while this is false, which
    * matches on both sides, and the real content appears on the next pass with
-   * the snapshot already in state — so there is no flicker of empty data
+   * the snapshot already in state - so there is no flicker of empty data
    * either.
    */
   const restored = useSyncExternalStore(subscribeNever, onClient, onServer);

@@ -58,7 +58,7 @@ describe("isDeploymentOrigin", () => {
 
 describe("normalizing hostile configuration", () => {
   it("refuses a bare scheme rather than inventing a host from it", () => {
-    // "http://" once became "https://http" — a URL that parses, looks
+    // "http://" once became "https://http" - a URL that parses, looks
     // plausible in a log, and points nowhere.
     for (const junk of ["http://", "https://", "//", "://", "https:"]) {
       expect(feedOrigin({ requestOrigin: "https://real.example", publicOrigin: junk })).toBe(

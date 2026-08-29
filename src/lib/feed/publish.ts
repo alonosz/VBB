@@ -10,7 +10,7 @@ import type { FeedIdentifier, FeedRow } from "./types";
  * This is where principle 1 stops being a principle and becomes arithmetic.
  * Google ignores a value adjustment sent more than seven days after the
  * original conversion, so an adjustment past that window is not a smaller
- * effect — it is no effect at all, and emitting one would be telling the
+ * effect - it is no effect at all, and emitting one would be telling the
  * advertiser we did something we didn't. Those late outcomes are counted and
  * reported as what they actually are: input for the next refit, which prices
  * tomorrow's leads rather than re-bidding yesterday's.
@@ -33,7 +33,7 @@ export interface PublishOptions {
   previous?: FeedRow[];
   /**
    * The priced early gate, when the data supports one. A lead that has since
-   * reached it is worth more than its day-0 attributes said — and that is the
+   * reached it is worth more than its day-0 attributes said - and that is the
    * only thing that ever makes a value move.
    */
   gate?: GateValue | null;
@@ -51,7 +51,7 @@ export interface PublishResult {
   adjustments: number;
   /**
    * Leads whose value moved enough to matter, on a conversion Google will no
-   * longer adjust. Nothing is emitted for these — they are why tomorrow's
+   * longer adjust. Nothing is emitted for these - they are why tomorrow's
    * model gets refitted.
    */
   recalibrationOnly: number;
@@ -79,7 +79,7 @@ export async function buildFeedRows(opts: PublishOptions): Promise<PublishResult
     previous.filter((r) => r.kind === "conversion").map((r) => [r.rowKey, r])
   );
   // The latest value we told Google for a conversion is the one an adjustment
-  // has to beat — comparing against the original would resend a change we
+  // has to beat - comparing against the original would resend a change we
   // already sent.
   const latestSent = new Map<string, number>();
   for (const row of previous) {

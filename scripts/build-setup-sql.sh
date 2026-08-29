@@ -6,7 +6,7 @@ OUT="$ROOT/supabase/setup.sql"
 
 {
   cat <<'HDR'
--- VBB Engine — one-paste setup for the Supabase SQL Editor.
+-- VBB Engine - one-paste setup for the Supabase SQL Editor.
 --
 -- GENERATED FILE. Do not edit by hand: it is the migrations in
 -- supabase/migrations/ concatenated in order, so that setting up a new project

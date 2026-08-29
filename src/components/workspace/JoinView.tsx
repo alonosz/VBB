@@ -13,7 +13,7 @@ import { rememberWorkspaceKey } from "@/lib/workspace/clientKey";
  *
  * They click a link and land here. The token in the URL is spent for a freshly
  * minted workspace key, the key is stored in this browser, and they are moved
- * on. The key is never shown — there is nothing for them to copy, lose, or
+ * on. The key is never shown - there is nothing for them to copy, lose, or
  * paste into the wrong box.
  *
  * The token is stripped from the address bar as soon as it is spent. It is
@@ -32,7 +32,7 @@ export function JoinView() {
   const token = params.get("t");
 
   // A missing token is knowable at render, so it is the initial state rather
-  // than something an effect sets — setting state synchronously inside an
+  // than something an effect sets - setting state synchronously inside an
   // effect is a cascading render, and React lints it for good reason.
   const [state, setState] = useState<State>(() =>
     token
@@ -137,7 +137,7 @@ export function JoinView() {
                   </span>
                   <span className="max-w-[62ch] text-[var(--muted-strong)]">
                     Clearing your browser data signs you out. Ask us for another
-                    link and you&apos;re back — nothing is lost.
+                    link and you&apos;re back - nothing is lost.
                   </span>
                 </li>
               </ul>
@@ -166,7 +166,7 @@ export function JoinView() {
                 <p className="text-[14px]">{state.error}</p>
                 <p className="mt-2 text-[13.5px] text-[var(--muted)]">
                   Links work once and last three days. Reply to whoever sent it and
-                  ask for another — it takes them a few seconds, and nothing in your
+                  ask for another - it takes them a few seconds, and nothing in your
                   workspace is affected.
                 </p>
               </Alert>

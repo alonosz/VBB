@@ -5,8 +5,8 @@
 #   ./scripts/bundle.sh              # source only, no tests
 #   ./scripts/bundle.sh --tests      # include the test suite
 #
-# Only tracked files are included, so anything gitignored — .env, node_modules,
-# build output — cannot leak into the bundle by accident. Lockfiles are skipped
+# Only tracked files are included, so anything gitignored - .env, node_modules,
+# build output - cannot leak into the bundle by accident. Lockfiles are skipped
 # because they are enormous and say nothing about the design, and binaries
 # because concatenating a favicon into a text file produces a megabyte of
 # mojibake and no information.
@@ -29,13 +29,13 @@ files() {
 }
 
 {
-  echo "# VBB Engine — full source bundle"
+  echo "# VBB Engine - full source bundle"
   echo
   echo "Generated $(date -u +%Y-%m-%dT%H:%M:%SZ) from commit $(git rev-parse --short HEAD)."
   if [ "$WITH_TESTS" = "1" ]; then
     echo "Includes the test suite."
   else
-    echo "Source only — tests excluded. Re-run with --tests to include them."
+    echo "Source only - tests excluded. Re-run with --tests to include them."
   fi
   echo
   echo "Read CLAUDE.md first: it states the binding principles the rest of the"
@@ -69,5 +69,5 @@ files() {
   done < <(files)
 } > "$OUT"
 
-printf 'wrote %s — %s bytes, %s files, roughly %s tokens\n' \
+printf 'wrote %s - %s bytes, %s files, roughly %s tokens\n' \
   "$OUT" "$(wc -c < "$OUT")" "$(files | wc -l)" "$(( $(wc -c < "$OUT") / 4 ))"

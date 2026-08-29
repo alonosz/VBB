@@ -11,7 +11,7 @@ import { ArrowIcon } from "@/components/ArrowIcon";
  * here.
  *
  * The new customer's key is shown once, large, with a copy button and a plain
- * warning — an operator who assumes they can look it up later will lose it,
+ * warning - an operator who assumes they can look it up later will lose it,
  * and only a hash is stored.
  */
 
@@ -112,8 +112,8 @@ export function AdminView() {
    * A fresh link for someone who lost their key.
    *
    * Redeeming it mints a new key and retires the old one, so this is both
-   * "send them a link" and "rotate their credential". Everything they own —
-   * feed, model, CRM connection — stays attached, which is the whole reason
+   * "send them a link" and "rotate their credential". Everything they own -
+   * feed, model, CRM connection - stays attached, which is the whole reason
    * this exists rather than making a second customer.
    */
   async function sendLink(id: string, name: string) {
@@ -158,7 +158,7 @@ export function AdminView() {
           <p className="label mb-2">Operator</p>
           <h1 className="text-3xl font-bold tracking-tight text-balance">Your customers</h1>
           <p className="mt-2 text-[15px] text-[var(--muted)]">
-            Enter your admin password. This is the one password you keep — it is
+            Enter your admin password. This is the one password you keep - it is
             not a customer&apos;s workspace key.
           </p>
           <div className="card mt-8 p-5">
@@ -247,7 +247,7 @@ export function AdminView() {
                   minute: "2-digit",
                 })}
               </span>
-              . Clicking it signs their browser in — they never see or type a key.
+              . Clicking it signs their browser in - they never see or type a key.
               If they lose access, send another from the list below; everything
               they own stays attached.
             </p>
@@ -257,7 +257,7 @@ export function AdminView() {
               className="mt-3 text-[12.5px] underline underline-offset-2"
               style={{ color: "var(--on-navy-muted)" }}
             >
-              I&apos;ve sent it — hide this
+              I&apos;ve sent it - hide this
             </button>
           </section>
         )}

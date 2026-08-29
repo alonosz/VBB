@@ -77,7 +77,7 @@ export async function POST(request: Request) {
       action,
       feedUrl: `${origin}/v1/feeds/google-ads/${generated.token}.csv`,
       message:
-        "The old feed URL has stopped working. Paste this new one into the Google Ads data source now — until you do, Google cannot collect.",
+        "The old feed URL has stopped working. Paste this new one into the Google Ads data source now - until you do, Google cannot collect.",
     });
   }
 

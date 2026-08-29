@@ -44,7 +44,7 @@ export function SectionHead({
 }
 
 // ---------------------------------------------------------------------------
-// 1. Shadow ROAS — the opening screen
+// 1. Shadow ROAS - the opening screen
 // ---------------------------------------------------------------------------
 
 export function ShadowRoasSection({
@@ -100,7 +100,7 @@ export function ShadowRoasSection({
               <tr key={r.source} className="border-t border-white/10">
                 <td className="py-2.5 pr-3 font-semibold">{r.source}</td>
                 <td className="mono py-2.5 pr-3 text-right text-[var(--muted)]">{r.leads}</td>
-                {/* Identical for every row — that is the entire point. */}
+                {/* Identical for every row - that is the entire point. */}
                 <td className="mono py-2.5 pr-3 text-right text-[var(--muted)]">
                   {r.leads} × 1
                 </td>
@@ -228,9 +228,9 @@ export function VerdictBanner({ verdict }: { verdict: Verdict }) {
       : "bg-[var(--warn)]";
 
   const modes = [
-    { key: "MEASURED", label: "Measured — send real values" },
-    { key: "PREDICTED", label: "Predicted — cohort estimates" },
-    { key: "NOT_YET", label: "Not yet — fix data first" },
+    { key: "MEASURED", label: "Measured - send real values" },
+    { key: "PREDICTED", label: "Predicted - cohort estimates" },
+    { key: "NOT_YET", label: "Not yet - fix data first" },
   ];
 
   return (
@@ -343,7 +343,7 @@ export function TrackingGapSection({ match }: { match: MatchRateReadiness }) {
               <span className="mono">
                 {(match.totalRows - match.withAnyIdentifier).toLocaleString()}
               </span>{" "}
-              leads without an identifier simply won&apos;t be included — they&apos;re
+              leads without an identifier simply won&apos;t be included - they&apos;re
               not counted against you anywhere in this report.
             </>
           ) : (
@@ -471,10 +471,10 @@ export function SourceEconomicsSection({
                   <td className="mono px-4 py-2.5 text-right text-[var(--muted)]">{s.won}</td>
                   <td className="mono px-4 py-2.5 text-right text-[var(--muted)]">{s.lost}</td>
                   <td className="mono px-4 py-2.5 text-right text-[var(--muted)]">
-                    {s.closeRate !== null ? pct(s.closeRate) : "—"}
+                    {s.closeRate !== null ? pct(s.closeRate) : "-"}
                   </td>
                   <td className="mono px-4 py-2.5 text-right text-[var(--muted)]">
-                    {s.medianWonAmount !== null ? money(s.medianWonAmount, currency) : "—"}
+                    {s.medianWonAmount !== null ? money(s.medianWonAmount, currency) : "-"}
                   </td>
                   <td className="mono px-4 py-2.5 text-right font-bold">
                     {money(s.totalWonValue, currency)}
@@ -593,7 +593,7 @@ export function DomainSection({
       >
         <p className="mt-1 max-w-[70ch] text-[13.5px] text-[var(--muted)]">
           {ratio
-            ? `Corporate-domain leads are worth ${ratio}× a free-webmail lead. That difference is visible at lead creation, so it can be priced immediately — no model required.`
+            ? `Corporate-domain leads are worth ${ratio}× a free-webmail lead. That difference is visible at lead creation, so it can be priced immediately - no model required.`
             : "These differences are visible at lead creation, so they can be priced immediately."}
         </p>
       </SectionHead>
@@ -610,10 +610,10 @@ export function DomainSection({
                   </span>
                   <span className="flex shrink-0 items-baseline gap-2">
                     <span className="mono text-[11.5px] text-[var(--muted)]">
-                      {r.closeRate !== null ? pct(r.closeRate) : "—"}
+                      {r.closeRate !== null ? pct(r.closeRate) : "-"}
                     </span>
                     <span className="mono text-[13px] font-bold">
-                      {r.expectedValue !== null ? money(r.expectedValue, currency) : "—"}
+                      {r.expectedValue !== null ? money(r.expectedValue, currency) : "-"}
                     </span>
                   </span>
                 </div>

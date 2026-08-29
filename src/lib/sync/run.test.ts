@@ -170,7 +170,7 @@ describe("runSync", () => {
     }
   });
 
-  it("never refits — it prices on the saved multipliers, not today's data", async () => {
+  it("never refits - it prices on the saved multipliers, not today's data", async () => {
     const repo = new InMemoryFeedRepository(() => NOW);
     const { deals, model } = fixture();
     const feed = await feedFor(repo, model);
@@ -198,14 +198,14 @@ describe("runSync", () => {
       expect(row.value).toBe(bySaved.get(row.clickId!));
     }
 
-    // And the sync writes rows only — it must never quietly save a new model.
+    // And the sync writes rows only - it must never quietly save a new model.
     expect((await repo.modelFor(feed.id)).model).toBeNull();
   });
 
   it("carries the frozen gate, so a scheduled run can still sharpen a value", async () => {
     const { model } = fixture();
     // The gate has to survive saving, or a scheduled run would have to refit to
-    // find one — which is the thing principle 8 forbids.
+    // find one - which is the thing principle 8 forbids.
     expect(model.gate).toBeTruthy();
     expect(model.gate!.multiplier).toBeGreaterThan(1);
     expect(model.gate!.stage).toBeTruthy();

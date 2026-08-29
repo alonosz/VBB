@@ -12,7 +12,7 @@ import { describeWhatIsSent } from "@/lib/intake/profile";
  * Everything that happens between "we have rows" and "show them the mapping".
  *
  * Shared by the upload screen and the sample-dataset shortcut so both take
- * exactly the same path — a demo that runs different code is a demo of
+ * exactly the same path - a demo that runs different code is a demo of
  * something else.
  */
 
@@ -81,7 +81,7 @@ export function useIngest(onLog?: (line: string) => void) {
               // this was in flight survive.
               setFields((current) => applyProposal(current, intake.proposal).fields);
               const sent = describeWhatIsSent(intake.sent);
-              log(`Described ${sent.columns} columns — values withheld on ${sent.withheld}`);
+              log(`Described ${sent.columns} columns - values withheld on ${sent.withheld}`);
             } else if (intake.reason) {
               log(intake.reason);
             }

@@ -3,7 +3,7 @@
 For whoever puts this into production. Follow it top to bottom the first time;
 after that only the **Shipping a change** section matters.
 
-Nothing here needs a developer, but step 3 involves secrets — read the warning
+Nothing here needs a developer, but step 3 involves secrets - read the warning
 in it before you start.
 
 ---
@@ -12,9 +12,9 @@ in it before you start.
 
 | | Where it comes from |
 |---|---|
-| A Supabase project | supabase.com — free tier is enough for five pilots |
+| A Supabase project | supabase.com - free tier is enough for five pilots |
 | A Vercel project connected to this repo | vercel.com |
-| An Anthropic API key | console.anthropic.com — **optional**, see step 3 |
+| An Anthropic API key | console.anthropic.com - **optional**, see step 3 |
 
 You do **not** need a HubSpot developer app. Customers connect with a private
 app token from their own portal.
@@ -42,7 +42,7 @@ crm_connections   encrypted HubSpot credentials
 sync_runs         what each nightly run did
 ```
 
-`setup.sql` is every migration concatenated in order and is safe to re-run —
+`setup.sql` is every migration concatenated in order and is safe to re-run -
 each statement is `create table if not exists`. If you would rather apply them
 one at a time they are in `supabase/migrations/`, in filename order.
 
@@ -62,12 +62,12 @@ Vercel → your project → **Settings** → **Environment Variables**. Set each
 | Variable | Value |
 |---|---|
 | `NEXT_PUBLIC_SUPABASE_URL` | Supabase → Settings → API → Project URL |
-| `SUPABASE_SERVICE_ROLE_KEY` | Supabase → Settings → API → **secret** key (`sb_secret_…`). Not the publishable one — the app refuses that and says so. |
+| `SUPABASE_SERVICE_ROLE_KEY` | Supabase → Settings → API → **secret** key (`sb_secret_…`). Not the publishable one - the app refuses that and says so. |
 | `VBB_TOKEN_KEY` | A generated password, 24+ characters (below). Encrypts customers' CRM credentials. |
 | `CRON_SECRET` | Another generated password. Without it the nightly endpoint stays shut rather than falling open. |
 | `VBB_ADMIN_KEY` | **The one password you keep.** Opens `/admin`, where you add customers. At least 16 characters. |
 
-For the two you make yourself, use a password generator — a password manager,
+For the two you make yourself, use a password generator - a password manager,
 or 1password.com/password-generator. Set the length to **40 characters** and
 generate one for each. Anything 24 characters or longer is accepted; below that
 the app refuses to start rather than encrypting with a weak key.
@@ -84,7 +84,7 @@ node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
 |---|---|
 | `ANTHROPIC_API_KEY` | Turns on assisted column mapping. Without it the product runs on header matching and says so. |
 | `VBB_INTAKE_MODEL` | Overrides the model used for that. Default is a fast one; latency is what matters there, not depth. |
-| `VBB_PUBLIC_ORIGIN` | The domain feed URLs are built from. Only needed for a custom domain — on Vercel the production domain is detected. |
+| `VBB_PUBLIC_ORIGIN` | The domain feed URLs are built from. Only needed for a custom domain - on Vercel the production domain is detected. |
 | `HUBSPOT_CLIENT_ID` / `HUBSPOT_CLIENT_SECRET` | Only for OAuth. Private app tokens need neither. |
 
 ### About `VBB_TOKEN_KEY`
@@ -117,7 +117,7 @@ Wait for **Ready**, then check the deployment is healthy:
 { "crons": [{ "path": "/api/cron/sync", "schedule": "0 6 * * *" }] }
 ```
 
-That is 06:00 UTC daily. Vercel picks it up on deploy — check
+That is 06:00 UTC daily. Vercel picks it up on deploy - check
 **Settings → Cron Jobs** shows it.
 
 > Vercel's Hobby plan allows one cron job per day, which is exactly what this
@@ -130,7 +130,7 @@ curl -H "Authorization: Bearer $CRON_SECRET" https://<your-domain>/api/cron/sync
 ```
 
 Expect `{"ok":true,"feeds":0,...}` before any customer is connected. Without the
-header you should get a 404 — that is correct, the endpoint hides rather than
+header you should get a 404 - that is correct, the endpoint hides rather than
 refusing.
 
 ---
@@ -141,7 +141,7 @@ Go to `https://<your-domain>/admin`, sign in with `VBB_ADMIN_KEY`, and add a
 customer by name.
 
 It shows a key starting `vbb_ws_` **once**. Store it where you keep customer
-records and send it to them. Only a hash is kept, so it cannot be recovered —
+records and send it to them. Only a hash is kept, so it cannot be recovered -
 if it is lost, create a new workspace.
 
 See `CUSTOMER_ONBOARDING.md` for what happens next.
@@ -170,18 +170,18 @@ npm run build     # production build
 
 ## If a deployment goes wrong
 
-**Publishing fails with a constraint error** — the migration did not run.
+**Publishing fails with a constraint error** - the migration did not run.
 Do step 2, then redeploy.
 
-**Everything returns "not set up on this deployment"** — a required environment
+**Everything returns "not set up on this deployment"** - a required environment
 variable is missing. Re-check step 3, then redeploy: Vercel only picks up
 variable changes on a new deployment.
 
-**The database is "broken" but nothing is logged** — almost always the
+**The database is "broken" but nothing is logged** - almost always the
 publishable Supabase key rather than the secret one. The app detects this and
 writes an explicit line to the Vercel function log.
 
-**Roll back** — Vercel → Deployments → an earlier one → **⋯** → Promote to
+**Roll back** - Vercel → Deployments → an earlier one → **⋯** → Promote to
 Production. Safe as long as you have not applied a migration since; the
 migrations only add tables, so an older build ignores what it does not know
 about.

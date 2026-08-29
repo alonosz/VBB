@@ -11,7 +11,7 @@ const MIN_WITHIN_WINDOW_RATE = 0.6;
  * (c) Finds a stage that reliably fires inside Google's 7-day adjustment
  * window, usable as an early proxy for eventual value.
  *
- * Stages flagged as backfilled by stageTrustCheck are excluded outright — a
+ * Stages flagged as backfilled by stageTrustCheck are excluded outright - a
  * gate built on fabricated timestamps would emit adjustments on a schedule
  * that never happened.
  */
@@ -39,8 +39,8 @@ export function earlyGateDetection(
       candidates: [],
       recommended: null,
       message: untrusted.size > 0
-        ? "No reliable early gate found — the stages we could measure all showed backfilled timestamps."
-        : "No reliable early gate found — this export has no stage-timing data to measure.",
+        ? "No reliable early gate found - the stages we could measure all showed backfilled timestamps."
+        : "No reliable early gate found - this export has no stage-timing data to measure.",
     };
   }
 
@@ -66,6 +66,6 @@ export function earlyGateDetection(
     recommended,
     message: recommended
       ? null
-      : "No reliable early gate found — no stage fires inside the 7-day window often enough to bid on.",
+      : "No reliable early gate found - no stage fires inside the 7-day window often enough to bid on.",
   };
 }

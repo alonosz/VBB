@@ -3,7 +3,7 @@ import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:
 /**
  * Encrypting the credentials that reach someone else's CRM.
  *
- * The feed tables hold hashed identifiers and values — a leak of those is bad.
+ * The feed tables hold hashed identifiers and values - a leak of those is bad.
  * A HubSpot refresh token is a different order of thing: it is standing read
  * access to a customer's entire CRM, and row-level security only protects it
  * while the database itself is not the thing that leaked.
@@ -27,7 +27,7 @@ export class MissingKeyError extends Error {
   constructor() {
     super(
       "CRM connections are not configured on this deployment: VBB_TOKEN_KEY is not set, " +
-        "or is shorter than 24 characters. Nothing was stored — a credential for " +
+        "or is shorter than 24 characters. Nothing was stored - a credential for " +
         "someone's CRM is not written down in the clear."
     );
     this.name = "MissingKeyError";
@@ -39,7 +39,7 @@ export class MissingKeyError extends Error {
  *
  * Whoever sets this up is not necessarily a developer, and "32 random bytes in
  * base64" is not something a person can produce without a terminal. A password
- * manager's generated password is, so that has to work — but only if it is
+ * manager's generated password is, so that has to work - but only if it is
  * long enough that hashing it is not the weak link. Thirty characters of
  * generated password carries far more entropy than the 256-bit key it derives.
  */
@@ -50,8 +50,8 @@ export const MIN_PASSPHRASE_LENGTH = 24;
  *
  * Three accepted forms, in order:
  *
- *   1. 64 hex characters — exactly the key, as a developer would generate it.
- *   2. Base64 decoding to 32 bytes — the same thing, differently written. Both
+ *   1. 64 hex characters - exactly the key, as a developer would generate it.
+ *   2. Base64 decoding to 32 bytes - the same thing, differently written. Both
  *      are accepted because they are easy to confuse when pasting into a
  *      hosting dashboard, and the failure would otherwise be a length error
  *      nobody could interpret.
@@ -112,8 +112,8 @@ export function encryptSecret(plaintext: string, key: Buffer): string {
 /**
  * Returns null rather than throwing on anything malformed or tampered with.
  *
- * A caller that cannot decrypt a token has exactly one correct response — ask
- * the advertiser to reconnect — and that is the same response whether the key
+ * A caller that cannot decrypt a token has exactly one correct response - ask
+ * the advertiser to reconnect - and that is the same response whether the key
  * rotated, the row was corrupted, or someone edited the ciphertext. Making it
  * an exception would only invite a catch that treats those differently.
  */

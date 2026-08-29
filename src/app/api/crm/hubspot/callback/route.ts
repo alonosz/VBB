@@ -11,7 +11,7 @@ import { exchangeCode, oauthConfigFromEnv, SCOPES, verifyState } from "@/lib/syn
  *
  * Everything in this request arrived through a redirect the user's browser
  * followed, so none of it is trusted on its face. The state's signature is
- * what ties this callback to the feed that started it — without accounts,
+ * what ties this callback to the feed that started it - without accounts,
  * nothing else could.
  *
  * Ends in a redirect to a page rather than JSON, because a person is looking

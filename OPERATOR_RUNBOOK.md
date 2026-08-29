@@ -3,7 +3,7 @@
 Every message VBB can show a customer, what it means, and what to do about it.
 
 **Written to be used at speed.** Find the message, do the thing. Nothing here
-needs code or SQL — anything that does is marked **→ developer** and you should
+needs code or SQL - anything that does is marked **→ developer** and you should
 stop and escalate rather than improvising.
 
 Start by opening the customer's workspace page: `<your-domain>/workspace`, with
@@ -38,7 +38,7 @@ Somebody revoked it, deliberately or not. Google cannot collect from a revoked
 feed at all.
 
 Publish a new feed from the diagnostic and paste the new URL into their Google
-Ads data source. The old URL will never work again — this is not recoverable
+Ads data source. The old URL will never work again - this is not recoverable
 and is not meant to be.
 
 ---
@@ -69,7 +69,7 @@ fitted in, or refit in the currency the feed uses. Do not "just carry on".
 The encryption key changed, or the stored value was corrupted. Nothing leaked
 and nothing is lost.
 
-Ask the customer to reconnect HubSpot from their workspace page — a new private
+Ask the customer to reconnect HubSpot from their workspace page - a new private
 app token, or reconnecting OAuth. Two minutes.
 
 If this appears for **every** customer at once, the deployment's `VBB_TOKEN_KEY`
@@ -93,14 +93,14 @@ Their token was revoked, expired, or the private app was deleted at their end.
 Nothing you can do from here.
 
 Ask them to create a new private app token and paste it in. Check they tick all
-three read scopes — deals, contacts *and* companies. A missing scope is the
+three read scopes - deals, contacts *and* companies. A missing scope is the
 most common cause of this coming straight back.
 
 ---
 
 ### "The CRM could not be read. Nothing was published; the next run will pick these up."
 
-HubSpot was down or unreachable for that run. Genuinely nothing to do — the
+HubSpot was down or unreachable for that run. Genuinely nothing to do - the
 next night catches up, and no leads are lost.
 
 If it happens three nights running, it is not HubSpot. **→ developer.**
@@ -119,7 +119,7 @@ If it happens three nights running, it is not HubSpot. **→ developer.**
 ### "The nightly sync has not run for N days. New leads are not reaching Google."
 
 The scheduled job has stopped firing. This is not something happening to one
-customer — check another customer's page, and if theirs says the same, the cron
+customer - check another customer's page, and if theirs says the same, the cron
 is down for everyone.
 
 **→ developer.** Nothing on the customer's side causes this.
@@ -135,7 +135,7 @@ The feed is fine; Google is not fetching it. In order of likelihood:
 2. The URL was shortened, edited, or lost its `.csv` ending. Google validates
    the extension off the end of the URL.
 3. The password is wrong. It is the part of the URL between the last `/` and
-   `.csv` — not the whole URL, not the username.
+   `.csv` - not the whole URL, not the username.
 4. It was saved less than a day ago. Wait.
 
 ---
@@ -165,7 +165,7 @@ achieving nothing.
 
 ### Rotate a lost feed URL
 
-A customer lost the URL. Do **not** publish a new feed — that resends every
+A customer lost the URL. Do **not** publish a new feed - that resends every
 conversion Google already has.
 
 Rotating issues a new URL while keeping their rows, model and history. The old
@@ -181,7 +181,7 @@ hand. Use when a customer asks, or before a pilot ends.
 ### Revoke a feed
 
 Google can no longer collect from it. Rows already in their account stay there.
-Permanent — publishing a new feed means reconfiguring Google Ads.
+Permanent - publishing a new feed means reconfiguring Google Ads.
 
 Use when a pilot ends or a URL is believed compromised.
 
@@ -190,7 +190,7 @@ Use when a pilot ends or a URL is believed compromised.
 `<your-domain>/admin`, signed in with your admin password. Adding shows the new
 key once; suspending is a button on the row.
 
-Their key stops working immediately. **Their feed keeps serving** — suspending
+Their key stops working immediately. **Their feed keeps serving** - suspending
 is about access to the workspace, not about stopping Google. To stop values
 reaching Google, revoke the feed as well.
 
@@ -209,7 +209,7 @@ reaching Google, revoke the feed as well.
 
 **Include in the escalation:** the customer's name, the exact message on their
 workspace page, the timestamps in the "Recent nightly runs" table, and what you
-already tried. Not a screenshot alone — the timestamps matter.
+already tried. Not a screenshot alone - the timestamps matter.
 
 ---
 

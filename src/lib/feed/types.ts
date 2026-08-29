@@ -2,7 +2,7 @@
  * The feed domain.
  *
  * Everything here is what Google fetches and nothing more. A lead exists in
- * this half of the product as a hashed identifier, a timestamp and a value —
+ * this half of the product as a hashed identifier, a timestamp and a value -
  * the CRM data that produced the value stays in the browser.
  */
 
@@ -94,13 +94,13 @@ export function assertStorableRow(row: FeedRow): void {
     throw new Error("A feed row needs a hashed email or a click ID to be joinable to a click.");
   }
   if (row.hashedEmail !== null && !SHA256_HEX.test(row.hashedEmail)) {
-    throw new Error("A feed row's email must be a SHA-256 hash — an address must never be stored.");
+    throw new Error("A feed row's email must be a SHA-256 hash - an address must never be stored.");
   }
   if (row.clickId !== null && (row.clickId.includes("@") || row.clickId.length < 8)) {
     throw new Error("A feed row's click ID must be an ad click token, not a contact detail.");
   }
   if (!(row.value > 0)) {
-    throw new Error("A feed row's value must be above zero — never tell Google a lead was worthless.");
+    throw new Error("A feed row's value must be above zero - never tell Google a lead was worthless.");
   }
   if (!/^[A-Z]{3}$/.test(row.currencyCode)) {
     throw new Error("A feed row needs an ISO currency code.");

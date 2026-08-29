@@ -114,7 +114,7 @@ export default function UploadPage() {
           lede={
             parsing
               ? "Parsing rows, sampling values, and matching columns against the fields the analysis needs."
-              : "A CSV of deals or opportunities — whatever your CRM exports. We'll work out which columns are which and tell you straight away if anything will cause trouble."
+              : "A CSV of deals or opportunities - whatever your CRM exports. We'll work out which columns are which and tell you straight away if anything will cause trouble."
           }
         />
 
@@ -125,7 +125,7 @@ export default function UploadPage() {
             <Alert tone="warn" title="Your column mapping is still here">
               <p className="text-[13.5px]">
                 Your export was too large to keep in the browser across a refresh, so
-                select the same file again — your choices will be waiting.
+                select the same file again - your choices will be waiting.
               </p>
             </Alert>
           </div>
@@ -173,8 +173,8 @@ export default function UploadPage() {
               </p>
               <p className="mt-4 inline-flex items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--surface-sunken)] px-3.5 py-1.5 text-xs text-[var(--muted)]">
                 {assisted
-                  ? "Parsed in your browser — your rows stay on your machine"
-                  : "Parsed in your browser — the file never leaves your machine"}
+                  ? "Parsed in your browser - your rows stay on your machine"
+                  : "Parsed in your browser - the file never leaves your machine"}
               </p>
             </div>
             <input
@@ -196,7 +196,7 @@ export default function UploadPage() {
               Deliberately not a column beside the dropzone yet: HubSpot does
               not work, so the CSV is the only way through, and halving the
               primary action for something inert would be worse than saying
-              nothing. It moves up beside the dropzone the day it works — the
+              nothing. It moves up beside the dropzone the day it works - the
               card is written so that is a content swap, not a redesign.
 
               No button. A control that does nothing when clicked is worse than
@@ -211,7 +211,7 @@ export default function UploadPage() {
                 </p>
                 <p className="mt-1.5 max-w-[62ch] text-[13.5px] text-[var(--muted)]">
                   We&apos;re building a direct connection, so there&apos;s no export to
-                  get right and no columns to map — your deals come straight across
+                  get right and no columns to map - your deals come straight across
                   and the next screen is your model. Until then the CSV route above
                   does the same job.
                 </p>
@@ -228,7 +228,7 @@ export default function UploadPage() {
                 <div className="mt-2.5 space-y-1.5 text-[13px] text-[var(--muted)]">
                   <p className="max-w-[70ch]">
                     To line up what you wrote in step 1 with what is in this file, we
-                    send a description of each column — its name, whether it holds
+                    send a description of each column - its name, whether it holds
                     dates, numbers or categories, how full it is, and how many
                     distinct values it has.
                   </p>

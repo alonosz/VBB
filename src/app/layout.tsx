@@ -22,7 +22,7 @@ const jetbrainsMono = JetBrains_Mono({
 export const metadata: Metadata = {
   title: "Value Bidding Model Builder",
   description:
-    "Build a reusable, value-based bidding / lead-scoring model from your own conversion data — no data science required.",
+    "Build a reusable, value-based bidding / lead-scoring model from your own conversion data - no data science required.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

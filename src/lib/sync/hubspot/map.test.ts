@@ -136,7 +136,7 @@ describe("stageTimingOf", () => {
   });
 
   it("drops a stage entered before the deal existed", () => {
-    // Not a fast pipeline — a backfill. Negative time is impossible rather
+    // Not a fast pipeline - a backfill. Negative time is impossible rather
     // than merely suspicious, so it goes here rather than to stageTrustCheck.
     const d = deal({ hs_date_entered_stage_2: "2026-04-01T09:00:00Z" });
     expect(stageTimingOf(d, created)).toBeUndefined();
@@ -218,7 +218,7 @@ describe("currency", () => {
  * Two ways to fail here, and the second is worse than the first. Missing the
  * Google property means no click IDs and a quiet fall back to email matching.
  * Picking up the Facebook one means sending an fbclid to Google Ads as though
- * it were a gclid — a value attached to nothing, reported as a success.
+ * it were a gclid - a value attached to nothing, reported as a success.
  */
 describe("googleClickIdProperties", () => {
   const REAL_PORTAL = [

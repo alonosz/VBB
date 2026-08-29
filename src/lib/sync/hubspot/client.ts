@@ -12,7 +12,7 @@ import {
  *
  * Scoped as narrowly as the job allows. It asks for a window of recent deals
  * rather than the portal, requests named properties rather than everything,
- * and reads — there is no write path here at all. A sync that could modify a
+ * and reads - there is no write path here at all. A sync that could modify a
  * customer's CRM is a much larger promise than the one this product makes.
  *
  * fetch is injected so the pagination, batching and retry behaviour can be
@@ -70,8 +70,8 @@ export class HubSpotClient {
   }
 
   private async request<T>(path: string, body: unknown, attempt = 0): Promise<T> {
-    // A null body means GET. Everything else about the call — the retry on
-    // 429, the reconnect message on 401 — has to behave identically, so both
+    // A null body means GET. Everything else about the call - the retry on
+    // 429, the reconnect message on 401 - has to behave identically, so both
     // verbs go through here rather than growing a second copy.
     const res = await this.fetchImpl(`${this.baseUrl}${path}`, {
       method: body === null ? "GET" : "POST",
@@ -118,8 +118,8 @@ export class HubSpotClient {
    * What contact properties this portal has.
    *
    * Read so the click ID can be found by what it is rather than by what we
-   * guessed someone would call it. Cheap — one request, no paging in practice
-   * — and the alternative is a connection that silently carries no click IDs.
+   * guessed someone would call it. Cheap - one request, no paging in practice
+   * - and the alternative is a connection that silently carries no click IDs.
    */
   async listContactProperties(): Promise<{ name: string; label?: string }[]> {
     const res = await this.request<{ results?: { name?: string; label?: string }[] }>(
@@ -170,7 +170,7 @@ export class HubSpotClient {
    * batch per object type, not one call per deal.
    *
    * NOTE: the exact response shape here is the part of this client least
-   * verified against a live portal — it is written to HubSpot's documented v4
+   * verified against a live portal - it is written to HubSpot's documented v4
    * batch-associations shape, and reads defensively so an unexpected payload
    * yields no associations rather than a crash. Worth confirming against a
    * real account before trusting a first run's numbers.
@@ -272,7 +272,7 @@ export async function verifyAccess(
  * Everything a run needs, in as few calls as HubSpot allows.
  *
  * The associations come back on the deal search, so contacts and companies are
- * read in batches by id rather than one request per deal — a portal with a
+ * read in batches by id rather than one request per deal - a portal with a
  * thousand recent deals is 10 deal pages and 20 batch reads, not 2,000 calls.
  */
 export async function pullFromHubSpot(client: HubSpotClient): Promise<HubSpotPull> {

@@ -1,4 +1,4 @@
--- VBB Engine — a CRM connection belongs to the customer, not to one feed.
+-- VBB Engine - a CRM connection belongs to the customer, not to one feed.
 --
 -- Hanging the connection off a feed made sense while the only thing that read
 -- a CRM was the nightly sync, which runs against a published feed. It stops
@@ -9,7 +9,7 @@
 --
 -- A feed already belongs to a workspace, so moving the connection up one level
 -- is a simplification rather than a workaround. One customer, one portal, used
--- by whatever needs it — the analysis while fitting a model, the sync while
+-- by whatever needs it - the analysis while fitting a model, the sync while
 -- refreshing a feed.
 
 alter table public.crm_connections

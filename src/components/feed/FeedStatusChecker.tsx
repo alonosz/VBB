@@ -13,8 +13,8 @@ import { WorkspaceKeyPrompt } from "@/components/workspace/WorkspaceKeyPrompt";
  * read it" look identical from their side and need opposite responses, and the
  * platform reports neither back to us.
  *
- * We already log every fetch — counting them over 24 hours is how the rate
- * limiter works — so the answer was in the database the whole time and simply
+ * We already log every fetch - counting them over 24 hours is how the rate
+ * limiter works - so the answer was in the database the whole time and simply
  * was not being shown. This screen shows it.
  */
 
@@ -168,7 +168,7 @@ export function FeedStatusChecker() {
             </button>
           </div>
           <p className="mt-2 text-[12.5px] text-[var(--muted)]">
-            Checking doesn&apos;t count as a fetch — it won&apos;t use up the
+            Checking doesn&apos;t count as a fetch - it won&apos;t use up the
             collection budget Google needs.
           </p>
 
@@ -234,7 +234,7 @@ export function FeedStatusChecker() {
                           </span>
                         </td>
                         <td className="mono py-1.5 text-right">
-                          {f.status === 200 ? f.rowCount.toLocaleString() : "—"}
+                          {f.status === 200 ? f.rowCount.toLocaleString() : "-"}
                         </td>
                       </tr>
                     ))}
@@ -326,7 +326,7 @@ export function FeedStatusChecker() {
             {status.verdict === "collecting" && (
               <p className="mt-4 max-w-[70ch] rounded-xl border border-[var(--border)] bg-[var(--surface-sunken)] px-3.5 py-2.5 text-[13px] text-[var(--muted)]">
                 Values are reaching Google. That does not by itself change how it
-                bids — the campaign has to be running{" "}
+                bids - the campaign has to be running{" "}
                 <span className="font-semibold text-[var(--foreground)]">
                   Maximize conversion value
                 </span>{" "}

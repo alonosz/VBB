@@ -110,7 +110,7 @@ export interface SnippetFinding {
   /** Loaded from our domain rather than copied and pasted inline. */
   hosted: boolean;
   inline: boolean;
-  /** True when the tag sits after the last form — it would fire too late. */
+  /** True when the tag sits after the last form - it would fire too late. */
   warnings: string[];
 }
 
@@ -154,7 +154,7 @@ export function detectSnippet(html: string): SnippetFinding {
       : html.indexOf("vbbCapture");
     const lastForm = html.toLowerCase().lastIndexOf("<form");
     if (lastForm !== -1 && anchor !== -1 && anchor < lastForm) {
-      // Not fatal — the MutationObserver still catches forms added later — but
+      // Not fatal - the MutationObserver still catches forms added later - but
       // a tag above the forms is a sign it was pasted into the wrong place.
       warnings.push(
         "The script tag appears above a form on this page. It still works, but placing it just before </body> is more reliable."

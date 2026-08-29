@@ -13,8 +13,8 @@ import { authorizeWorkspace } from "@/lib/workspace/authorize";
  * the credential that never leaves the advertiser.
  *
  * The browser prices the leads and sends the finished rows; this stores them
- * and hands back a URL. It deliberately cannot price anything itself — no CRM
- * data reaches this side — which is what makes the feed an artifact the
+ * and hands back a URL. It deliberately cannot price anything itself - no CRM
+ * data reaches this side - which is what makes the feed an artifact the
  * advertiser approved rather than something recomputed behind them.
  */
 

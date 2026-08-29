@@ -9,7 +9,7 @@ import type { IntakeResult } from "@/lib/intake/client";
  * ends a trial, and until now every step lived in useState and nowhere else.
  *
  * Session storage rather than local storage, deliberately. The uploaded file
- * is the customer's raw CRM export — names, addresses, deal amounts — and it
+ * is the customer's raw CRM export - names, addresses, deal amounts - and it
  * has no business outliving the tab it was opened in. A shared machine, a
  * borrowed laptop, a screen share the next morning: none of those should show
  * the last customer's pipeline. Coming back tomorrow is what the workspace

@@ -8,14 +8,14 @@ import { DRIFT_THRESHOLD } from "@/lib/model/savedModel";
  * Which model is pricing these leads, and whether it still should be.
  *
  * Refitting on every upload quietly reprices yesterday's leads. Freezing a
- * model stops that, but a frozen model goes stale — so the two questions have
+ * model stops that, but a frozen model goes stale - so the two questions have
  * to be answered together, on one panel, with the evidence for each.
  */
 
 const pctText = (n: number) => `${n >= 0 ? "+" : "−"}${Math.abs(Math.round(n * 100))}%`;
 
 function formatDay(iso: string | null): string {
-  if (!iso) return "—";
+  if (!iso) return "-";
   return iso.slice(0, 10);
 }
 
@@ -100,7 +100,7 @@ export function ModelSourcePanel({
                 Fitted just now on the{" "}
                 <span className="mono">{freshFittedOn.toLocaleString()}</span> resolved
                 deals in this file. Upload a different date range tomorrow and these
-                multipliers change — save the model to stop that.
+                multipliers change - save the model to stop that.
               </>
             )}
           </p>
@@ -156,7 +156,7 @@ export function ModelSourcePanel({
             fire on this file
           </p>
           <p className="mt-0.5 max-w-[74ch] text-[13px] text-[var(--muted)]">
-            {inert.map((f) => f.label).join(", ")} — the column it reads was not mapped
+            {inert.map((f) => f.label).join(", ")} - the column it reads was not mapped
             this time, so it silently does nothing. Map it on the previous step, or refit
             without it.
           </p>
@@ -191,7 +191,7 @@ function DriftBlock({ drift, onForget }: { drift: ModelDrift; onForget: () => vo
         {refit ? (
           <>
             Your data has moved further than a saved model should be asked to cover.
-            Refit, save the new one, and let it price tomorrow&apos;s leads — a past
+            Refit, save the new one, and let it price tomorrow&apos;s leads - a past
             conversion can&apos;t be re-bid, so recalibration is what changes.
           </>
         ) : (
@@ -199,7 +199,7 @@ function DriftBlock({ drift, onForget }: { drift: ModelDrift; onForget: () => vo
             Refitting on this file would move your largest multiplier by{" "}
             <span className="mono">{pctText(drift.largestChange)}</span>, inside the{" "}
             <span className="mono">{Math.round(DRIFT_THRESHOLD * 100)}%</span> band. Keep
-            the saved model — changing it now would move bids without evidence.
+            the saved model - changing it now would move bids without evidence.
           </>
         )}
       </p>
@@ -252,10 +252,10 @@ function DriftBlock({ drift, onForget }: { drift: ModelDrift; onForget: () => vo
                   </td>
                   <td className="mono py-2 pr-3 text-[12.5px]">{l.level}</td>
                   <td className="mono py-2 pr-3 text-[12.5px]">
-                    {l.savedMultiplier === null ? "—" : `${l.savedMultiplier}×`}
+                    {l.savedMultiplier === null ? "-" : `${l.savedMultiplier}×`}
                   </td>
                   <td className="mono py-2 pr-3 text-[12.5px]">
-                    {l.freshMultiplier === null ? "—" : `${l.freshMultiplier}×`}
+                    {l.freshMultiplier === null ? "-" : `${l.freshMultiplier}×`}
                   </td>
                   <td
                     className={
@@ -265,7 +265,7 @@ function DriftBlock({ drift, onForget }: { drift: ModelDrift; onForget: () => vo
                         : "text-[var(--muted)]")
                     }
                   >
-                    {l.change === null ? "—" : pctText(l.change)}
+                    {l.change === null ? "-" : pctText(l.change)}
                   </td>
                 </tr>
               ))

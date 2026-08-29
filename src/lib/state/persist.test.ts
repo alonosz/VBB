@@ -43,7 +43,7 @@ describe("keeping the flow across a refresh", () => {
 
   it("uses session storage, so a raw CRM export does not outlive the tab", () => {
     saveFlow(snapshot());
-    // The uploaded file is the customer's pipeline — names, addresses,
+    // The uploaded file is the customer's pipeline - names, addresses,
     // amounts. A shared machine must not show it the next morning.
     expect(sessionStorage.length).toBe(1);
     expect(localStorage.length).toBe(0);

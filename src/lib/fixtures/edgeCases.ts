@@ -28,7 +28,7 @@ function deal(partial: Partial<MappedDeal> & { id: string }): MappedDeal {
   };
 }
 
-/** Empty input — every function must degrade without throwing. */
+/** Empty input - every function must degrade without throwing. */
 export const EMPTY: MappedDeal[] = [];
 
 /** Stage durations in seconds: the retroactive card-dragging fingerprint. */
@@ -39,7 +39,7 @@ export const BACKFILLED_STAGES: MappedDeal[] = [
       outcome: "won",
       amount: 5000,
       closedAt: day(5),
-      // 9-second transitions — nobody lived through this stage.
+      // 9-second transitions - nobody lived through this stage.
       stageDurations: { Qualified: 9, Proposal: 172800 },
       stageReachedAfterDays: { Qualified: 1, Proposal: 3 },
     })
@@ -56,7 +56,7 @@ export const BACKFILLED_STAGES: MappedDeal[] = [
   ),
 ];
 
-/** No stage-duration data at all — the check must skip, not guess. */
+/** No stage-duration data at all - the check must skip, not guess. */
 export const NO_STAGE_DATA: MappedDeal[] = Array.from({ length: 5 }, (_, i) =>
   deal({ id: `ns-${i}`, outcome: "won", amount: 3000, closedAt: day(4) })
 );
@@ -72,7 +72,7 @@ export const SAME_DAY_CLOSES: MappedDeal[] = Array.from({ length: 10 }, (_, i) =
   })
 );
 
-/** A $200k deal among $2k deals — the cap must clip exactly one. */
+/** A $200k deal among $2k deals - the cap must clip exactly one. */
 export const OUTLIER_AMONG_SMALL: MappedDeal[] = [
   ...Array.from({ length: 20 }, (_, i) =>
     deal({ id: `sm-${i}`, outcome: "won", amount: 2000, closedAt: day(3) })
@@ -80,7 +80,7 @@ export const OUTLIER_AMONG_SMALL: MappedDeal[] = [
   deal({ id: "whale", outcome: "won", amount: 200_000, closedAt: day(3) }),
 ];
 
-/** 12% identifier coverage — must trip the tracking-gap finding. */
+/** 12% identifier coverage - must trip the tracking-gap finding. */
 export const LOW_MATCH_RATE: MappedDeal[] = Array.from({ length: 50 }, (_, i) =>
   deal({
     id: `lm-${i}`,
@@ -97,7 +97,7 @@ export const ZERO_CLOSE_RATE: MappedDeal[] = Array.from({ length: 15 }, (_, i) =
   deal({ id: `zc-${i}`, outcome: "lost", amount: null, closedAt: day(8) })
 );
 
-/** Won deals with no amount recorded — excluded from value math, not zeroed. */
+/** Won deals with no amount recorded - excluded from value math, not zeroed. */
 export const MISSING_AMOUNTS: MappedDeal[] = [
   ...Array.from({ length: 6 }, (_, i) =>
     deal({ id: `ma-none-${i}`, outcome: "won", amount: null, closedAt: day(5) })
@@ -107,7 +107,7 @@ export const MISSING_AMOUNTS: MappedDeal[] = [
   ),
 ];
 
-/** Long sales cycle — must classify LONG and steer the verdict to PREDICTED. */
+/** Long sales cycle - must classify LONG and steer the verdict to PREDICTED. */
 export const LONG_CYCLE: MappedDeal[] = Array.from({ length: 40 }, (_, i) =>
   deal({
     id: `lc-${i}`,

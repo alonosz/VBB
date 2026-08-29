@@ -1,5 +1,5 @@
 /**
- * VBB Engine — ad click identifier capture.
+ * VBB Engine - ad click identifier capture.
  *
  * A lead that arrives without a click ID can only be matched to an ad click by
  * its hashed email, which relies on Google finding the click itself. A click ID
@@ -14,7 +14,7 @@
 
   // gclid is the standard Google click ID. gbraid and wbraid are its iOS
   // privacy-preserving counterparts and arrive instead of gclid, never as
-  // well — so all three have to be watched. fbclid is Meta's.
+  // well - so all three have to be watched. fbclid is Meta's.
   var PARAMS = ["gclid", "gbraid", "wbraid", "fbclid"];
   var STORE_PREFIX = "vbb_";
   var TTL_DAYS = 90;
@@ -121,7 +121,7 @@
    * Adds the IDs to a form as hidden fields.
    *
    * Only ever adds its own fields, never edits one it did not create, and skips
-   * a field the site already has under that name — an existing gclid input
+   * a field the site already has under that name - an existing gclid input
    * belongs to whatever put it there.
    */
   function fill(form) {

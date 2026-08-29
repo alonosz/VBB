@@ -197,7 +197,7 @@ describe("syncFeed", () => {
       sleep: async (ms) => { waits.push(ms); },
     });
 
-    // It retried before giving up — a nightly run is never urgent enough to
+    // It retried before giving up - a nightly run is never urgent enough to
     // drop a day of leads on one bad response.
     expect(waits.length).toBeGreaterThan(0);
     expect(outcome.error).toMatch(/next run will pick these up/);
@@ -230,7 +230,7 @@ describe("syncFeed", () => {
     expect(paths).toEqual([]);
   });
 
-  it("is idempotent — a second run the same night sends nothing again", async () => {
+  it("is idempotent - a second run the same night sends nothing again", async () => {
     const { repo, connections, feed } = await scenario();
     const { fetchImpl } = portal();
     await syncFeed({ feedId: feed.id, repo, connections, oauth: OAUTH, fetchImpl, now: NOW });
@@ -257,7 +257,7 @@ describe("syncAllFeeds", () => {
       tokenHash: "a".repeat(64), tokenPrefix: "vbb_live_aaaa",
       modelId: "model-1", currencyCode: "USD", identifier: "clickId",
     });
-    // Same customer, no saved model — it must refuse while the other runs.
+    // Same customer, no saved model - it must refuse while the other runs.
     await repo.createFeed({
       clientId: WORKSPACE,
       tokenHash: "b".repeat(64), tokenPrefix: "vbb_live_bbbb",

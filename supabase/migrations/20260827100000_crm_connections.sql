@@ -1,4 +1,4 @@
--- VBB Engine — CRM connections for the scheduled sync.
+-- VBB Engine - CRM connections for the scheduled sync.
 --
 -- A refresh token is a different order of secret from anything else in this
 -- schema. A feed row is a hashed identifier and a number; a CRM token is

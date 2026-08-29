@@ -14,7 +14,7 @@ const HOUR = 3_600_000;
 /**
  * The redemption path the /join route drives, exercised against the same
  * in-memory stores. What is worth protecting here is not that a good link
- * works — it is every way a bad one must not.
+ * works - it is every way a bad one must not.
  */
 async function setup() {
   const workspaces = new InMemoryWorkspaceRepository();
@@ -77,7 +77,7 @@ describe("redeeming", () => {
 
     const key = await mintFor(workspaces, workspace.id);
 
-    // The new key opens the same workspace — the feed and model attached to it
+    // The new key opens the same workspace - the feed and model attached to it
     // are the whole reason this is a rotation rather than a new customer.
     const opened = await workspaces.findByKey(key);
     expect(opened?.id).toBe(workspace.id);

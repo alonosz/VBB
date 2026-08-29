@@ -5,7 +5,7 @@ import type { ReactNode } from "react";
  *
  * These exist so a page describes what it is showing rather than how to draw
  * it. The previous version styled each screen independently, which is why five
- * steps doing five different jobs all looked identical — nothing forced a
+ * steps doing five different jobs all looked identical - nothing forced a
  * difference, and nothing forced consistency either.
  */
 
@@ -97,7 +97,7 @@ export function Badge({
 /**
  * A filled dot, for a status that is being scanned rather than read.
  *
- * Never the only signal — it always sits beside a word, because colour alone
+ * Never the only signal - it always sits beside a word, because colour alone
  * fails for anyone who cannot distinguish these hues.
  */
 export function StatusDot({ tone }: { tone: Tone }) {

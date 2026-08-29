@@ -6,8 +6,8 @@ import type { SyncReport } from "./run";
  *
  * The connection already carries the last run's outcome, which answers "did
  * last night work" and nothing else. The failure that quietly ends a pilot is
- * different: the cron stops firing altogether — a dropped schedule, a rotated
- * secret, a deploy that removed it — and the last-sync timestamp simply stops
+ * different: the cron stops firing altogether - a dropped schedule, a rotated
+ * secret, a deploy that removed it - and the last-sync timestamp simply stops
  * moving. Nobody notices a field that does not change.
  *
  * A run that happens leaves a row. A run that should have happened and did not
@@ -121,7 +121,7 @@ export class SupabaseSyncRunStore implements SyncRunStore {
 
     // Losing the record of a good run must not turn it into a bad one, but a
     // job whose history silently stops being written is the exact blindness
-    // this table exists to remove — so it is loud in the server log.
+    // this table exists to remove - so it is loud in the server log.
     if (error) console.error("recording a sync run failed:", error.message);
   }
 
@@ -208,7 +208,7 @@ export function runHealth(runs: SyncRun[], now: Date = new Date()): RunHealth {
       lastRunAt: null,
       lastSuccessAt: null,
       action:
-        "If a CRM was connected today, the first run happens overnight. If it was connected days ago, the scheduled job is not running — that one is for the developer.",
+        "If a CRM was connected today, the first run happens overnight. If it was connected days ago, the scheduled job is not running - that one is for the developer.",
     };
   }
 

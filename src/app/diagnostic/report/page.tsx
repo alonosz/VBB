@@ -55,7 +55,7 @@ export default function ReportPage() {
 
   // A saved model is the difference between a diagnostic and a daily loop: it
   // stops the same lead being worth two different amounts on two days. Recalled
-  // during the first render rather than in an effect — this page renders
+  // during the first render rather than in an effect - this page renders
   // nothing until a file is in context, so there is no server output to mismatch.
   const [saved, setSaved] = useState<SavedValueModel | null>(() =>
     typeof window === "undefined" ? null : recallModel()
@@ -122,7 +122,7 @@ export default function ReportPage() {
     return valueAllLeads(mapped.deals, activeModel, overrides);
   }, [mapped, activeModel, overrides]);
 
-  // Never applied automatically — it only answers whether the saved rules still
+  // Never applied automatically - it only answers whether the saved rules still
   // describe the business.
   const drift = useMemo(
     () => (result && saved ? compareToFresh(saved, result.valueModel) : null),
@@ -235,7 +235,7 @@ export default function ReportPage() {
         <PageHead
           eyebrow="Step 4 of 5 · Your model"
           title="This is what a lead is worth to you"
-          lede="Every figure below is computed from the file you uploaded — cohort win rate against your own median deal size. Nothing is estimated or benchmarked against other accounts."
+          lede="Every figure below is computed from the file you uploaded - cohort win rate against your own median deal size. Nothing is estimated or benchmarked against other accounts."
         />
 
         <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1.5">
@@ -303,7 +303,7 @@ export default function ReportPage() {
             <CycleSection cycle={result.cycle} />
             <section>
               <SectionHead
-                title="Channel insight — not used to price leads"
+                title="Channel insight - not used to price leads"
                 note="For your own budget decisions"
               >
                 <p className="mt-1 max-w-[70ch] text-[13.5px] text-[var(--muted)]">

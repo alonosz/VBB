@@ -159,7 +159,7 @@ describe("the golden path", () => {
     const rowsAfter = await feeds.rowsFor(feedId);
     expect(rowsAfter.length).toBe(rowsBefore + 1);
 
-    // The new lead is priced by the frozen model, not a refit — and it is
+    // The new lead is priced by the frozen model, not a refit - and it is
     // stored under whichever identifier the feed was published with. This
     // demo file has 464 emails to 85 click IDs, so it matches on hashed
     // email; the row must follow the feed rather than the lead.
@@ -174,7 +174,7 @@ describe("the golden path", () => {
 
     // The exact figure the frozen model predicts, recomputed here rather than
     // read back. "Greater than zero" would pass while the nightly job quietly
-    // repriced everyone — which is the failure the frozen-model rule exists to
+    // repriced everyone - which is the failure the frozen-model rule exists to
     // prevent, so it is the one this has to catch.
     const asHubSpotSentIt = hubspotToDeals({
       deals: [{
@@ -193,7 +193,7 @@ describe("the golden path", () => {
     expect(fromHubSpot!.value).toBe(predicted.value);
 
     // Google's import carries one identifier type per file, so every row has
-    // to agree with the feed — a mixed file is rejected outright.
+    // to agree with the feed - a mixed file is rejected outright.
     for (const row of rowsAfter) {
       if (identifier === "clickId") {
         expect(row.clickId).not.toBeNull();

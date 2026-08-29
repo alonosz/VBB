@@ -10,7 +10,7 @@ import { Logo, LogoMark } from "@/components/brand/Logo";
  * frame constant and changing only what it contains is what tells a customer
  * they are in the same product doing a different thing.
  *
- * The build marker stays — knowing which version is deployed has already saved
+ * The build marker stays - knowing which version is deployed has already saved
  * this project an afternoon more than once.
  */
 
@@ -33,7 +33,7 @@ export function AppHeader({
         <Link
           href="/"
           className="shrink-0"
-          aria-label="ValueBasedBidding — home"
+          aria-label="ValueBasedBidding - home"
         >
           {/* The wordmark needs room the stepper also wants; below lg the mark
               carries the brand on its own. */}

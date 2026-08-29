@@ -2,7 +2,7 @@
  * Which origin a feed URL should be built from.
  *
  * Not the one the browser happens to be on. Vercel gives every deployment its
- * own immutable URL — `vbb-7ckmpyb5m-scope.vercel.app` — and if the advertiser
+ * own immutable URL - `vbb-7ckmpyb5m-scope.vercel.app` - and if the advertiser
  * published while looking at one of those, the link they hand Google is
  * pinned to a single build forever. Worse, those URLs often sit behind Vercel's
  * deployment protection, so Google is served a login page and reports only
@@ -12,8 +12,8 @@
  * diagnose, so the origin is decided here rather than taken from the request.
  *
  * Order of preference:
- *   1. VBB_PUBLIC_ORIGIN — an explicit override, for a custom domain.
- *   2. VERCEL_PROJECT_PRODUCTION_URL — the stable production domain, which
+ *   1. VBB_PUBLIC_ORIGIN - an explicit override, for a custom domain.
+ *   2. VERCEL_PROJECT_PRODUCTION_URL - the stable production domain, which
  *      Vercel sets on every deployment including previews.
  *   3. The request origin, which is right in local development and is the only
  *      thing available off Vercel.

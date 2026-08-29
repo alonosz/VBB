@@ -4,7 +4,7 @@ import { looksLikeClickId, looksLikeCurrencyCode, looksLikeDate, looksNumeric } 
 /**
  * Column profiling for the intake call.
  *
- * The assistant needs to know what each column *is* — not what is in it. A
+ * The assistant needs to know what each column *is* - not what is in it. A
  * profile carries the header, the shape of its values and how varied they are;
  * it never carries a customer's email, a person's name, or a deal amount.
  * That is what lets the upload screen keep its promise that the file stays on
@@ -34,7 +34,7 @@ export interface ColumnProfile {
    * columns whose header does not name a person, company or contact detail.
    */
   exampleValues?: string[];
-  /** Digit counts for numeric columns — enough to tell an amount from a headcount. */
+  /** Digit counts for numeric columns - enough to tell an amount from a headcount. */
   numericShape?: { minDigits: number; maxDigits: number; hasDecimals: boolean };
   /** ISO days, so create dates and close dates are distinguishable. */
   dateSpanDays?: number;
@@ -125,8 +125,8 @@ function dateSpanDays(values: string[]): number | undefined {
 }
 
 /**
- * Builds one profile per column. Nothing here is sent anywhere on its own —
- * the caller decides — but everything here is safe to send.
+ * Builds one profile per column. Nothing here is sent anywhere on its own -
+ * the caller decides - but everything here is safe to send.
  */
 export function profileColumns(
   headers: string[],
@@ -167,7 +167,7 @@ export function profileColumns(
       if (examples.length > 0) profile.exampleValues = examples;
       else profile.withheld = "values are too long to be category labels";
     } else if (kind === "categorical") {
-      profile.withheld = `${distinct.size} distinct values — too many to be category labels`;
+      profile.withheld = `${distinct.size} distinct values - too many to be category labels`;
     }
 
     return profile;

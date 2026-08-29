@@ -6,8 +6,8 @@ import { tokenFromBasicAuth } from "./[file]/route";
 /**
  * The original feed URL, kept working.
  *
- * Google Ads rejects this shape — it validates the file extension off the end
- * of the URL — so new feeds are handed out as /v1/feeds/google-ads/<token>.csv.
+ * Google Ads rejects this shape - it validates the file extension off the end
+ * of the URL - so new feeds are handed out as /v1/feeds/google-ads/<token>.csv.
  * This stays for any URL saved before that, and for anything fetching the feed
  * that does not care about extensions.
  *

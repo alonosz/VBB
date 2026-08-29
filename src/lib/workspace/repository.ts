@@ -59,7 +59,7 @@ export interface WorkspaceRepository {
    *
    * Redeeming an invite mints a fresh key rather than handing back a stored
    * one, which is what lets the key live only as a hash. The previous key
-   * stops working here — correct for the case this exists to serve, where the
+   * stops working here - correct for the case this exists to serve, where the
    * customer has just said they no longer have it.
    */
   rotateKey(id: string, keyHash: string, keyPrefix: string): Promise<void>;

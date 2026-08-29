@@ -9,7 +9,7 @@ const LOOKBACK_DAYS = 182;
  *
  * These answer different questions and conflating them is a common mistake.
  * Once Day-0 scoring exists, Smart Bidding viability depends on *lead* volume
- * — a business closing 4 deals a month off 300 leads is perfectly viable.
+ * - a business closing 4 deals a month off 300 leads is perfectly viable.
  * Low deal volume alone is therefore not disqualifying.
  */
 export function volumeCheck(deals: MappedDeal[], now: Date = new Date()): VolumeCheck {
@@ -34,6 +34,6 @@ export function volumeCheck(deals: MappedDeal[], now: Date = new Date()): Volume
     leadVolumeSufficient: sufficient,
     warning: sufficient
       ? null
-      : `Only ${round(leadsPerMonth, 1)} leads per month. Smart Bidding needs roughly ${MIN_LEADS_PER_MONTH}+ to learn from value signals — below that, bidding stays noisy no matter how good the values are.`,
+      : `Only ${round(leadsPerMonth, 1)} leads per month. Smart Bidding needs roughly ${MIN_LEADS_PER_MONTH}+ to learn from value signals - below that, bidding stays noisy no matter how good the values are.`,
   };
 }

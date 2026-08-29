@@ -34,7 +34,7 @@ export function money(n: number, currency = "USD", dp = 0): string {
 const pct = (n: number) => `${Math.round(n * 100)}%`;
 
 // ---------------------------------------------------------------------------
-// PANEL 1 — the hook
+// PANEL 1 - the hook
 // ---------------------------------------------------------------------------
 
 export function HookPanel({
@@ -120,8 +120,8 @@ export function HookPanel({
       </div>
 
       {/*
-        The blindness comparison. Flat grey is what Google sees today — one
-        number for every lead — against the real distribution in brand blue.
+        The blindness comparison. Flat grey is what Google sees today - one
+        number for every lead - against the real distribution in brand blue.
         The grey reading as grey is the message.
       */}
       <div className="border-t border-[var(--navy-line)] bg-black/15 p-6 sm:p-9">
@@ -201,14 +201,14 @@ export function HookPanel({
 }
 
 // ---------------------------------------------------------------------------
-// PANEL 2 — the value model
+// PANEL 2 - the value model
 // ---------------------------------------------------------------------------
 
 /**
  * One multiplier, editable.
  *
  * Marketers do not trust a number they cannot argue with, so every multiplier
- * is a field rather than a label — with the sample size, close rate and median
+ * is a field rather than a label - with the sample size, close rate and median
  * deal behind it sitting right there, and a one-click way back to what we
  * fitted.
  */
@@ -325,7 +325,7 @@ function FactorRow({
               <span className="font-medium">{l.level}</span>
               <span className="mono text-[11.5px] text-[var(--muted)]">
                 n={l.sampleSize} · {(l.closeRate * 100).toFixed(1)}% close ·{" "}
-                {l.medianWonAmount !== null ? money(l.medianWonAmount, currency) : "—"} median
+                {l.medianWonAmount !== null ? money(l.medianWonAmount, currency) : "-"} median
               </span>
             </span>
             <MultiplierCell
@@ -338,7 +338,7 @@ function FactorRow({
         ))}
         {thin.length > 0 && (
           <p className="mt-0.5 text-[11.5px] text-[var(--muted)]">
-            {thin.map((l) => `${l.level} (n=${l.sampleSize})`).join(", ")} —{" "}
+            {thin.map((l) => `${l.level} (n=${l.sampleSize})`).join(", ")} -{" "}
             {thin.length === 1 ? "too few deals" : "too few deals each"} to price, so
             {thin.length === 1 ? " it gets" : " they get"} the base value.
           </p>
@@ -377,7 +377,7 @@ export function ValueModelPanel({
           Built only from what is knowable the moment a lead arrives. Every multiplier
           comes from your own closed deals, and no number here is one you cannot trace
           back to rows in your file.{" "}
-          {onOverride && <>Disagree with one? Type over it — the table below updates as you go.</>}
+          {onOverride && <>Disagree with one? Type over it - the table below updates as you go.</>}
         </p>
       </div>
 
@@ -409,7 +409,7 @@ export function ValueModelPanel({
             No attribute in this file predicts value strongly enough to use.
           </p>
           <p className="mt-1 max-w-[72ch] text-[13.5px] text-[var(--muted)]">
-            Every lead gets the same value —{" "}
+            Every lead gets the same value -{" "}
             <span className="mono font-semibold text-[var(--foreground)]">
               {money(model.baseValue, currency)}
             </span>
@@ -424,7 +424,7 @@ export function ValueModelPanel({
           {/* The stack is the summary the signals list explains, so it stays
               in view while that list scrolls past it. */}
           <div className="card p-5 sm:p-6 lg:sticky lg:top-20">
-            <p className="label mb-3.5">The rule stack — best case</p>
+            <p className="label mb-3.5">The rule stack - best case</p>
             <div className="grid gap-1.5">
               <div className="flex items-baseline justify-between gap-3 pb-1">
                 <span className="text-[13.5px] font-semibold">Base value</span>
@@ -441,7 +441,7 @@ export function ValueModelPanel({
                     </span>
                     <span className="mono block text-[11px] text-[var(--muted)]">
                       n={s.sampleSize}, {(s.closeRate * 100).toFixed(1)}% close,{" "}
-                      {s.medianWonAmount !== null ? money(s.medianWonAmount, currency) : "—"} median
+                      {s.medianWonAmount !== null ? money(s.medianWonAmount, currency) : "-"} median
                     </span>
                   </span>
                   <span className="mono shrink-0 text-[14px] font-bold text-[var(--primary)]">
@@ -542,7 +542,7 @@ export function ValueModelPanel({
                     <td>
                       {v.steps.length === 0 ? (
                         <span className="text-[12.5px] italic text-[var(--muted)]">
-                          no priced signals — base value
+                          no priced signals - base value
                         </span>
                       ) : (
                         <span className="flex flex-wrap gap-1">
@@ -573,7 +573,7 @@ export function ValueModelPanel({
 }
 
 // ---------------------------------------------------------------------------
-// PANEL 3 — wiring it up
+// PANEL 3 - wiring it up
 // ---------------------------------------------------------------------------
 
 export function WiringPanel({
@@ -618,7 +618,7 @@ export function WiringPanel({
             {match.isTrackingGap ? (
               <>
                 of your leads carry a click ID or usable email. Without one we cannot
-                attach a value to the ad click — this is the first thing to fix.
+                attach a value to the ad click - this is the first thing to fix.
               </>
             ) : (
               <>
@@ -752,7 +752,7 @@ export function DroppedFactorsSection({ model }: { model: ValueModel }) {
 
 /**
  * Answers the claims made at intake, one by one, whether or not they survived.
- * A refuted claim is the most useful line in the report — it is the moment the
+ * A refuted claim is the most useful line in the report - it is the moment the
  * advertiser learns their own data disagrees with them.
  */
 export function ClaimsTestedSection({ model }: { model: ValueModel }) {
@@ -802,7 +802,7 @@ export function ClaimsTestedSection({ model }: { model: ValueModel }) {
                   </>
                 ) : (
                   <>
-                    {f.label} did not hold up — {f.droppedReason}. We left it out
+                    {f.label} did not hold up - {f.droppedReason}. We left it out
                     rather than bid on it.
                   </>
                 )}
@@ -833,7 +833,7 @@ export function ClaimsTestedSection({ model }: { model: ValueModel }) {
  *
  * The cap is the one place the product deliberately reports a number lower
  * than the truth, so the deals it clipped and the amount it clipped them by
- * have to be inspectable — otherwise it is exactly the kind of invisible
+ * have to be inspectable - otherwise it is exactly the kind of invisible
  * adjustment the rest of the product refuses to make.
  */
 export function ClippedOutliersSection({
@@ -864,7 +864,7 @@ export function ClippedOutliersSection({
         <span className="mono font-semibold text-[var(--foreground)]">
           {money(cap, currency)}
         </span>{" "}
-        — {spread.capMultiple}× your median won deal. It exists because Smart Bidding
+        - {spread.capMultiple}× your median won deal. It exists because Smart Bidding
         chases the largest values it sees, so a single unusual deal would pull spend
         toward whatever superficially resembled it.
       </p>
@@ -872,7 +872,7 @@ export function ClippedOutliersSection({
       {clippedWon.length === 0 && clippedSends.length === 0 ? (
         <div className="card px-4 py-3">
           <p className="text-[13px] text-[var(--muted)]">
-            Nothing in this file was above the cap. It is doing no work here — it is
+            Nothing in this file was above the cap. It is doing no work here - it is
             protection against the deal you have not closed yet.
           </p>
         </div>
@@ -927,7 +927,7 @@ export function ClippedOutliersSection({
           </>
         ) : (
           <>
-            No value about to be sent to Google reaches the cap — predicted values are
+            No value about to be sent to Google reaches the cap - predicted values are
             expectations at lead creation, so they sit well below closed-deal amounts.
           </>
         )}
@@ -940,7 +940,7 @@ export function ClippedOutliersSection({
  * What a lead becomes worth once it proves itself.
  *
  * Every other number in the report is fixed the moment a lead arrives. This is
- * the one that moves — and it only counts if it moves fast enough, so the
+ * the one that moves - and it only counts if it moves fast enough, so the
  * window is stated alongside it rather than buried.
  */
 export function EarlyGateSection({
@@ -969,7 +969,7 @@ export function EarlyGateSection({
           {/*
             The headline figure gets the same weight as the day-0 stack's, but
             deliberately not the same box. Folding the gate into the rule stack
-            would read as another arrival multiplier, and it is not one — it is
+            would read as another arrival multiplier, and it is not one - it is
             an adjustment sent days later to a conversion Google already has.
           */}
           <div className="grid gap-5 border-b border-[var(--border)] bg-[var(--primary-softer)] p-5 sm:grid-cols-[auto_1fr] sm:items-center sm:gap-8 sm:p-6">
@@ -1048,7 +1048,7 @@ export function EarlyGateSection({
               <div className="flex gap-2.5">
                 <span aria-hidden className="mt-[3px] shrink-0">
                   <span className="flex size-[18px] items-center justify-center rounded-full bg-[var(--surface-sunken)] text-[11px] font-bold text-[var(--muted)]">
-                    —
+                    -
                   </span>
                 </span>
                 <p className="text-[13px] text-[var(--muted-strong)]">
@@ -1114,7 +1114,7 @@ export function AttributionNote() {
       <p className="text-[13.5px] font-bold">How we treat your source data</p>
       <p className="mt-1 max-w-[76ch] text-[13.5px] leading-relaxed text-[var(--muted)]">
         Your CRM&apos;s source labels are used for channel insight only. They are not used
-        to value your leads — attribution fields are frequently overwritten by later
+        to value your leads - attribution fields are frequently overwritten by later
         touches and are not reliable enough to price a conversion. Lead values here are
         derived only from attributes present when the lead arrived.
       </p>

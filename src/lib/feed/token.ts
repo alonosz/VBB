@@ -3,8 +3,8 @@ import { sha256Hex } from "@/lib/export/googleAds";
 /**
  * Feed tokens.
  *
- * The token is the whole credential — anyone holding the URL can fetch the
- * feed — so it is generated with 256 bits of entropy and stored only as a
+ * The token is the whole credential - anyone holding the URL can fetch the
+ * feed - so it is generated with 256 bits of entropy and stored only as a
  * hash. We can therefore never show it again after the moment it is created,
  * which is worth saying plainly in the UI rather than papering over.
  */

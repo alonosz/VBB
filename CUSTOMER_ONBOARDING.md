@@ -22,7 +22,7 @@ rather than invent a model. Better to find that out now.
 | Ad click IDs **or** emails | On most leads | How Google matches a lead to a click |
 | Google Ads | Running, with conversions imported | Nothing to bid on otherwise |
 
-Firmographics — company size, industry, job title — are what make the model
+Firmographics - company size, industry, job title - are what make the model
 *sharp*. Without them the model still works but has fewer rules and less
 spread. That is worth saying out loud before they expect miracles.
 
@@ -37,7 +37,7 @@ back when they have more history.
 Go to `<your-domain>/admin`, sign in with your admin password, type their name
 and click **Create**.
 
-Copy the `vbb_ws_…` key it shows. It appears once and cannot be shown again —
+Copy the `vbb_ws_…` key it shows. It appears once and cannot be shown again -
 only a hash is stored.
 
 (There is a terminal equivalent, `npm run workspace -- create "Name"`, if you
@@ -46,7 +46,7 @@ prefer it.)
 Send it to them with a line like:
 
 > This is your workspace key. It opens your status page at
-> `<your-domain>/workspace` — keep it somewhere safe. It is not the feed link
+> `<your-domain>/workspace` - keep it somewhere safe. It is not the feed link
 > that goes into Google Ads; that comes later and is a different thing.
 
 ---
@@ -55,7 +55,7 @@ Send it to them with a line like:
 
 **They do this.** `<your-domain>/workspace`, paste the key.
 
-It will say no feed has been published yet. That is correct — it also confirms
+It will say no feed has been published yet. That is correct - it also confirms
 their key works before you spend time on anything else.
 
 ---
@@ -65,7 +65,7 @@ their key works before you spend time on anything else.
 **They do this.** Any CSV of deals or opportunities. From HubSpot:
 Sales → Deals → the "…" menu → Export.
 
-Ask for **all** deals with a close date, not just recent ones — the model is
+Ask for **all** deals with a close date, not just recent ones - the model is
 fitted on history.
 
 They should not filter, tidy, or rename columns. Bad rows are reported rather
@@ -77,16 +77,16 @@ than silently dropped, and the product reads column names it recognises.
 
 `<your-domain>/diagnostic`. Five steps:
 
-1. **Your business** — a paragraph on who their good customers are, plus sales
+1. **Your business** - a paragraph on who their good customers are, plus sales
    cycle and typical company size. The free text is checked against the data,
    never fed into the model.
-2. **Upload** — their CSV. Stays in their browser; no rows reach the server.
-3. **Map columns** — the product guesses; they confirm. Watch for the required
-   ones marked *Not found* — those block the analysis.
-4. **Your model** — the report. **This is the conversation.** Every multiplier
+2. **Upload** - their CSV. Stays in their browser; no rows reach the server.
+3. **Map columns** - the product guesses; they confirm. Watch for the required
+   ones marked *Not found* - those block the analysis.
+4. **Your model** - the report. **This is the conversation.** Every multiplier
    is editable and every number traces to a row count. If they disagree with
    one, change it there and watch the calibration adjust.
-5. **Connect** — publish the feed.
+5. **Connect** - publish the feed.
 
 If a refresh happens mid-way, their work is kept. A very large export may need
 re-selecting; the mapping survives regardless.
@@ -95,7 +95,7 @@ re-selecting; the mapping survives regardless.
 
 ## 5. Publish the feed and set up Google Ads
 
-At step 5 they click **Generate my feed URL**. Copy it — it is shown once.
+At step 5 they click **Generate my feed URL**. Copy it - it is shown once.
 
 Then in Google Ads, in this order:
 
@@ -121,7 +121,7 @@ data source → **HTTPS**.
 **c. The step everyone skips**
 Their campaign has to run **Maximize conversion value** or **Target ROAS**.
 On Maximize conversions or Target CPA, Google reads every value and bids on
-none of them. Leave Target ROAS empty at first — set a target once there is
+none of them. Leave Target ROAS empty at first - set a target once there is
 history to base it on.
 
 ---
@@ -152,11 +152,11 @@ whenever they want new leads sent.
 
 Two checks, a day apart.
 
-**Same day** — their workspace page should show the feed active, a model with a
+**Same day** - their workspace page should show the feed active, a model with a
 fitted date, and HubSpot connected. It will say Google has not collected yet;
 that is normal.
 
-**Next day** — the workspace page should show:
+**Next day** - the workspace page should show:
 
 - Google last collected, with a timestamp
 - One nightly run, status `ok`
@@ -174,7 +174,7 @@ If it does not, `OPERATOR_RUNBOOK.md` has every message and what to do.
   someone refits it deliberately. Re-running the diagnostic in a month shows
   what refitting *would* change before it changes anything.
 - **Late outcomes do not move past bids.** A deal closing 40 days later cannot
-  change what was bid on it — Google ignores adjustments after 7 days. It
+  change what was bid on it - Google ignores adjustments after 7 days. It
   improves the *next* refit instead. The workspace page counts these as
   "Too late", which is expected, not a fault.
 

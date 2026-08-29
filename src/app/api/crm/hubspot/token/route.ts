@@ -12,7 +12,7 @@ import { HubSpotClient, verifyAccess } from "@/lib/sync/hubspot/client";
  *
  * OAuth exists for connecting other people's portals. For an advertiser
  * connecting their own, it is a developer account, an app, a redirect URL and
- * a review cycle to achieve what a pasted token does immediately — so this
+ * a review cycle to achieve what a pasted token does immediately - so this
  * path exists, and the sync treats the result identically. A private token has
  * no refresh and no expiry, so the run simply never renews it.
  *
@@ -22,8 +22,8 @@ import { HubSpotClient, verifyAccess } from "@/lib/sync/hubspot/client";
  * screen is still open.
  *
  * Authorised by the workspace key. This route used to resolve the feed by its
- * own token, which meant anyone holding a feed URL — a link that lives in a
- * Google Ads configuration screen — could attach their own HubSpot portal to
+ * own token, which meant anyone holding a feed URL - a link that lives in a
+ * Google Ads configuration screen - could attach their own HubSpot portal to
  * someone else's feed and push a stranger's leads into their account.
  */
 
@@ -67,7 +67,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, error: "Paste the private app token." }, { status: 400 });
   }
 
-  // A feed URL, if one was sent, is still checked against this workspace —
+  // A feed URL, if one was sent, is still checked against this workspace -
   // the page that has one should not be able to quietly connect somewhere
   // else. But it is no longer *required*: the connection belongs to the
   // customer, and the workspace key already says which customer this is.

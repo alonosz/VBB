@@ -9,7 +9,7 @@ import type { FeedIdentifier, FeedRow } from "./types";
 /**
  * The file Google fetches.
  *
- * Same format as the manual download, because it is the same import — the only
+ * Same format as the manual download, because it is the same import - the only
  * difference is who does the fetching. Column names are Google's and must match
  * its template exactly or the whole file is rejected.
  */

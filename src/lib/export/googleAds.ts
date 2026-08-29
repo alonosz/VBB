@@ -4,7 +4,7 @@ import type { ValuedLead } from "@/lib/analysis/valueModel";
 /**
  * Google Ads Click Conversion Import.
  *
- * The column names below are Google's, not ours — they must match the spec
+ * The column names below are Google's, not ours - they must match the spec
  * exactly or the import is rejected. Conversion Time must carry an explicit
  * offset; a bare local timestamp is the most common reason an upload fails.
  */
@@ -67,7 +67,7 @@ export interface ModelExportResult {
  *
  * This is the whole point of the product: an individual conversion carrying
  * what that specific lead was worth. Leads without a usable identifier or a
- * create date are skipped and counted — never emitted with a placeholder, and
+ * create date are skipped and counted - never emitted with a placeholder, and
  * never emitted at zero, which would tell Google the lead was worthless rather
  * than unmeasurable.
  */

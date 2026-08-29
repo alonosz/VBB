@@ -6,7 +6,7 @@ import type { IntakeProposal } from "./proposal";
  *
  * The header heuristics are evidence about the file; the assistant's proposal
  * is evidence about what the advertiser meant. Where the heuristics are
- * confident they win — they read the actual values. Where they found nothing
+ * confident they win - they read the actual values. Where they found nothing
  * or were unsure, the proposal fills the gap. Where the two disagree, the
  * disagreement is shown rather than resolved silently, because the person
  * looking at the screen is the only one who knows their CRM.
@@ -47,7 +47,7 @@ export function applyProposal(
     const field = byKey.get(key);
     if (!field) continue;
     if (field.column === suggestion.column) {
-      // Agreement is worth saying out loud — it is the cheapest confidence
+      // Agreement is worth saying out loud - it is the cheapest confidence
       // the user can get that the mapping is right.
       field.reason = `${field.reason ?? "Matched by column name"} · your description agrees`;
       continue;
@@ -61,7 +61,7 @@ export function applyProposal(
     }
 
     if (field.column && field.source !== "assistant" && (field.confidence ?? 0) >= HEURISTIC_TRUST_FLOOR) {
-      field.disagreement = `Your description suggests "${suggestion.column}" instead. We kept "${field.column}" because its values match — change it if we got it wrong.`;
+      field.disagreement = `Your description suggests "${suggestion.column}" instead. We kept "${field.column}" because its values match - change it if we got it wrong.`;
       disagreed.push(key);
       continue;
     }
@@ -111,7 +111,7 @@ export interface ResolvedHypotheses {
 
 /**
  * A claim about job titles is a claim about the seniority factor we already
- * fit — it should sharpen the report, not add a duplicate rule. Only a claim
+ * fit - it should sharpen the report, not add a duplicate rule. Only a claim
  * about a column we have no factor for becomes a new custom signal.
  */
 const CORE_FACTOR_FOR_FIELD: Partial<Record<FieldKey, string>> = {
@@ -136,7 +136,7 @@ export function resolveHypotheses(
   for (const candidate of proposal.candidateFactors) {
     const fieldKey = fieldForColumn.get(candidate.column);
 
-    // Source is never a value factor — the ad platform already knows the
+    // Source is never a value factor - the ad platform already knows the
     // channel, and CRM attribution is overwritten by later touches.
     if (fieldKey === "source") continue;
 

@@ -20,7 +20,7 @@ export interface MappedDeal {
   stage: string | null;
   source: string | null;
   email: string | null;
-  /** gclid / gbraid / wbraid — any Google click identifier. */
+  /** gclid / gbraid / wbraid - any Google click identifier. */
   clickId: string | null;
   /** Seconds spent in each stage, when the CRM exports it. */
   stageDurations?: Record<string, number>;
@@ -114,7 +114,7 @@ export interface EarlyGateResult {
   candidates: EarlyGateCandidate[];
   /** Best stage that fires reliably inside Google's 7-day window. */
   recommended: EarlyGateCandidate | null;
-  /** Present when no reliable gate exists — shown to the user verbatim. */
+  /** Present when no reliable gate exists - shown to the user verbatim. */
   message: string | null;
 }
 
@@ -224,7 +224,7 @@ export interface IcpFitResult {
   traits: IcpTraits | null;
   matching: SegmentStats | null;
   nonMatching: SegmentStats | null;
-  /** True when either segment is under 20 deals — phrasing must hedge. */
+  /** True when either segment is under 20 deals - phrasing must hedge. */
   lowConfidence: boolean;
   /** Share of won revenue coming from ICP-matching deals, 0-1. */
   wonRevenueShareMatching: number | null;
@@ -255,7 +255,7 @@ export interface ShadowRoasRow {
   googleSeesValue: number;
   wonDeals: number;
   actualValue: number;
-  /** actualValue per lead — the number Google should be bidding on. */
+  /** actualValue per lead - the number Google should be bidding on. */
   actualValuePerLead: number;
 }
 

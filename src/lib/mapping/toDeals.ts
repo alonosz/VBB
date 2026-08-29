@@ -36,7 +36,7 @@ const LOST_PATTERNS = /\b(lost|closed lost|dead|disqualified|rejected|churn)\b/i
 /**
  * Derives outcome from an explicit outcome column when present, otherwise
  * from the stage name. Anything unrecognized is "open" rather than a guess in
- * either direction — miscounting a lost deal as won would inflate every close
+ * either direction - miscounting a lost deal as won would inflate every close
  * rate in the report.
  */
 export function deriveOutcome(
@@ -53,7 +53,7 @@ export function deriveOutcome(
 
 /**
  * Converts an amount into the reporting currency. Returns undefined when the
- * row's currency has no rate — the caller decides whether that excludes the
+ * row's currency has no rate - the caller decides whether that excludes the
  * row, and we never fall back to treating it as 1:1.
  */
 function convertAmount(
@@ -88,7 +88,7 @@ export interface ToDealsOptions {
 /**
  * Builds the per-stage timing maps for one row. Durations are normalized to
  * seconds; entered-dates become days since creation. A stage only appears
- * when its value actually parsed — a blank cell means "we don't know when
+ * when its value actually parsed - a blank cell means "we don't know when
  * this happened", not "day zero".
  */
 function stageTimingFor(
@@ -125,7 +125,7 @@ function stageTimingFor(
 
 /**
  * Turns confirmed column mappings into the normalized shape the analysis
- * engine consumes. Every dropped row is recorded with a reason — nothing
+ * engine consumes. Every dropped row is recorded with a reason - nothing
  * disappears silently, and nothing is invented to fill a gap.
  */
 export function rowsToDeals(opts: ToDealsOptions): MappingResult {
@@ -203,7 +203,7 @@ export function rowsToDeals(opts: ToDealsOptions): MappingResult {
 
     const employeeRaw = cEmployees ? parseAmount(row[cEmployees]) : null;
 
-    // Only columns that actually hold a value on this row become signals — a
+    // Only columns that actually hold a value on this row become signals - a
     // blank cell is an unknown level, not a level called "".
     const signals: Record<string, string> = {};
     for (const c of signalColumns) {

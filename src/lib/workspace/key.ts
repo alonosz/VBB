@@ -11,7 +11,7 @@ import { sha256Hex } from "@/lib/export/googleAds";
  * both jobs, which meant anyone holding a URL that lives in a Google Ads
  * configuration screen could attach their own HubSpot to someone else's feed.
  *
- * Same construction as the feed token — 256 bits, stored only as a hash — so
+ * Same construction as the feed token - 256 bits, stored only as a hash - so
  * the security properties are the ones already tested, and the prefix is
  * visibly different so nobody pastes one where the other belongs.
  */
@@ -53,7 +53,7 @@ export async function hashWorkspaceKey(key: string): Promise<string> {
  * Whether a pasted string is even shaped like a workspace key.
  *
  * Checked before hashing so a pasted paragraph never becomes a database query,
- * and so the commonest mistake — pasting the feed URL here — gets told what it
+ * and so the commonest mistake - pasting the feed URL here - gets told what it
  * is rather than a flat "not found".
  */
 export function looksLikeWorkspaceKey(input: string): boolean {

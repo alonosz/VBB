@@ -2,7 +2,7 @@ import type { MappedDeal } from "./types";
 import { classifyDomain } from "./helpers";
 
 /**
- * Lead-intrinsic factors — attributes observable at form-fill time.
+ * Lead-intrinsic factors - attributes observable at form-fill time.
  *
  * Deal source is deliberately absent. Every lead we emit a value for arrived
  * via an ad click, and Google already knows which campaign produced it;
@@ -52,7 +52,7 @@ export function parseSeniority(title: string | null | undefined): SeniorityBand 
     if (patterns.some((re) => re.test(title))) return band;
   }
   // A title we can read but do not recognize as management is an individual
-  // contributor — that is information, not a gap.
+  // contributor - that is information, not a gap.
   return "IC";
 }
 
@@ -102,7 +102,7 @@ export const CORE_FACTORS: FactorDefinition[] = [
 /**
  * Any extra categorical column the user maps as a value signal (budget band,
  * timeline, use case…) becomes a candidate factor with the same treatment as
- * the built-ins — it must clear the same sample-size and lift thresholds.
+ * the built-ins - it must clear the same sample-size and lift thresholds.
  */
 export function customFactor(key: string, label: string): FactorDefinition {
   return {

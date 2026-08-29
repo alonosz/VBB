@@ -2,9 +2,9 @@
  * The workspace key, as the browser holds it.
  *
  * Written once by the workspace page and read by every screen that needs to
- * prove whose account it is acting for. One place, because the alternative —
+ * prove whose account it is acting for. One place, because the alternative -
  * each screen reaching into local storage with its own spelling of the key
- * name — is how a screen ends up silently unauthenticated, which is exactly
+ * name - is how a screen ends up silently unauthenticated, which is exactly
  * what happened to the connect page.
  */
 

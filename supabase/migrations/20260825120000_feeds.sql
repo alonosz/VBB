@@ -1,4 +1,4 @@
--- VBB Engine — tokenized Google Ads feed.
+-- VBB Engine - tokenized Google Ads feed.
 --
 -- What lives here is deliberately narrow: the finished rows Google will fetch,
 -- and nothing else. No CRM records, no contact names, no company names, no deal
@@ -10,7 +10,7 @@
 -- advertiser published, not something derived behind them.
 
 -- ---------------------------------------------------------------------------
--- feeds — one tokenized URL
+-- feeds - one tokenized URL
 -- ---------------------------------------------------------------------------
 
 create table if not exists public.feeds (
@@ -52,7 +52,7 @@ comment on table public.feeds is
   'One tokenized Google Ads feed URL. The token is stored only as a SHA-256 hash.';
 
 -- ---------------------------------------------------------------------------
--- feed_rows — exactly what Google fetches
+-- feed_rows - exactly what Google fetches
 -- ---------------------------------------------------------------------------
 
 create table if not exists public.feed_rows (
@@ -72,7 +72,7 @@ create table if not exists public.feed_rows (
   model_id text not null,
 
   -- 'conversion' is a new lead. 'adjustment' restates one already sent, and is
-  -- only ever written when the emit rules allowed it — a value change over 20%
+  -- only ever written when the emit rules allowed it - a value change over 20%
   -- on a conversion under 7 days old. Google ignores anything later, so nothing
   -- later is written.
   kind text not null default 'conversion',
@@ -105,7 +105,7 @@ create table if not exists public.feed_rows (
 );
 
 comment on table public.feed_rows is
-  'The finished Google Ads conversion rows for a feed. Hashed identifiers only — CHECK constraints make an unhashed address unstorable.';
+  'The finished Google Ads conversion rows for a feed. Hashed identifiers only - CHECK constraints make an unhashed address unstorable.';
 
 -- Republishing must not duplicate a conversion, but an adjustment to the same
 -- conversion is a distinct row.
@@ -116,7 +116,7 @@ create index if not exists feed_rows_by_feed
   on public.feed_rows (feed_id, conversion_time desc);
 
 -- ---------------------------------------------------------------------------
--- feed_fetches — the log, which is also the rate limiter
+-- feed_fetches - the log, which is also the rate limiter
 -- ---------------------------------------------------------------------------
 
 create table if not exists public.feed_fetches (

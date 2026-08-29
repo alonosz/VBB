@@ -4,7 +4,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 /**
- * Tests run against public/vbb.js itself — the exact file a client pastes into
+ * Tests run against public/vbb.js itself - the exact file a client pastes into
  * their site. Testing a re-implementation would prove nothing about the thing
  * that ships.
  */
@@ -125,7 +125,7 @@ describe("filling forms", () => {
 });
 
 describe("forms that appear later", () => {
-  it("fills a form injected after load — HubSpot, Typeform, Marketo", async () => {
+  it("fills a form injected after load - HubSpot, Typeform, Marketo", async () => {
     load(`?gclid=${GCLID}`);
     expect(document.querySelector('input[name="gclid"]')).toBeNull();
 

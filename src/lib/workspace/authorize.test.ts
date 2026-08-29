@@ -84,7 +84,7 @@ describe("authorizeWorkspace", () => {
   });
 });
 
-describe("feedInWorkspace — the isolation boundary", () => {
+describe("feedInWorkspace - the isolation boundary", () => {
   it("admits a feed the workspace owns", async () => {
     const { northridge } = await twoCustomers();
     const feeds = new InMemoryFeedRepository();
@@ -101,7 +101,7 @@ describe("feedInWorkspace — the isolation boundary", () => {
     await feedFor(feeds, acme, "b".repeat(64));
 
     // Acme's key is real and their workspace is active. It still must not
-    // reach Northridge's feed — this is the whole boundary.
+    // reach Northridge's feed - this is the whole boundary.
     const result = await feedInWorkspace(feeds, theirs.id, acme);
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.status).toBe(404);
@@ -136,7 +136,7 @@ describe("key shapes", () => {
     expect(keys.size).toBe(50);
   });
 
-  it("stores only a hash — the key itself is never derivable from it", async () => {
+  it("stores only a hash - the key itself is never derivable from it", async () => {
     const { key, keyHash, keyPrefix } = await generateWorkspaceKey();
     expect(keyHash).toMatch(/^[0-9a-f]{64}$/);
     expect(keyHash).not.toContain(key);

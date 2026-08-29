@@ -6,14 +6,14 @@ import { serveFeed } from "@/lib/feed/handlers";
  * The feed URL Google Ads will actually accept.
  *
  * Google's HTTPS data source validates the file extension from the end of the
- * URL, and rejects anything that does not finish in .csv or .tsv — a query
+ * URL, and rejects anything that does not finish in .csv or .tsv - a query
  * string on the end fails with "Unable to read file format". So the token moves
  * into the path and the URL ends in .csv:
  *
  *   /v1/feeds/google-ads/vbb_live_xxxxx.csv
  *
  * Google's connection form also asks for a username and password. Those are
- * HTTP Basic credentials, so the token is accepted there too — letting an
+ * HTTP Basic credentials, so the token is accepted there too - letting an
  * advertiser keep it out of the URL entirely if they would rather.
  */
 
@@ -32,7 +32,7 @@ export function tokenFromBasicAuth(header: string | null): string | null {
 
   const encoded = header.slice(6).trim();
   // Node's base64 decoder does not throw on malformed input, it returns
-  // mojibake — which would then be handed on as if it were a token. So the
+  // mojibake - which would then be handed on as if it were a token. So the
   // encoding is checked before it is trusted.
   if (!/^[A-Za-z0-9+/]+={0,2}$/.test(encoded)) return null;
 

@@ -45,7 +45,7 @@ describe("what the operator is told to do", () => {
     expect(first.action).toMatch(/Maximize conversion value/);
   });
 
-  it("every problem carries a fix — never a bare status", () => {
+  it("every problem carries a fix - never a bare status", () => {
     const cases = [
       actions({ feed: null }),
       actions({ model: null }),

@@ -10,7 +10,7 @@ import { round } from "@/lib/analysis/helpers";
 import type { GateValue } from "@/lib/analysis/gateValue";
 
 /**
- * A saved value model — fit once, applied unchanged.
+ * A saved value model - fit once, applied unchanged.
  *
  * Refitting on every upload is fine for a one-off diagnostic and wrong for a
  * daily loop: a 30-day window one morning and a 90-day window the next produce
@@ -19,7 +19,7 @@ import type { GateValue } from "@/lib/analysis/gateValue";
  * target.
  *
  * So the model becomes an artifact. It is fitted, saved, and applied frozen
- * until the data has moved enough to justify refitting — and how far it has
+ * until the data has moved enough to justify refitting - and how far it has
  * moved is measured and shown, not guessed at.
  */
 
@@ -28,7 +28,7 @@ export const MODEL_FORMAT_VERSION = 1;
 /**
  * How far a multiplier may drift before the saved model is stale.
  *
- * This is not the >20% adjustment threshold from the Day-0 rule — that governs
+ * This is not the >20% adjustment threshold from the Day-0 rule - that governs
  * whether a single conversion's value is worth resending. This governs whether
  * the rules themselves should be refitted. They share a number only because
  * both ask "is this difference large enough to act on", and 20% is where a
@@ -56,7 +56,7 @@ export interface SavedFactor {
  * The frozen early gate.
  *
  * A scheduled run has to be able to apply the gate, and it must not refit to
- * find one — refitting nightly is exactly what principle 8 forbids. So the
+ * find one - refitting nightly is exactly what principle 8 forbids. So the
  * gate is frozen with the rest of the stack.
  *
  * Added as an optional field rather than a new format version: a model saved
@@ -91,7 +91,7 @@ export interface SavedValueModel {
   cap: number | null;
   factors: SavedFactor[];
   /**
-   * Absent when the data supported no gate — which is the common case, and is
+   * Absent when the data supported no gate - which is the common case, and is
    * not a defect. The day-0 stack prices the lead either way.
    */
   gate?: SavedGate | null;
@@ -116,7 +116,7 @@ export interface SaveOptions {
   now?: Date;
   modelId?: string;
   /**
-   * Multipliers the user typed over. Saving has to freeze what is on screen —
+   * Multipliers the user typed over. Saving has to freeze what is on screen -
    * saving the fitted numbers instead would hand back a model that prices
    * leads differently from the one they just approved.
    */
@@ -195,7 +195,7 @@ function newModelId(): string {
 }
 
 // ---------------------------------------------------------------------------
-// Loading — a saved model from disk is untrusted input like any other
+// Loading - a saved model from disk is untrusted input like any other
 // ---------------------------------------------------------------------------
 
 export interface LoadResult {
@@ -215,7 +215,7 @@ export function loadSavedModel(raw: unknown): LoadResult {
   const r = raw as Record<string, unknown>;
 
   if (num(r.formatVersion) === null) {
-    return { model: null, error: "That file isn't a saved model — it has no format version." };
+    return { model: null, error: "That file isn't a saved model - it has no format version." };
   }
   if (r.formatVersion !== MODEL_FORMAT_VERSION) {
     return {
@@ -332,7 +332,7 @@ export function loadSavedModel(raw: unknown): LoadResult {
 
 /**
  * Rebuilds the in-memory shape the valuing code already understands, with
- * every multiplier frozen at what was saved. Nothing is refitted here — the
+ * every multiplier frozen at what was saved. Nothing is refitted here - the
  * whole point is that today's rows do not move today's prices.
  */
 export function savedModelToValueModel(saved: SavedValueModel): ValueModel {
@@ -427,7 +427,7 @@ export function checkApplicability(
 }
 
 // ---------------------------------------------------------------------------
-// Drift — has the data moved enough to justify refitting?
+// Drift - has the data moved enough to justify refitting?
 // ---------------------------------------------------------------------------
 
 export interface LevelDrift {
@@ -462,7 +462,7 @@ function relativeChange(from: number, to: number): number {
 
 /**
  * Compares a saved model against what the same engine would fit on today's
- * file. Nothing here changes a value — it only answers whether the saved rules
+ * file. Nothing here changes a value - it only answers whether the saved rules
  * still describe the business, and says why.
  */
 export function compareToFresh(saved: SavedValueModel, fresh: ValueModel): ModelDrift {

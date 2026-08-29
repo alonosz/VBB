@@ -32,7 +32,7 @@ export interface IntakeResult extends IntakeOutcome {
  *
  * The assisted intake spends money on someone's behalf, so it belongs to a
  * customer. Without a key the endpoint refuses and the flow falls back to
- * header matching — the same path it already takes when no API key is
+ * header matching - the same path it already takes when no API key is
  * configured, so nobody is blocked by this.
  */
 export async function requestIntakeProposal(req: IntakeRequest): Promise<IntakeResult> {
@@ -72,7 +72,7 @@ export async function requestIntakeProposal(req: IntakeRequest): Promise<IntakeR
         reason:
           typeof d.reason === "string"
             ? d.reason
-            : "The mapping suggestion could not run — we used our own column matching instead.",
+            : "The mapping suggestion could not run - we used our own column matching instead.",
         sent,
       };
     }
@@ -89,7 +89,7 @@ export async function requestIntakeProposal(req: IntakeRequest): Promise<IntakeR
     return {
       status: "unavailable",
       proposal: EMPTY_PROPOSAL,
-      reason: "The mapping suggestion timed out — we used our own column matching instead.",
+      reason: "The mapping suggestion timed out - we used our own column matching instead.",
       sent,
     };
   } finally {

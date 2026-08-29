@@ -31,7 +31,7 @@ export function sourceEconomics(deals: MappedDeal[]): SourceEconomics[] {
     });
   }
 
-  // Rank by realized value — the number that decides where budget should go.
+  // Rank by realized value - the number that decides where budget should go.
   rows.sort((a, b) => b.totalWonValue - a.totalWonValue);
   return rows;
 }

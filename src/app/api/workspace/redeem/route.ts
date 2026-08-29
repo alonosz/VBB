@@ -7,7 +7,7 @@ import { generateWorkspaceKey } from "@/lib/workspace/key";
  * Spending a one-time link.
  *
  * This is the only route in the product that hands out a workspace key, and it
- * does so by minting one rather than reading one back — nothing anywhere
+ * does so by minting one rather than reading one back - nothing anywhere
  * stores a usable key, so there is nothing to read back.
  *
  * Deliberately unauthenticated: possession of an unspent, unexpired invite is
@@ -16,7 +16,7 @@ import { generateWorkspaceKey } from "@/lib/workspace/key";
  *
  * Every failure returns the same message. An attacker guessing tokens must not
  * learn from the response whether a token existed and was spent, existed and
- * expired, or never existed — that distinction is the whole value of guessing.
+ * expired, or never existed - that distinction is the whole value of guessing.
  * The operator can see which it was; the caller cannot.
  */
 
@@ -44,8 +44,8 @@ export async function POST(request: Request) {
 
   const token = typeof body.token === "string" ? body.token.trim() : "";
 
-  // Shape-checked before hashing, so a truncated link — the commonest failure,
-  // because mail clients wrap long URLs — never becomes a database query.
+  // Shape-checked before hashing, so a truncated link - the commonest failure,
+  // because mail clients wrap long URLs - never becomes a database query.
   if (!looksLikeInviteToken(token)) {
     return NextResponse.json(
       {

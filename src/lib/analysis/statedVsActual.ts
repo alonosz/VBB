@@ -4,7 +4,7 @@ import type { SizeFitResult } from "./statedProfile";
 
 /**
  * Compares what the user said about their business against what their data
- * shows. The gap is the hook — someone who believes their cycle is three
+ * shows. The gap is the hook - someone who believes their cycle is three
  * months and closes half their deals in nine days is bidding on the wrong
  * assumption entirely.
  *
@@ -57,7 +57,7 @@ function extractCycle(text: string): { min: number | null; max: number | null } 
   const unitAlt = Object.keys(UNIT_DAYS).join("|");
 
   // "2-3 months", "two to three weeks"
-  const range = new RegExp(`${NUM}\\s*(?:-|–|—|to)\\s*${NUM}\\s*(${unitAlt})\\b`, "i");
+  const range = new RegExp(`${NUM}\\s*(?:-|–|-|to)\\s*${NUM}\\s*(${unitAlt})\\b`, "i");
   const m = text.match(range);
   if (m) {
     const lo = toNumber(m[1]);
@@ -89,7 +89,7 @@ function extractVolume(text: string): { min: number | null; max: number | null }
   // read as lead volume.
   const range = text.match(
     new RegExp(
-      `${NUM}\\s*(?:-|–|—|to)\\s*${NUM}\\s*(?:new\\s+)?(?:leads|inquiries|enquiries|contacts|forms?)\\b`,
+      `${NUM}\\s*(?:-|–|-|to)\\s*${NUM}\\s*(?:new\\s+)?(?:leads|inquiries|enquiries|contacts|forms?)\\b`,
       "i"
     )
   );
@@ -199,13 +199,13 @@ export function buildComparisons(
   icp: IcpFitResult,
   /**
    * Claims read out of the intake text by the assistant. They replace the
-   * regex reading field by field — never partially, so a stated cycle always
+   * regex reading field by field - never partially, so a stated cycle always
    * comes from one reader or the other, not a blend of the two.
    */
   assisted?: Partial<StatedClaims>,
   /**
    * Claims typed straight into a field. They outrank both the assistant's
-   * reading and the regex, because they are not a reading of anything — the
+   * reading and the regex, because they are not a reading of anything - the
    * advertiser said them on purpose.
    */
   explicit?: { cycleDays?: number | null; sizeLabel?: string; sizeFit?: SizeFitResult }
@@ -236,7 +236,7 @@ export function buildComparisons(
       verdict: isGap ? "gap" : "confirmed",
       note: isGap
         ? actual < statedMid
-          ? `Half your won deals close inside ${actual} days. The long ones you remember are likely your biggest accounts — they're the exception, not the pattern.`
+          ? `Half your won deals close inside ${actual} days. The long ones you remember are likely your biggest accounts - they're the exception, not the pattern.`
           : `Deals are taking roughly ${Math.round(ratio)}× longer than you described, which changes whether real outcomes arrive in time to bid on.`
         : "Your read on this matches the data.",
     });
@@ -259,7 +259,7 @@ export function buildComparisons(
           ? "Comfortably above the volume floor needed for reliable value-based bidding."
           : "Matches what you said, but it's below the volume Smart Bidding needs to learn from value signals."
         : actual < lo
-        ? "Fewer leads in this export than you described — check whether the file covers every source."
+        ? "Fewer leads in this export than you described - check whether the file covers every source."
         : "More leads in this export than you described.",
     });
   }
@@ -272,7 +272,7 @@ export function buildComparisons(
         (a, b) =>
           (b.closeRate! * b.medianWonAmount!) - (a.closeRate! * a.medianWonAmount!)
       );
-    // Top half, but never the whole list — with two sources, naming the
+    // Top half, but never the whole list - with two sources, naming the
     // weaker one has to read as a gap, not a confirmation.
     const topCount = Math.min(Math.ceil(ranked.length / 2), Math.max(1, ranked.length - 1));
     const topHalf = ranked.slice(0, topCount);
@@ -293,7 +293,7 @@ export function buildComparisons(
       note: allTop
         ? "They rank at the top on expected value per lead. Your instinct here is right."
         : hits.length > 0
-        ? "Partly right — one of the sources you named is not among your strongest by expected value."
+        ? "Partly right - one of the sources you named is not among your strongest by expected value."
         : "The sources you named aren't your strongest by expected value per lead.",
     });
   }
@@ -310,7 +310,7 @@ export function buildComparisons(
       note:
         (strong
           ? `${pct}% of won revenue comes from the profile you described.`
-          : `Only ${pct}% of won revenue matches that profile — the rest came from customers you aren't deliberately bidding for.`) +
+          : `Only ${pct}% of won revenue matches that profile - the rest came from customers you aren't deliberately bidding for.`) +
         (icp.lowConfidence
           ? " Based on a small number of deals, so treat it as a hint rather than a finding."
           : ""),
@@ -330,7 +330,7 @@ export function buildComparisons(
       note:
         (strong
           ? `${pct}% of your won revenue came from companies that size. You are bidding for the right ones.`
-          : `Only ${pct}% of your won revenue came from companies that size — the rest came from customers outside the range you named.`) +
+          : `Only ${pct}% of your won revenue came from companies that size - the rest came from customers outside the range you named.`) +
         (fit.lowConfidence
           ? " Based on few deals carrying a headcount, so treat it as a hint."
           : ""),

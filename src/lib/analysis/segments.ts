@@ -30,7 +30,7 @@ function bandFor(count: number): string {
  *
  * This is the empirical backing for Day-0 scoring: if corporate-domain leads
  * close at 3× the rate of free-webmail leads, that difference is knowable at
- * lead creation and can be priced immediately — no model required.
+ * lead creation and can be priced immediately - no model required.
  */
 export function domainValueDisparity(deals: MappedDeal[]): DomainValueDisparity {
   const withEmail = deals.filter((d) => classifyDomain(d.email) !== "unknown");
@@ -65,7 +65,7 @@ export function domainValueDisparity(deals: MappedDeal[]): DomainValueDisparity 
 }
 
 // ---------------------------------------------------------------------------
-// ICP extraction — deliberately loose keyword matching, no NLP
+// ICP extraction - deliberately loose keyword matching, no NLP
 // ---------------------------------------------------------------------------
 
 /**
@@ -98,7 +98,7 @@ const INDUSTRY_STEMS: { stem: string; label: string }[] = [
  * Titles resolve to a canonical singular label, so "ops directors" in the
  * intake text still matches a "Operations Director" row in the CRM.
  *
- * Bare generic tokens ("lead") are deliberately excluded — "we want more leads
+ * Bare generic tokens ("lead") are deliberately excluded - "we want more leads
  * please" is not a statement about buyer seniority, and matching it would
  * silently narrow the ICP comparison to nothing.
  */
@@ -134,7 +134,7 @@ function containsStem(haystack: string, stem: string): boolean {
 
 /**
  * Pulls rough ICP traits out of free-text intake. This is intentionally a
- * keyword scan, not a parser — the goal is a usable hint, and anything it
+ * keyword scan, not a parser - the goal is a usable hint, and anything it
  * misses simply means the ICP check skips rather than guesses.
  */
 export function extractIcpTraits(text: string | undefined): IcpTraits | null {
@@ -144,7 +144,7 @@ export function extractIcpTraits(text: string | undefined): IcpTraits | null {
   // Employee range: "200-1000 employees", "200 to 1000 employees".
   let employeeMin: number | null = null;
   let employeeMax: number | null = null;
-  const range = lower.match(/(\d[\d,]*)\s*(?:-|–|—|to)\s*(\d[\d,]*)\s*(?:\+)?\s*(?:employees|people|staff|headcount|emp\b)/);
+  const range = lower.match(/(\d[\d,]*)\s*(?:-|–|-|to)\s*(\d[\d,]*)\s*(?:\+)?\s*(?:employees|people|staff|headcount|emp\b)/);
   if (range) {
     employeeMin = Number(range[1].replace(/,/g, ""));
     employeeMax = Number(range[2].replace(/,/g, ""));

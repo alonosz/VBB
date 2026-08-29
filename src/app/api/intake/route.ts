@@ -23,7 +23,7 @@ export const maxDuration = 15;
 
 /**
  * A fast model on purpose. The job is reading a short description against a
- * list of column descriptions — it needs comprehension, not depth — and the
+ * list of column descriptions - it needs comprehension, not depth - and the
  * flow only waits a few seconds for it, so latency matters more here than
  * headroom. Override with VBB_INTAKE_MODEL if you want a stronger one.
  */
@@ -96,7 +96,7 @@ export async function POST(request: Request) {
   const auth = await authorizeWorkspace(workspaces, body.workspaceKey);
   if (!auth.ok) {
     return fail(
-      "Open your workspace page first so we know whose account this is — until then we match columns by name only."
+      "Open your workspace page first so we know whose account this is - until then we match columns by name only."
     );
   }
 
@@ -146,22 +146,22 @@ export async function POST(request: Request) {
 
 /**
  * Errors are for the advertiser, not for a log. Each one says what happened
- * and what it means for their report — which is always "nothing, we used our
+ * and what it means for their report - which is always "nothing, we used our
  * own column matching instead".
  */
 function describeError(error: unknown): string {
   const fallback = "we used our own column matching instead";
   if (error instanceof Anthropic.AuthenticationError) {
-    return `The mapping suggestion is not set up correctly — ${fallback}.`;
+    return `The mapping suggestion is not set up correctly - ${fallback}.`;
   }
   if (error instanceof Anthropic.RateLimitError) {
-    return `The mapping suggestion hit a rate limit — ${fallback}.`;
+    return `The mapping suggestion hit a rate limit - ${fallback}.`;
   }
   if (error instanceof Anthropic.APIConnectionTimeoutError) {
-    return `The mapping suggestion took too long — ${fallback}.`;
+    return `The mapping suggestion took too long - ${fallback}.`;
   }
   if (error instanceof Anthropic.APIError) {
-    return `The mapping suggestion failed (${error.status ?? "no status"}) — ${fallback}.`;
+    return `The mapping suggestion failed (${error.status ?? "no status"}) - ${fallback}.`;
   }
-  return `The mapping suggestion could not run — ${fallback}.`;
+  return `The mapping suggestion could not run - ${fallback}.`;
 }

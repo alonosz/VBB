@@ -8,14 +8,14 @@ import { feedOrigin } from "@/lib/feed/origin";
 /**
  * Creating and listing customers.
  *
- * The one screen an operator needs that no workspace key can authorise —
+ * The one screen an operator needs that no workspace key can authorise -
  * creating a workspace is what brings a key into existence. Guarded by the
  * operator's own password, compared in constant time.
  *
  * The operator never sees a workspace key. Creating a customer produces an
  * invite link instead; the key is minted in the customer's own browser when
  * they click it. That keeps a live credential out of the operator's email, and
- * makes "they lost their key" a solvable problem — sending a new link rotates
+ * makes "they lost their key" a solvable problem - sending a new link rotates
  * the key, where before the only recovery was a new workspace, which orphans
  * the feed and model attached to the old one.
  */
@@ -108,7 +108,7 @@ export async function POST(request: Request) {
     // A workspace needs a key hash to exist, so one is minted and immediately
     // thrown away. Nobody is ever told it: redeeming the invite replaces it.
     // The row is never usable in the window before the link is clicked, which
-    // is the point — an unclicked invite grants nothing.
+    // is the point - an unclicked invite grants nothing.
     const placeholder = await generateWorkspaceKey();
     const workspace = await workspaces.create({
       name,

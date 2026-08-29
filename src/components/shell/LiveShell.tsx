@@ -11,7 +11,7 @@ import { AppHeader } from "@/components/shell/AppHeader";
  * Setup and live mode share the frame and differ in the middle. Setup shows
  * how much is left; here there is nothing left, so the middle is navigation
  * and the right-hand side says the model is live. That contrast is the whole
- * signal — a customer should be able to tell which mode they are in from a
+ * signal - a customer should be able to tell which mode they are in from a
  * glance at the top bar, without reading a word.
  *
  * Navigation is deliberately short. Overview is the home for a running

@@ -1,7 +1,7 @@
 /**
  * Workspace administration, for the operator.
  *
- * Creating a customer is the one thing that cannot be self-serve in a pilot —
+ * Creating a customer is the one thing that cannot be self-serve in a pilot -
  * someone decides who is a customer. That does not mean it should require SQL.
  *
  *   npx tsx scripts/workspace.ts list
@@ -9,7 +9,7 @@
  *   npx tsx scripts/workspace.ts suspend <workspace-id>
  *
  * Needs the same Supabase env vars the app uses. The key is printed once and
- * cannot be recovered afterwards — that is the point of storing only a hash.
+ * cannot be recovered afterwards - that is the point of storing only a hash.
  */
 
 import { createClient } from "@supabase/supabase-js";
@@ -69,7 +69,7 @@ async function main() {
     console.log("  Workspace key:");
     console.log(`  ${generated.key}\n`);
     console.log("  Send this to the customer. It is shown once and cannot be");
-    console.log("  recovered — only a hash is stored. If it is lost, create a");
+    console.log("  recovered - only a hash is stored. If it is lost, create a");
     console.log("  new workspace.\n");
     console.log("  It is NOT the feed URL. The feed URL goes to Google Ads;");
     console.log("  this key is how they sign in to their workspace page.\n");

@@ -10,8 +10,8 @@ import { assertStorableRow, type FeedIdentifier, type FeedRow } from "./types";
  * The request handling, separated from how the repository is obtained.
  *
  * The routes are thin wrappers that resolve Supabase from the environment;
- * everything worth getting right — token authorization, the rate limit, what a
- * failed fetch reveals, what the CSV contains — lives here where it can be
+ * everything worth getting right - token authorization, the rate limit, what a
+ * failed fetch reveals, what the CSV contains - lives here where it can be
  * driven end to end against an in-memory repository in tests.
  */
 
@@ -111,7 +111,7 @@ export interface PublishBody {
   rows?: unknown;
   /**
    * The saved model that priced these rows. Optional, because a one-off
-   * publish is complete without it — the rows are what Google fetches. It is
+   * publish is complete without it - the rows are what Google fetches. It is
    * what a later scheduled run needs in order to price new leads the same way,
    * so a feed published without one can be fetched but never refreshed on its
    * own.
@@ -201,7 +201,7 @@ export async function publishFeed(
     return bad((error as Error).message);
   }
   if (rows.length === 0) {
-    return bad("There are no leads to publish — none of them had both a usable identifier and a value.");
+    return bad("There are no leads to publish - none of them had both a usable identifier and a value.");
   }
 
   const { token, tokenHash, tokenPrefix } = await generateFeedToken();
@@ -222,7 +222,7 @@ export async function publishFeed(
 
     // The rows are already safely stored and are what Google fetches, so a
     // model that fails to store costs the feed its ability to refresh itself
-    // later — it does not cost the advertiser this publish. Say which happened
+    // later - it does not cost the advertiser this publish. Say which happened
     // rather than reporting a success that is only partly true.
     let modelStored = false;
     if (model) {
@@ -267,7 +267,7 @@ export async function publishFeed(
  * A published feed is a URL handed to a platform that fetches on its own
  * schedule. Between pasting it in and seeing conversions appear, the advertiser
  * has no way to tell the difference between "Google hasn't got round to it yet"
- * and "Google is rejecting it silently" — and those need opposite responses.
+ * and "Google is rejecting it silently" - and those need opposite responses.
  *
  * We already log every fetch, because counting them in a 24h window is the rate
  * limiter. So the answer is sitting in the database and simply was not being

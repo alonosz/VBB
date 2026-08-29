@@ -33,14 +33,14 @@ Postgres to prove it.
 
 ### The one place worth explaining
 
-`feed_models` holds figures derived from deal amounts — each level's median won
+`feed_models` holds figures derived from deal amounts - each level's median won
 amount, the base value, the outlier cap. These are **aggregates over at least
 25 resolved deals**, never an individual deal, and the model cannot work
 without them: they are what makes a multiplier explainable ("Manufacturing, 121
 deals, 32.2% close, median 6,800") rather than a bare number a customer has to
 take on faith.
 
-Level labels are category names from the customer's own CRM — "Manufacturing",
+Level labels are category names from the customer's own CRM - "Manufacturing",
 "201–1,000". Never notes, never free text.
 
 ---
@@ -50,7 +50,7 @@ Level labels are category names from the customer's own CRM — "Manufacturing",
 **In the customer's browser, and nowhere else.**
 
 The CSV is parsed, mapped, analysed and priced client-side. Only the finished
-rows — hashed identifier, time, value — are posted to the server. The server
+rows - hashed identifier, time, value - are posted to the server. The server
 cannot recompute a value because it does not have the data to recompute it
 from, which is the point: what Google receives is an artifact the customer
 published, not something derived behind them.
@@ -76,7 +76,7 @@ Four kinds, deliberately separated.
 | **Cron secret** | Vercel's scheduler | Trigger the nightly job | Environment only |
 
 **The feed token cannot change anything.** It reads a CSV. It was briefly able
-to do more — the CRM connect routes resolved a feed by its own token, meaning
+to do more - the CRM connect routes resolved a feed by its own token, meaning
 anyone with a feed URL could attach their own HubSpot to someone else's feed.
 That was found in the launch audit and closed: state-changing routes require
 the workspace key, and then check the feed belongs to that workspace.
@@ -88,7 +88,7 @@ a database leak hands nobody a working credential.
 
 ## Isolation between customers
 
-Every feed, model, connection and run belongs to a workspace by foreign key —
+Every feed, model, connection and run belongs to a workspace by foreign key -
 `client_id` is `NOT NULL` and enforced by the database, not by convention.
 
 A valid workspace key pointed at another customer's feed gets exactly the same
@@ -132,7 +132,7 @@ Exactly one, at upload, proposing which column is which. It receives:
 
 It never receives emails, names, phone numbers, addresses, click IDs, deal
 amounts (not even as a range), or free text. It never returns a value,
-multiplier, score or close rate — every figure in the product comes from the
+multiplier, score or close rate - every figure in the product comes from the
 deterministic engine reading the customer's own rows.
 
 Its output is untrusted: everything passes through a sanitiser that drops
@@ -179,7 +179,7 @@ Stated plainly rather than discovered later.
 
 ## Deleting a customer's data
 
-Deleting the workspace row removes everything by cascade — feeds, rows, models,
+Deleting the workspace row removes everything by cascade - feeds, rows, models,
 fetch log, CRM connection, run history.
 
 The customer's own data was never on our servers to begin with; what is deleted

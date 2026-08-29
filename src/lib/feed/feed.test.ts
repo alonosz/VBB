@@ -144,7 +144,7 @@ describe("first publish", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Republishing — the 7-day window
+// Republishing - the 7-day window
 // ---------------------------------------------------------------------------
 
 describe("republishing", () => {
@@ -172,7 +172,7 @@ describe("republishing", () => {
     expect(r.adjustments).toBe(1);
     expect(r.rows[0].kind).toBe("adjustment");
     expect(r.rows[0].value).toBe(2500);
-    // Same conversion, so the same key — the adjustment attaches to it.
+    // Same conversion, so the same key - the adjustment attaches to it.
     expect(r.rows[0].rowKey).toBe(previous[0].rowKey);
   });
 
@@ -197,7 +197,7 @@ describe("republishing", () => {
     expect(r.recalibrationOnly).toBe(1);
   });
 
-  it("treats the boundary as Google does — day 7 is already too late", async () => {
+  it("treats the boundary as Google does - day 7 is already too late", async () => {
     const previous = await sent(1000, ADJUSTMENT_WINDOW_DAYS);
     const r = await publish(
       [lead({ id: "1", value: 5000, clickId: "Cj0aaaaaaaaa", createdAt: day(ADJUSTMENT_WINDOW_DAYS) })],
@@ -370,7 +370,7 @@ describe("bestIdentifier", () => {
 });
 
 // ---------------------------------------------------------------------------
-// The gate — the only thing that moves a lead's value after it arrived
+// The gate - the only thing that moves a lead's value after it arrived
 // ---------------------------------------------------------------------------
 
 describe("the early gate", () => {
@@ -418,7 +418,7 @@ describe("the early gate", () => {
 
   it("counts a late gate as recalibration input, not a lost opportunity", async () => {
     const r = await publish([leadAt(30, 15)], { gate: GATE });
-    // Still a new lead, so it is sent — at its day-0 value, ungated.
+    // Still a new lead, so it is sent - at its day-0 value, ungated.
     expect(r.rows[0].value).toBe(1000);
     expect(r.gateTooLate).toBe(1);
   });
@@ -440,7 +440,7 @@ describe("the early gate", () => {
     expect(r.rows[0].value).toBe(1000);
   });
 
-  it("still respects the 20% floor — a weak gate move is not worth a row", async () => {
+  it("still respects the 20% floor - a weak gate move is not worth a row", async () => {
     const weak = { ...GATE, multiplier: 1.1 };
     const previous = (await publish([leadAt(2, null)])).rows;
     const r = await publish([leadAt(2, 1)], { previous, gate: weak });

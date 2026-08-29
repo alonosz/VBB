@@ -1,4 +1,4 @@
--- VBB Engine — one-paste setup for the Supabase SQL Editor.
+-- VBB Engine - one-paste setup for the Supabase SQL Editor.
 --
 -- GENERATED FILE. Do not edit by hand: it is the migrations in
 -- supabase/migrations/ concatenated in order, so that setting up a new project
@@ -13,7 +13,7 @@
 -- 20260825120000_feeds.sql
 -- ============================================================
 
--- VBB Engine — tokenized Google Ads feed.
+-- VBB Engine - tokenized Google Ads feed.
 --
 -- What lives here is deliberately narrow: the finished rows Google will fetch,
 -- and nothing else. No CRM records, no contact names, no company names, no deal
@@ -25,7 +25,7 @@
 -- advertiser published, not something derived behind them.
 
 -- ---------------------------------------------------------------------------
--- feeds — one tokenized URL
+-- feeds - one tokenized URL
 -- ---------------------------------------------------------------------------
 
 create table if not exists public.feeds (
@@ -67,7 +67,7 @@ comment on table public.feeds is
   'One tokenized Google Ads feed URL. The token is stored only as a SHA-256 hash.';
 
 -- ---------------------------------------------------------------------------
--- feed_rows — exactly what Google fetches
+-- feed_rows - exactly what Google fetches
 -- ---------------------------------------------------------------------------
 
 create table if not exists public.feed_rows (
@@ -87,7 +87,7 @@ create table if not exists public.feed_rows (
   model_id text not null,
 
   -- 'conversion' is a new lead. 'adjustment' restates one already sent, and is
-  -- only ever written when the emit rules allowed it — a value change over 20%
+  -- only ever written when the emit rules allowed it - a value change over 20%
   -- on a conversion under 7 days old. Google ignores anything later, so nothing
   -- later is written.
   kind text not null default 'conversion',
@@ -120,7 +120,7 @@ create table if not exists public.feed_rows (
 );
 
 comment on table public.feed_rows is
-  'The finished Google Ads conversion rows for a feed. Hashed identifiers only — CHECK constraints make an unhashed address unstorable.';
+  'The finished Google Ads conversion rows for a feed. Hashed identifiers only - CHECK constraints make an unhashed address unstorable.';
 
 -- Republishing must not duplicate a conversion, but an adjustment to the same
 -- conversion is a distinct row.
@@ -131,7 +131,7 @@ create index if not exists feed_rows_by_feed
   on public.feed_rows (feed_id, conversion_time desc);
 
 -- ---------------------------------------------------------------------------
--- feed_fetches — the log, which is also the rate limiter
+-- feed_fetches - the log, which is also the rate limiter
 -- ---------------------------------------------------------------------------
 
 create table if not exists public.feed_fetches (
@@ -197,27 +197,27 @@ comment on column public.feeds.identifier is
 -- 20260826090000_feed_models.sql
 -- ============================================================
 
--- VBB Engine — the saved model, stored server-side.
+-- VBB Engine - the saved model, stored server-side.
 --
 -- Until now the server could not price anything, and that was deliberate: the
 -- browser held the CRM data and the server held only what Google gets. A
 -- nightly sync breaks that symmetry, because a job that runs while nobody is
 -- watching has to price leads with no browser in the loop.
 --
--- What it stores is the artifact from src/lib/model/savedModel.ts — the frozen
+-- What it stores is the artifact from src/lib/model/savedModel.ts - the frozen
 -- rule stack, exactly as the advertiser approved it. Principle 8: a scheduled
 -- run applies the saved model, it never refits one. A job that refit nightly
 -- would reprice yesterday's leads every morning and Google would learn from a
 -- moving target.
 --
 -- On the storage guardrail, stated plainly rather than buried: this is the
--- first table that holds figures derived from deal amounts — each level's
+-- first table that holds figures derived from deal amounts - each level's
 -- median won amount, the base value, the outlier cap. They are aggregates over
 -- at least MIN_LEVEL_SAMPLE (25) resolved deals, never an individual deal, and
 -- the model cannot function without them: they are what makes a multiplier
 -- explainable ("Manufacturing, 121 deals, 32.2% close, median 6,800") instead
 -- of a bare number. Level labels are category names from the advertiser's own
--- CRM — "Manufacturing", "201–1,000" — and never notes or free text.
+-- CRM - "Manufacturing", "201–1,000" - and never notes or free text.
 --
 -- What must never be here is a person: no addresses, no names, no titles as
 -- typed. The check below enforces the first of those the same way the feed_rows
@@ -237,7 +237,7 @@ create table if not exists public.feed_models (
 
   -- The whole SavedValueModel. Kept as one document because it is validated as
   -- one on the way back in by loadSavedModel(), which treats it as untrusted
-  -- input regardless of where it came from — a row in our own database is not
+  -- input regardless of where it came from - a row in our own database is not
   -- more trustworthy than a file someone uploaded.
   model jsonb not null,
 
@@ -274,7 +274,7 @@ create table if not exists public.feed_models (
 );
 
 comment on table public.feed_models is
-  'The frozen rule stack a scheduled run applies. Aggregates over >=25 deals only — never an individual deal, never a person.';
+  'The frozen rule stack a scheduled run applies. Aggregates over >=25 deals only - never an individual deal, never a person.';
 
 comment on column public.feed_models.model is
   'A SavedValueModel document. Revalidated by loadSavedModel() on read: our own row is untrusted input like any other.';
@@ -285,7 +285,7 @@ alter table public.feed_models enable row level security;
 -- 20260827100000_crm_connections.sql
 -- ============================================================
 
--- VBB Engine — CRM connections for the scheduled sync.
+-- VBB Engine - CRM connections for the scheduled sync.
 --
 -- A refresh token is a different order of secret from anything else in this
 -- schema. A feed row is a hashed identifier and a number; a CRM token is
@@ -363,13 +363,13 @@ alter table public.crm_connections enable row level security;
 -- 20260827200000_workspaces.sql
 -- ============================================================
 
--- VBB Engine — one workspace per customer.
+-- VBB Engine - one workspace per customer.
 --
 -- Until now nothing tied a feed to anyone. feeds.client_id existed as a
 -- nullable column and was never written, which was fine for one person testing
 -- and is not fine the moment two customers exist: an operator cannot tell
--- whose feed is whose, and the only credential in the product — the feed token
--- — was doing two jobs at once.
+-- whose feed is whose, and the only credential in the product - the feed token
+-- - was doing two jobs at once.
 --
 -- That second problem was the sharper one. A feed URL is pasted into Google
 -- Ads, sits in configuration screens and gets emailed around; it was designed
@@ -379,7 +379,7 @@ alter table public.crm_connections enable row level security;
 -- and push a stranger's leads into their Google Ads account.
 --
 -- So the two are separated. The feed token reads the CSV and nothing else. The
--- workspace key — never shared with Google, never in a URL — is what authorises
+-- workspace key - never shared with Google, never in a URL - is what authorises
 -- publishing, connecting a CRM, and reading status.
 
 create table if not exists public.workspaces (
@@ -416,7 +416,7 @@ comment on table public.workspaces is
 
 -- A feed with no owner cannot be listed, supported or isolated, so the column
 -- stops being optional. Any feed predating this has no owner to infer and is
--- removed rather than guessed at — an orphan row that still serves a CSV to
+-- removed rather than guessed at - an orphan row that still serves a CSV to
 -- Google is worse than no row.
 delete from public.feeds where client_id is null;
 
@@ -447,12 +447,12 @@ alter table public.workspaces enable row level security;
 -- 20260828090000_sync_runs.sql
 -- ============================================================
 
--- VBB Engine — what happened on each scheduled run.
+-- VBB Engine - what happened on each scheduled run.
 --
 -- The nightly job already recorded its outcome on the connection, which
 -- answers "did the last run work" and nothing else. The failure that actually
 -- ends a pilot is quieter than that: the cron stops firing. Vercel drops the
--- schedule, the secret rotates, a deploy removes it — and last_sync_at simply
+-- schedule, the secret rotates, a deploy removes it - and last_sync_at simply
 -- stops moving. Nobody is watching a timestamp that does not change.
 --
 -- A run that happened leaves a row. A run that should have happened and did
@@ -460,7 +460,7 @@ alter table public.workspaces enable row level security;
 -- workspace page can say "the last run was three days ago" because it knows
 -- what a normal night looks like.
 --
--- The counts here are the ones an operator is asked about — how many leads
+-- The counts here are the ones an operator is asked about - how many leads
 -- went to Google, how many were skipped and why, how many moved too late to
 -- act on. None of it identifies a lead: totals and reasons, never a row.
 
@@ -505,7 +505,7 @@ create table if not exists public.sync_runs (
   constraint sync_runs_message_is_a_sentence check (
     message is null or length(message) <= 500
   ),
-  -- A successful run that published nothing is normal — there may have been no
+  -- A successful run that published nothing is normal - there may have been no
   -- new leads. A successful run that says why it refused is a contradiction.
   constraint sync_runs_refusal_has_a_reason check (
     status <> 'refused' or message is not null
@@ -528,12 +528,12 @@ alter table public.sync_runs enable row level security;
 -- 20260828120000_workspace_invites.sql
 -- ============================================================
 
--- VBB Engine — one-time links, so a customer never types a credential.
+-- VBB Engine - one-time links, so a customer never types a credential.
 --
 -- Until now the operator created a workspace, the key was displayed once, and
 -- the customer pasted it by hand. Two problems with that. The key travelled
 -- through whatever channel the operator used to send it, and if the customer
--- lost it there was no way back — the only recovery was a new workspace, which
+-- lost it there was no way back - the only recovery was a new workspace, which
 -- orphans their feed and their saved model.
 --
 -- An invite fixes both. The operator sends a link; clicking it mints the key
@@ -591,7 +591,7 @@ alter table public.workspace_invites enable row level security;
 -- 20260828140000_connections_by_workspace.sql
 -- ============================================================
 
--- VBB Engine — a CRM connection belongs to the customer, not to one feed.
+-- VBB Engine - a CRM connection belongs to the customer, not to one feed.
 --
 -- Hanging the connection off a feed made sense while the only thing that read
 -- a CRM was the nightly sync, which runs against a published feed. It stops
@@ -602,7 +602,7 @@ alter table public.workspace_invites enable row level security;
 --
 -- A feed already belongs to a workspace, so moving the connection up one level
 -- is a simplification rather than a workaround. One customer, one portal, used
--- by whatever needs it — the analysis while fitting a model, the sync while
+-- by whatever needs it - the analysis while fitting a model, the sync while
 -- refreshing a feed.
 
 alter table public.crm_connections

@@ -11,7 +11,7 @@ const REFRESH = "refresh-9a8b7c6d";
 
 /**
  * Just enough of the Supabase query builder for the calls this store makes,
- * keeping the rows visible so a test can assert what actually got written —
+ * keeping the rows visible so a test can assert what actually got written -
  * which is the whole point here, since the promise is about what is stored.
  */
 function fakeSupabase() {

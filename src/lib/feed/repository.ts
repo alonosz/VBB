@@ -14,7 +14,7 @@ import {
  * How the feed reaches storage.
  *
  * An interface rather than direct Supabase calls, because the rules that
- * matter — the rate limit, the emit window, the CSV shape — are worth testing
+ * matter - the rate limit, the emit window, the CSV shape - are worth testing
  * without a database in the loop, and because the endpoint should not care
  * which one it is talking to.
  */
@@ -31,7 +31,7 @@ export interface FeedRepository {
   /**
    * Freezes the model that priced this feed's rows, so a scheduled run can
    * apply it with no browser in the loop. Republishing after a refit replaces
-   * it — the rows already sent keep the model_id that priced them.
+   * it - the rows already sent keep the model_id that priced them.
    */
   saveModel(feedId: string, model: SavedValueModel): Promise<void>;
   /**
@@ -42,13 +42,13 @@ export interface FeedRepository {
    */
   modelFor(feedId: string): Promise<LoadResult>;
   countFetchesSince(feedId: string, since: Date): Promise<number>;
-  /** Most recent fetches, newest first — what the advertiser is shown. */
+  /** Most recent fetches, newest first - what the advertiser is shown. */
   recentFetches(feedId: string, limit: number): Promise<FetchRecord[]>;
   logFetch(feedId: string, entry: FetchLogEntry): Promise<void>;
   revokeFeed(feedId: string): Promise<void>;
   /**
    * Issues a new token for an existing feed, keeping its rows, model and
-   * history. Used when a customer has lost the URL — the alternative is
+   * history. Used when a customer has lost the URL - the alternative is
    * republishing, which loses the record of what Google already has and would
    * resend every conversion.
    */
@@ -56,7 +56,7 @@ export interface FeedRepository {
 }
 
 // ---------------------------------------------------------------------------
-// In-memory — used by the tests, and by nothing else
+// In-memory - used by the tests, and by nothing else
 // ---------------------------------------------------------------------------
 
 export class InMemoryFeedRepository implements FeedRepository {

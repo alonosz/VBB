@@ -146,7 +146,7 @@ function RowPreview({
                     }
                     title={row[h] ?? ""}
                   >
-                    {(row[h] ?? "").trim() || "—"}
+                    {(row[h] ?? "").trim() || "-"}
                   </td>
                 ))}
               </tr>
@@ -210,7 +210,7 @@ export default function MappingPage() {
           ? {
               ...f,
               column,
-              // A hand-picked column is the user's call, not our inference —
+              // A hand-picked column is the user's call, not our inference -
               // showing a confidence score for it would be dishonest.
               confidence: column === null ? null : 1,
               reason: column === null ? null : "You chose this column",
@@ -234,7 +234,7 @@ export default function MappingPage() {
         <PageHead
           eyebrow="Step 3 of 5 · Map columns"
           title="Here's what we found in your file"
-          lede="Check anything marked for review, then confirm — you're the one who knows your CRM."
+          lede="Check anything marked for review, then confirm - you're the one who knows your CRM."
         />
 
         <div className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-1.5 rounded-full border border-[var(--accent-line)] bg-[var(--accent-soft)] px-4 py-2">
@@ -341,7 +341,7 @@ export default function MappingPage() {
                             value={field.column ?? ""}
                             onChange={(e) => setColumn(field.key, e.target.value || null)}
                           >
-                            <option value="">— not mapped —</option>
+                            <option value="">- not mapped -</option>
                             {file.headers.map((h) => (
                               <option key={h} value={h}>
                                 {h}
@@ -358,7 +358,7 @@ export default function MappingPage() {
                             {field.reason ?? (
                               <span className="italic">
                                 {field.required
-                                  ? "No matching column found — pick one to continue"
+                                  ? "No matching column found - pick one to continue"
                                   : "Not present in this file"}
                               </span>
                             )}
@@ -391,7 +391,7 @@ export default function MappingPage() {
           {missingRequired.length > 0 && (
             <p className="alert alert-bad mt-4 text-[13px] font-medium" role="alert">
               Pick a column for {missingRequired.map((f) => f.label).join(", ")} before
-              continuing — the analysis can&apos;t run without{" "}
+              continuing - the analysis can&apos;t run without{" "}
               {missingRequired.length === 1 ? "it" : "them"}.
             </p>
           )}
@@ -443,7 +443,7 @@ export default function MappingPage() {
                 </label>
               </div>
 
-              {/* Only currencies actually present in the file — asking for a
+              {/* Only currencies actually present in the file - asking for a
                   EUR rate on a file with no EUR rows is noise. */}
               <div className="mt-4 grid gap-2 sm:grid-cols-2">
                 {(mixedCurrency.currencies ?? [])
@@ -584,7 +584,7 @@ export default function MappingPage() {
                         {f.column}
                       </span>
                     ))}
-                    — enough to check how much of your won revenue actually comes from
+                    - enough to check how much of your won revenue actually comes from
                     the customer profile you described in step 1.
                   </p>
                 </div>
@@ -613,7 +613,7 @@ export default function MappingPage() {
                 The{" "}
                 <span className="mono">{preview.excluded.length.toLocaleString()}</span>{" "}
                 excluded {preview.excluded.length === 1 ? "row" : "rows"} and the reason
-                for each are carried through to the report — nothing disappears silently.
+                for each are carried through to the report - nothing disappears silently.
               </>
             )}
           </p>

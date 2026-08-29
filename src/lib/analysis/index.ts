@@ -27,7 +27,7 @@ export * from "./gateValue";
 
 /**
  * Runs the full diagnostic. Every function here is pure, so the same input
- * always yields the same report — which is what lets us show a user the rule
+ * always yields the same report - which is what lets us show a user the rule
  * behind any number on screen.
  */
 export function runDiagnostic(input: AnalysisInput): DiagnosticResult {
@@ -51,7 +51,7 @@ export function runDiagnostic(input: AnalysisInput): DiagnosticResult {
     hypotheses,
   });
   const verdict = determineVerdict(cycle, volume, matchRate, earlyGate);
-  // What reaching the early gate is worth — the one signal that can sharpen a
+  // What reaching the early gate is worth - the one signal that can sharpen a
   // lead's value after it arrived, and only inside Google's window.
   const gate = gateValue(deals, earlyGate);
 

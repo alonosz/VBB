@@ -10,7 +10,7 @@ import { Alert, Badge, DataRow, Empty, Metric, Section, StatusDot, type Tone } f
 /**
  * One customer, one page.
  *
- * Written for whoever is asked "is this customer working?" — which has about
+ * Written for whoever is asked "is this customer working?" - which has about
  * eight parts, each of which used to live in a different table with no screen
  * reading any of them.
  *
@@ -19,7 +19,7 @@ import { Alert, Badge, DataRow, Empty, Metric, Section, StatusDot, type Tone } f
  * is underneath for when the answer is not enough.
  *
  * This is also the one screen that says the setup is over. It wears the live
- * shell — product navigation instead of a five-step progress bar — and every
+ * shell - product navigation instead of a five-step progress bar - and every
  * problem it reports links back to the setup screen that owns the fix rather
  * than growing a page of its own.
  */
@@ -69,7 +69,7 @@ const TONE_LABEL: Record<ActionItem["severity"], string> = {
 };
 
 function when(iso: string | null): string {
-  if (!iso) return "—";
+  if (!iso) return "-";
   return new Date(iso).toLocaleString(undefined, {
     month: "short", day: "numeric", hour: "2-digit", minute: "2-digit",
   });
@@ -152,7 +152,7 @@ export function WorkspaceView() {
     if (!saved) return;
 
     // Deferred a tick so the state this sets lands outside the effect's
-    // synchronous body — setting it inline is the cascading-render pattern.
+    // synchronous body - setting it inline is the cascading-render pattern.
     const id = setTimeout(() => {
       setKey(saved);
       void load(saved, false);
@@ -175,7 +175,7 @@ export function WorkspaceView() {
           <p className="lede mt-2.5 max-w-[52ch]">
             Paste the workspace key you were given. It starts{" "}
             <span className="mono font-semibold text-[var(--foreground)]">vbb_ws_</span>{" "}
-            — it is not the feed URL that goes to Google.
+            - it is not the feed URL that goes to Google.
           </p>
 
           <div className="card mt-8 p-5 sm:p-6">
@@ -272,13 +272,13 @@ export function WorkspaceView() {
           <Metric
             onNavy={overview.working}
             label="Rows in the feed"
-            value={feed ? feed.rowsPublished.toLocaleString() : "—"}
+            value={feed ? feed.rowsPublished.toLocaleString() : "-"}
             hint={feed ? `published ${ago(feed.publishedAt)}` : "nothing published yet"}
           />
           <Metric
             onNavy={overview.working}
             label="Google last collected"
-            value={feed ? ago(feed.lastFetchedAt) : "—"}
+            value={feed ? ago(feed.lastFetchedAt) : "-"}
             hint={
               feed
                 ? `${feed.fetchesLast24h} ${feed.fetchesLast24h === 1 ? "fetch" : "fetches"} in 24h`
@@ -417,7 +417,7 @@ export function WorkspaceView() {
                 value={connection.scopes === "private-app" ? "Private app token" : "OAuth"}
               />
               <DataRow label="Last sync" value={when(connection.lastSyncAt)} hint={ago(connection.lastSyncAt)} />
-              <DataRow label="Result" value={connection.lastSyncStatus ?? "—"} />
+              <DataRow label="Result" value={connection.lastSyncStatus ?? "-"} />
             </div>
           ) : (
             <p className="text-[13.5px] text-[var(--muted)]">
@@ -437,7 +437,7 @@ export function WorkspaceView() {
       <div className="mt-4">
         <Section
           title="Recent nightly runs"
-          hint="Too late means the lead's value moved after Google's 7-day window, so nothing was sent — that outcome feeds the next refit instead."
+          hint="Too late means the lead's value moved after Google's 7-day window, so nothing was sent - that outcome feeds the next refit instead."
         >
           {runs.length === 0 ? (
             <Empty

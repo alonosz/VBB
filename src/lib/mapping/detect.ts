@@ -65,7 +65,7 @@ export interface DetectedField {
 }
 
 // ---------------------------------------------------------------------------
-// Value pattern tests — each returns the share of values that look right
+// Value pattern tests - each returns the share of values that look right
 // ---------------------------------------------------------------------------
 
 function shareMatching(values: string[], test: (v: string) => boolean): number {
@@ -75,7 +75,7 @@ function shareMatching(values: string[], test: (v: string) => boolean): number {
 }
 
 /**
- * Date.parse is far too willing — it reads "demo-1042" as a date in the year
+ * Date.parse is far too willing - it reads "demo-1042" as a date in the year
  * 1042, which would let a record-ID column pass as a create date. A value has
  * to look like a date before we ask whether it parses as one.
  */
@@ -89,7 +89,7 @@ const DATE_SHAPES = [
 export function looksLikeDate(v: string): boolean {
   const s = v.trim();
   if (!s) return false;
-  // Reject bare integers — a year-like 2024 or an ID both parse as dates.
+  // Reject bare integers - a year-like 2024 or an ID both parse as dates.
   if (/^\d+$/.test(s)) return false;
   if (!DATE_SHAPES.some((re) => re.test(s))) return false;
   return !Number.isNaN(Date.parse(s));
@@ -174,7 +174,7 @@ export const FIELD_SPECS: FieldSpec[] = [
     label: "Email",
     hint: "used to match conversions",
     required: false,
-    // Most specific first — "contact email" must outrank a bare "email".
+    // Most specific first - "contact email" must outrank a bare "email".
     headerHints: ["contact email", "lead email", "customer email", "email", "e-mail", "mail"],
     negativeHints: ["owner", "rep", "agent", "assigned", "user", "sales", "creator", "manager"],
     wantsDistinctValues: true,
@@ -199,7 +199,7 @@ export const FIELD_SPECS: FieldSpec[] = [
   {
     key: "employeeCount",
     label: "Employee count",
-    hint: "optional — unlocks ICP fit check",
+    hint: "optional - unlocks ICP fit check",
     required: false,
     headerHints: ["employee", "headcount", "company size", "staff"],
     valueTest: (v) => shareMatching(v, looksNumeric),
@@ -207,14 +207,14 @@ export const FIELD_SPECS: FieldSpec[] = [
   {
     key: "industry",
     label: "Industry",
-    hint: "optional — unlocks ICP fit check",
+    hint: "optional - unlocks ICP fit check",
     required: false,
     headerHints: ["industry", "vertical", "sector"],
   },
   {
     key: "contactTitle",
     label: "Contact title",
-    hint: "optional — unlocks ICP fit check",
+    hint: "optional - unlocks ICP fit check",
     required: false,
     headerHints: ["title", "job title", "role", "position"],
   },
@@ -320,12 +320,12 @@ function buildReason(
 }
 
 /**
- * Stage-timing columns are dynamic — one per stage — so they're detected
+ * Stage-timing columns are dynamic - one per stage - so they're detected
  * separately from the fixed field list.
  *
  * Two shapes are recognized, because CRMs export one or the other:
- *   duration  — "time_in_stage_qualified", "days_in_proposal" (how long spent)
- *   entered   — "date_entered_qualified", "qualified_date"    (when reached)
+ *   duration  - "time_in_stage_qualified", "days_in_proposal" (how long spent)
+ *   entered   - "date_entered_qualified", "qualified_date"    (when reached)
  *
  * Durations feed the backfill trust check; entered-dates feed early-gate
  * detection. Neither is inferred from the other.
@@ -444,7 +444,7 @@ export function detectColumns(
       }
 
       // An identifier column that repeats the same value is not identifying
-      // anyone — this is what separates a lead's email from the rep's.
+      // anyone - this is what separates a lead's email from the rep's.
       if (spec.wantsDistinctValues) {
         const distinct = distinctShare(values);
         if (distinct < 0.5) score *= 0.2 + distinct;
@@ -523,7 +523,7 @@ export function findFileIssues(
   const issues: FileIssue[] = [];
   const col = (key: FieldKey) => fields.find((f) => f.key === key)?.column ?? null;
 
-  // Mixed currency — never silently converted; the user picks a rate.
+  // Mixed currency - never silently converted; the user picks a rate.
   const currencyCol = col("currency");
   if (currencyCol) {
     const counts = new Map<string, number[]>();
@@ -545,7 +545,7 @@ export function findFileIssues(
         detail: sorted
           .map(([code, idx]) => `${code} ${idx.length.toLocaleString()}`)
           .join(" · ") +
-          " — pick a reporting currency and a rate, or exclude the minority rows.",
+          " - pick a reporting currency and a rate, or exclude the minority rows.",
         count: minorityRows.length,
         rowIndices: minorityRows,
         currencies: sorted.map(([code, idx]) => ({ code, count: idx.length })),
@@ -613,7 +613,7 @@ export function findFileIssues(
         severity: "warn",
         title: `Only ${Math.round(rate * 100)}% of rows can be matched to an ad click`,
         detail:
-          "Value-based bidding needs a click ID or a usable email per lead. Below 40%, there isn't enough to bid on — the tracking snippet fixes this going forward.",
+          "Value-based bidding needs a click ID or a usable email per lead. Below 40%, there isn't enough to bid on - the tracking snippet fixes this going forward.",
         count: without.length,
         rowIndices: without,
       });

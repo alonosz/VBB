@@ -20,12 +20,12 @@ through the engine yet.** Everything here is verified against synthetic data
 that I generated, which means it proves the machinery works and does not prove
 the thresholds are right for a real advertiser. The first real file is the next
 thing that matters, and it may find that a typical SMB's history is too thin to
-support a model — in which case the product will say so, correctly, and that is
+support a model - in which case the product will say so, correctly, and that is
 a commercial finding rather than a bug.
 
 ---
 
-## P0 items — all complete
+## P0 items - all complete
 
 | # | Item | How it was closed |
 |---|---|---|
@@ -42,22 +42,22 @@ a commercial finding rather than a bug.
 ### Isolation, specifically
 
 A valid workspace key pointed at another customer's feed gets the same answer
-as one pointed at a feed that does not exist. Verified by sabotage — removing
+as one pointed at a feed that does not exist. Verified by sabotage - removing
 the ownership check, ignoring suspension, and distinguishing "someone else's"
 from "not found" each cause tests to fail.
 
 ---
 
-## P1 items — remaining, none blocking
+## P1 items - remaining, none blocking
 
 | # | Item | Why it can wait |
 |---|---|---|
 | 10 | No operator list of all customers | `npm run workspace -- list` covers it at five |
 | 11 | Model drift not shown on the workspace page | Currency mismatch and applicability are; drift needs a re-upload to see |
-| 13 | — | Closed: model storage is now workspace-scoped |
+| 13 | - | Closed: model storage is now workspace-scoped |
 | 14 | `/api/snippet/verify` not rate-limited | SSRF-fenced; no cost per call |
-| — | No per-customer volume limits | Intake needs a key, so it is not open to the internet |
-| — | No audit log | Who rotated what is not recorded |
+| - | No per-customer volume limits | Intake needs a key, so it is not open to the internet |
+| - | No audit log | Who rotated what is not recorded |
 
 ---
 
@@ -81,7 +81,7 @@ npm test && npx tsc --noEmit && npm run lint && npm run build && ./scripts/db-te
 ### On how these tests were written
 
 Several were checked by deliberately breaking the code to confirm the test
-fails — inflating values, dropping the gate, removing the ownership check,
+fails - inflating values, dropping the gate, removing the ownership check,
 skipping the run record, refitting during a sync. Three tests passed their
 first sabotage and were rewritten. The most useful example: the golden path
 originally asserted a lead's value was "greater than zero", which would have
@@ -97,9 +97,9 @@ Required:
 ```
 NEXT_PUBLIC_SUPABASE_URL       Supabase → Settings → API → Project URL
 SUPABASE_SERVICE_ROLE_KEY      Supabase → Settings → API → secret key (sb_secret_…)
-VBB_TOKEN_KEY                  a generated password, 24+ chars — encrypts CRM credentials
-CRON_SECRET                    a generated password, 24+ chars — gates the nightly job
-VBB_ADMIN_KEY                  the operator's own password, 16+ chars — opens /admin
+VBB_TOKEN_KEY                  a generated password, 24+ chars - encrypts CRM credentials
+CRON_SECRET                    a generated password, 24+ chars - gates the nightly job
+VBB_ADMIN_KEY                  the operator's own password, 16+ chars - opens /admin
 ```
 
 Optional:
@@ -128,7 +128,7 @@ new code supplies it.
 
 1. Supabase → SQL Editor → New query
 2. Paste all of `supabase/setup.sql`
-3. Run — expect `Success. No rows returned`
+3. Run - expect `Success. No rows returned`
 4. Table Editor should show seven tables: `workspaces`, `feeds`, `feed_rows`,
    `feed_models`, `feed_fetches`, `crm_connections`, `sync_runs`
 
@@ -142,11 +142,11 @@ order.
 
 ## Dry run
 
-`npm run dry-run` — the whole journey against synthetic data, no network, no
+`npm run dry-run` - the whole journey against synthetic data, no network, no
 database. Output as of `9c2e742`:
 
 ```
-VBB Engine — dry run against synthetic data
+VBB Engine - dry run against synthetic data
 Started 2026-08-28T00:41:22.129Z
 
 ────────────────────────────────────────────────────────────────
@@ -226,7 +226,7 @@ Started 2026-08-28T00:41:22.129Z
    top message                        Everything is working.
 
 ────────────────────────────────────────────────────────────────
-DRY RUN PASSED — the journey completes end to end.
+DRY RUN PASSED - the journey completes end to end.
 ────────────────────────────────────────────────────────────────
 ```
 
@@ -234,10 +234,10 @@ DRY RUN PASSED — the journey completes end to end.
 
 ## What to do first
 
-1. **Deploy** — `PILOT_DEPLOYMENT.md`, in order. Migration before code.
-2. **Onboard one customer** — `CUSTOMER_ONBOARDING.md`. Ideally one whose data
+1. **Deploy** - `PILOT_DEPLOYMENT.md`, in order. Migration before code.
+2. **Onboard one customer** - `CUSTOMER_ONBOARDING.md`. Ideally one whose data
    you already know, so a surprising model is recognisable as surprising.
-3. **Check the next morning** — their workspace page should show Google
+3. **Check the next morning** - their workspace page should show Google
    collecting and one nightly run.
 4. **Then read `OPERATOR_RUNBOOK.md`** properly, before something breaks rather
    than after.

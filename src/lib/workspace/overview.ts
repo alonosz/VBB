@@ -224,7 +224,7 @@ interface Decidable {
 /**
  * Ordered worst-first, because an operator reads the top of a list.
  *
- * Each entry answers both questions at once — what is wrong and what to do —
+ * Each entry answers both questions at once - what is wrong and what to do -
  * and marks the ones that are not the operator's to fix. Escalating everything
  * wastes a developer; escalating nothing strands the operator.
  */
@@ -331,7 +331,7 @@ export function decideActions(state: Decidable): ActionItem[] {
     items.push({
       severity: "info",
       title: "Everything is working.",
-      action: `Google last collected ${feed.rowsPublished.toLocaleString()} rows. Values are reaching the account — check the campaign is on Maximize conversion value so it bids on them.`,
+      action: `Google last collected ${feed.rowsPublished.toLocaleString()} rows. Values are reaching the account - check the campaign is on Maximize conversion value so it bids on them.`,
     });
   }
 

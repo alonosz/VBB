@@ -1,10 +1,10 @@
--- VBB Engine — one workspace per customer.
+-- VBB Engine - one workspace per customer.
 --
 -- Until now nothing tied a feed to anyone. feeds.client_id existed as a
 -- nullable column and was never written, which was fine for one person testing
 -- and is not fine the moment two customers exist: an operator cannot tell
--- whose feed is whose, and the only credential in the product — the feed token
--- — was doing two jobs at once.
+-- whose feed is whose, and the only credential in the product - the feed token
+-- - was doing two jobs at once.
 --
 -- That second problem was the sharper one. A feed URL is pasted into Google
 -- Ads, sits in configuration screens and gets emailed around; it was designed
@@ -14,7 +14,7 @@
 -- and push a stranger's leads into their Google Ads account.
 --
 -- So the two are separated. The feed token reads the CSV and nothing else. The
--- workspace key — never shared with Google, never in a URL — is what authorises
+-- workspace key - never shared with Google, never in a URL - is what authorises
 -- publishing, connecting a CRM, and reading status.
 
 create table if not exists public.workspaces (
@@ -51,7 +51,7 @@ comment on table public.workspaces is
 
 -- A feed with no owner cannot be listed, supported or isolated, so the column
 -- stops being optional. Any feed predating this has no owner to infer and is
--- removed rather than guessed at — an orphan row that still serves a CSV to
+-- removed rather than guessed at - an orphan row that still serves a CSV to
 -- Google is worse than no row.
 delete from public.feeds where client_id is null;
 

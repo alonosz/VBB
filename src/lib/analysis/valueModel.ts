@@ -6,7 +6,7 @@ import { buildFactorList, type FactorDefinition } from "./factors";
 /**
  * The value model: what one lead is worth on the day it arrives.
  *
- * Built only from lead-intrinsic attributes — things knowable at form-fill
+ * Built only from lead-intrinsic attributes - things knowable at form-fill
  * time. The output is a short rule stack the advertiser can read, audit
  * against their own data, and hand to Google.
  */
@@ -19,7 +19,7 @@ export const MIN_LIFT = 1.3;
  * direction.
  *
  * Each lift is measured marginally, against the overall baseline, but the
- * factors overlap heavily — corporate email, company size and seniority
+ * factors overlap heavily - corporate email, company size and seniority
  * largely describe the same "real business buyer". Multiplying four of them
  * compounds that shared signal, and it compounds downward as hard as upward:
  * unbounded, a free-webmail IC at a tiny logistics firm lands near 0.02x base,
@@ -56,7 +56,7 @@ export interface ModelFactor {
   droppedReason: string | null;
   /**
    * The advertiser's own claim about this factor, when they made one. A
-   * hypothesis is reported whether it survives or not — being told "you said
+   * hypothesis is reported whether it survives or not - being told "you said
    * ops directors are your buyers, and the data does not bear that out" is
    * worth more than a silent omission.
    */
@@ -103,7 +103,7 @@ export interface ValuedLead {
   boundedMultiplier: number;
   wasBounded: boolean;
   rawValue: number;
-  /** After calibration and cap — what actually gets sent. */
+  /** After calibration and cap - what actually gets sent. */
   value: number;
   cappedFrom: number | null;
 }
@@ -244,7 +244,7 @@ export function buildValueModel(opts: BuildValueModelOptions): ValueModel {
 }
 
 /**
- * Multiplying marginal lifts double-counts correlated factors — a Director at
+ * Multiplying marginal lifts double-counts correlated factors - a Director at
  * a 500-person company almost certainly has a corporate email, so the same
  * underlying "real business buyer" signal gets counted three times. Left
  * uncorrected the stack inflates every value, and Smart Bidding overbids.
@@ -294,7 +294,7 @@ function multiplierFor(
  *
  * Calibration is the promise that the volume-weighted average of emitted
  * values matches the expected value actually observed. Editing a multiplier
- * without redoing it would quietly break that promise — the ordering between
+ * without redoing it would quietly break that promise - the ordering between
  * leads would follow the edit, but the portfolio would drift away from
  * reality and Smart Bidding would over- or under-bid across the board.
  *

@@ -1,9 +1,9 @@
--- VBB Engine — one-time links, so a customer never types a credential.
+-- VBB Engine - one-time links, so a customer never types a credential.
 --
 -- Until now the operator created a workspace, the key was displayed once, and
 -- the customer pasted it by hand. Two problems with that. The key travelled
 -- through whatever channel the operator used to send it, and if the customer
--- lost it there was no way back — the only recovery was a new workspace, which
+-- lost it there was no way back - the only recovery was a new workspace, which
 -- orphans their feed and their saved model.
 --
 -- An invite fixes both. The operator sends a link; clicking it mints the key

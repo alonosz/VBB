@@ -95,7 +95,7 @@ describe("saving and loading", () => {
     const s = saveValueModel(fit(deals), { deals, now: NOW });
     const domain = s.factors.find((f) => f.key === "domainType")!;
     // "rare.dev" is corporate, so it folds into the corporate level rather
-    // than becoming a level of its own — but nothing under the floor is saved.
+    // than becoming a level of its own - but nothing under the floor is saved.
     expect(domain.levels.every((l) => l.sampleSize >= 25)).toBe(true);
   });
 });
@@ -162,7 +162,7 @@ describe("loadSavedModel", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Applicability — a rule whose column is missing is inert, and must say so
+// Applicability - a rule whose column is missing is inert, and must say so
 // ---------------------------------------------------------------------------
 
 describe("checkApplicability", () => {

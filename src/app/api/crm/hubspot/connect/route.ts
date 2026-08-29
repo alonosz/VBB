@@ -12,7 +12,7 @@ import { authorizeUrl, oauthConfigFromEnv, signState } from "@/lib/sync/hubspot/
  * POST rather than GET, and the browser does the redirect with what comes
  * back. A GET would put the feed token in a URL, where it would reach the
  * server log, the browser history and the referrer header on the way out to
- * HubSpot — and that token is the whole credential for the feed.
+ * HubSpot - and that token is the whole credential for the feed.
  */
 
 export const runtime = "nodejs";
@@ -47,7 +47,7 @@ export async function POST(request: Request) {
   }
 
   // No feed URL any more. A connection belongs to the customer, and the
-  // workspace key already says which customer this is — which is what lets
+  // workspace key already says which customer this is - which is what lets
   // HubSpot be connected at step 2, before any feed exists.
   //
   // The workspace id travels through HubSpot, signed. No credential travels.

@@ -9,7 +9,7 @@ import type {
 /**
  * (k) The operating mode this account can support today.
  *
- * Ordering matters. Volume and identifier coverage are hard gates — no amount
+ * Ordering matters. Volume and identifier coverage are hard gates - no amount
  * of clever value modelling rescues an account that can't join leads to clicks
  * or doesn't have enough of them. Cycle length then decides whether real
  * outcomes arrive fast enough to send directly (MEASURED) or whether Day-0
@@ -54,7 +54,7 @@ export function determineVerdict(
       mode: "MEASURED",
       headline: "Your account can send real conversion values today.",
       reasoning:
-        `Half your won deals close within ${cycle.medianDays} days of creation, fast enough to report actual revenue back to Google while it still influences bidding. You don't need predicted values — you have real ones.`,
+        `Half your won deals close within ${cycle.medianDays} days of creation, fast enough to report actual revenue back to Google while it still influences bidding. You don't need predicted values - you have real ones.`,
       blockers: [],
     };
   }
@@ -67,7 +67,7 @@ export function determineVerdict(
     mode: "PREDICTED",
     headline: "Send predicted values at lead creation, not actual ones.",
     reasoning:
-      `Your median deal takes ${cycle.medianDays} days to close — well past the 7-day window in which Google still acts on a value adjustment. Waiting for the real number means bidding on stale signals, so leads are priced at creation using what similar leads have historically been worth.${gateNote}`,
+      `Your median deal takes ${cycle.medianDays} days to close - well past the 7-day window in which Google still acts on a value adjustment. Waiting for the real number means bidding on stale signals, so leads are priced at creation using what similar leads have historically been worth.${gateNote}`,
     blockers: [],
   };
 }

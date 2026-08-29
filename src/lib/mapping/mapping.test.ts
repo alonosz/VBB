@@ -117,7 +117,7 @@ describe("detectColumns", () => {
 
   it("prefers the lead's email over the sales rep's owner_email", () => {
     // owner_email is a valid email on every row, but it's one internal
-    // address repeated — mapping it would report a fake 100% match rate.
+    // address repeated - mapping it would report a fake 100% match rate.
     const rows = Array.from({ length: 20 }, (_, i) => ({
       created_at: "2026-01-01",
       contact_email: `lead${i}@customer${i}.com`,
@@ -222,7 +222,7 @@ describe("findFileIssues", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Stage timing — feeds the trust check and early-gate detection
+// Stage timing - feeds the trust check and early-gate detection
 // ---------------------------------------------------------------------------
 
 describe("detectStageTimingColumns", () => {

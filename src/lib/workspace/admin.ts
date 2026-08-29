@@ -9,7 +9,7 @@ import { timingSafeEqual } from "node:crypto";
  *
  * This one is different, and it is the exception on purpose. Creating a
  * customer is the act that brings a workspace into existence, so it cannot be
- * authorised by a workspace key — there is not one yet. Something has to
+ * authorised by a workspace key - there is not one yet. Something has to
  * establish that the person asking is the operator, and the smallest honest
  * answer is a password they choose and keep.
  *

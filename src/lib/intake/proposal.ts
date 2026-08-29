@@ -6,7 +6,7 @@ import type { FieldKey } from "@/lib/mapping/detect";
  *
  * The assistant is allowed to propose *which column is which* and *what the
  * user claimed about their buyers*. It is never allowed to produce a value, a
- * multiplier, a close rate or a score — those come from the deterministic
+ * multiplier, a close rate or a score - those come from the deterministic
  * engine reading the user's own rows. Everything on this type is a hypothesis
  * the engine will test and the user can overrule.
  */
@@ -76,7 +76,7 @@ export interface IntakeOutcome {
 }
 
 // ---------------------------------------------------------------------------
-// Sanitizing — the trust boundary
+// Sanitizing - the trust boundary
 // ---------------------------------------------------------------------------
 
 const MAX_FACTORS = 6;
@@ -100,7 +100,7 @@ function positive(v: unknown, max: number): number | null {
  * Turns whatever came back into something the rest of the app can trust.
  *
  * Model output is untrusted input. A column that isn't in the file, a field
- * key we don't have, the same column claimed twice, a made-up number — each
+ * key we don't have, the same column claimed twice, a made-up number - each
  * gets dropped here rather than defended against in ten places downstream.
  */
 export function sanitizeProposal(
@@ -124,7 +124,7 @@ export function sanitizeProposal(
       const field = typeof e.field === "string" ? e.field : null;
       const column = typeof e.column === "string" ? e.column.trim() : null;
       if (!field || !column) continue;
-      // A hallucinated column name is the failure mode that matters most —
+      // A hallucinated column name is the failure mode that matters most -
       // it would silently map a field to nothing.
       if (!validKeys.has(field) || !known.has(column)) continue;
       if (claimedFields.has(field) || claimedColumns.has(column)) continue;

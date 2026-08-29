@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 /**
- * VBB Engine — the design system.
+ * VBB Engine - the design system.
  *
  * Everything visual is declared once here so a screen composes tokens rather
  * than inventing its own spacing, colour and weight. The previous version
@@ -33,7 +33,7 @@
   --on-navy-muted: #a3adca;
   /* Third step down on navy: axis labels and chart footnotes. */
   --on-navy-faint: #7d88a8;
-  /* The data hue read on navy — brand indigo is too dark against it. */
+  /* The data hue read on navy - brand indigo is too dark against it. */
   --primary-on-navy: #8fa6ff;
   /* Caution read on navy: --warn is tuned for AA on white and disappears here. */
   --warn-on-navy: #f0c14b;
@@ -41,7 +41,7 @@
   /*
    * A fill, never an ink. It sits at 2.6:1 on white, which is right for the
    * grey in the blindness chart and a hover border, and far too low for text
-   * of any size — recede-but-legible is what --muted is for.
+   * of any size - recede-but-legible is what --muted is for.
    */
   --muted-soft: #97a1b8;
 
@@ -58,7 +58,7 @@
   --primary-deep: #1730c4;
 
   /*
-   * The logo. Read off the artwork rather than taken from a brand file — swap
+   * The logo. Read off the artwork rather than taken from a brand file - swap
    * these four and every use of the mark and wordmark follows.
    */
   --brand-violet: #7d5bea;
@@ -76,7 +76,7 @@
    *
    * Each of these is used as small bold text on both --surface and its own
    * -soft ground, so each clears WCAG AA (4.5:1) against both. The obvious
-   * brighter greens and ambers do not — a #10b981 "passing" label sits at
+   * brighter greens and ambers do not - a #10b981 "passing" label sits at
    * 3.0:1 on white, which is a status nobody with low vision can read.
    */
   --accent: #0a7a58;
@@ -473,7 +473,7 @@ body {
   }
 
   /* ---------------------------------------------------------------------- */
-  /* Alerts — a problem and what to do about it                              */
+  /* Alerts - a problem and what to do about it                              */
   /* ---------------------------------------------------------------------- */
 
   .alert {
@@ -506,7 +506,7 @@ body {
   }
 
   /* ---------------------------------------------------------------------- */
-  /* Tables — dense, aligned, scannable                                      */
+  /* Tables - dense, aligned, scannable                                      */
   /* ---------------------------------------------------------------------- */
 
   .table {

@@ -11,7 +11,7 @@ import { money } from "./panels";
  *
  * Value-based Smart Bidding is a learning system, and it needs roughly 30
  * conversions a month before it has enough to learn from. Below that it is not
- * that the values are wrong — it is that Google never gets enough of them to
+ * that the values are wrong - it is that Google never gets enough of them to
  * separate signal from noise, and bidding stays roughly as random as it was.
  *
  * That threshold is a *budget* decision, not a modelling one, and nothing in
@@ -19,8 +19,8 @@ import { money } from "./panels";
  * a daily budget that produces twelve leads a month, and the only symptom will
  * be that nothing seems to improve.
  *
- * The one figure that would make this actionable — a recommended daily budget
- * — is the one we cannot supply. It needs their cost per lead, which lives in
+ * The one figure that would make this actionable - a recommended daily budget
+ * - is the one we cannot supply. It needs their cost per lead, which lives in
  * Google Ads, not in a CRM export. Inventing a plausible one would be exactly
  * the failure this product exists to avoid. So the arithmetic is offered and
  * the input is theirs: type your cost per lead, see the monthly floor. Nothing
@@ -84,7 +84,7 @@ export function VolumeFloorPanel({
 
         {/*
           The arithmetic, with their number. We do not know their cost per
-          lead — it is in Google Ads, not in a CRM export — so we ask rather
+          lead - it is in Google Ads, not in a CRM export - so we ask rather
           than guess.
         */}
         <div className="well p-4">
@@ -125,7 +125,7 @@ export function VolumeFloorPanel({
               </p>
               <p className="mt-2 max-w-[38ch] text-[11.5px] text-[var(--muted)]">
                 Your figure × {MIN_LEADS_PER_MONTH}. A floor to plan against, not
-                a forecast — your real cost per lead moves once bidding changes.
+                a forecast - your real cost per lead moves once bidding changes.
               </p>
             </div>
           )}
@@ -137,7 +137,7 @@ export function VolumeFloorPanel({
           <Alert tone="warn" title="Worth deciding before you switch strategies">
             <p className="max-w-[70ch] text-[13.5px]">
               At {volume.leadsPerMonth} leads a month you can still send these
-              values — they cost nothing and the data starts accumulating. But
+              values - they cost nothing and the data starts accumulating. But
               hold off on switching the campaign to{" "}
               <span className="font-semibold">Maximize conversion value</span>{" "}
               until volume is there, or raise the budget to get it there. Switching

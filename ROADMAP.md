@@ -37,7 +37,7 @@ What is genuinely missing:
 | Piece | Why it's needed | Cost |
 |---|---|---|
 | Email delivery | The link has to reach them | ~half a day (Resend or Postmark) |
-| Email ownership check | Otherwise anyone signs up as anyone | folded into the above — the link *is* the proof |
+| Email ownership check | Otherwise anyone signs up as anyone | folded into the above - the link *is* the proof |
 | Abuse limiting | Nothing stops one script creating 10,000 workspaces | ~half a day (rate limit by IP and email domain) |
 | The dialog itself | The UI | ~2 hours |
 
@@ -46,28 +46,28 @@ What is genuinely missing:
 ### Where to put it
 
 The suggestion was a modal over step 1 with the background blurred. That works,
-and it is the right *moment* — they have arrived with intent but have not yet
+and it is the right *moment* - they have arrived with intent but have not yet
 done any work worth losing.
 
 One trade-off to make deliberately: the landing page currently promises
 **"no account needed"**, and gating step 1 makes that false. Two options:
 
-- **Gate at step 1** — higher signup rate, but you lose everyone who wanted to
+- **Gate at step 1** - higher signup rate, but you lose everyone who wanted to
   try it before committing, and the promise has to come off the landing page.
-- **Gate at step 5** (Connect) — they sign up at the moment they have already
+- **Gate at step 5** (Connect) - they sign up at the moment they have already
   seen their own numbers and want the thing. Lower volume through the form,
   much higher intent, and the "no account needed" promise survives all the way
   to the payoff.
 
 **Recommendation: gate at step 5, alongside payment.** One interruption instead
 of two, at the point where the product has already proven itself. The blurred
-modal is a good pattern — just put it later.
+modal is a good pattern - just put it later.
 
 ### Open decision: contact capture before the gate
 
 Gating at step 5 has a cost that the recommendation above ignored. Everyone who
 drops out at steps 1–4 leaves no trace, and those are precisely the people
-worth a phone call — someone who reached their own model and then stopped is
+worth a phone call - someone who reached their own model and then stopped is
 the most informative churn there is.
 
 The tension dissolves once **collecting an email** and **creating an account**
@@ -75,14 +75,14 @@ are treated as separate events. The wall is the account. The email is a field.
 
 Proposed shape:
 
-- **Step 1 or 2** — one optional field: *"Where should we send your model when
+- **Step 1 or 2** - one optional field: *"Where should we send your model when
   it's ready?"* No password, no verification, skippable. A value exchange, not
   a gate.
-- **Step 5** — account and payment, with the email already filled in. Signing
+- **Step 5** - account and payment, with the email already filled in. Signing
   up becomes one click instead of a form.
 
 **Capture:** email, timestamp, furthest step reached. That is enough for the
-call — *"you got all the way to your model and stopped, what happened?"* needs
+call - *"you got all the way to your model and stopped, what happened?"* needs
 no more than that.
 
 **Do not capture:** spread ratio, lead count, deal values, or anything else
@@ -92,7 +92,7 @@ publishes, and that is a promise made on the landing page and in
 a materially larger commitment than storing an email, and the same information
 is available by asking them.
 
-The one argument for storing the spread is triage — deciding which churned
+The one argument for storing the spread is triage - deciding which churned
 users to call first. That is a problem worth solving at a few hundred churns
 per month, not at zero. Leave it.
 
@@ -107,7 +107,7 @@ having a churn list at all.
 ### Note on sessions
 
 Access is currently "this browser remembers a key". That is fine for five
-pilots and thin for a real product — no way to sign in on a second device
+pilots and thin for a real product - no way to sign in on a second device
 without a new link. Real sessions (email → magic link → cookie) are the
 upgrade, and the redemption endpoint is already 80% of it.
 
@@ -124,20 +124,20 @@ enforceable**:
 
 | Route | Runs where | Can it be gated? |
 |---|---|---|
-| **Feed URL** (`Generate my feed URL`) | Server — `POST /api/feeds` | **Yes, properly.** No subscription, no feed row, no URL. Nothing to work around. |
+| **Feed URL** (`Generate my feed URL`) | Server - `POST /api/feeds` | **Yes, properly.** No subscription, no feed row, no URL. Nothing to work around. |
 | **Download CSV** | Entirely in the browser | **No, not really.** The rows are already on screen; the button just formats them. A gate here is a speed bump anyone can step over with devtools. |
 
 Making the CSV enforceable means generating it server-side, which means the
-priced rows leaving the browser — against a core principle of the product
+priced rows leaving the browser - against a core principle of the product
 (`CLAUDE.md`, principle 5 and the storage guardrails).
 
 ### Recommendation: let that shape the pricing tiers
 
 This is a constraint that happens to point somewhere good:
 
-- **Free — download the CSV.** Manual. You re-upload to Google Ads yourself,
+- **Free - download the CSV.** Manual. You re-upload to Google Ads yourself,
   every time you have new leads. Genuinely useful and genuinely annoying.
-- **Paid — the feed URL.** Google fetches on a schedule. Set once, never
+- **Paid - the feed URL.** Google fetches on a schedule. Set once, never
   touched again. Plus the nightly CRM sync when that lands.
 
 The free tier is the thing you can't lock anyway, and the paid tier is exactly
@@ -159,7 +159,7 @@ the commercial line are the same line.
 
 Billing is where "done" and "finished" diverge:
 
-- Failed payments and dunning — what happens to a live feed when a card
+- Failed payments and dunning - what happens to a live feed when a card
   expires? (Suggested: keep serving for a grace period, then stop. A feed that
   dies silently costs the customer money in a way they will blame you for.)
 - Refunds and cancellations mid-period.
@@ -174,7 +174,7 @@ Budget at least as much time for this as for the code.
 ## 3. Connect HubSpot at step 2
 
 **Goal:** step 2 offers "connect HubSpot" beside "drop a CSV", so the worst
-step in the funnel — export a file, find it, upload it — disappears for anyone
+step in the funnel - export a file, find it, upload it - disappears for anyone
 on HubSpot.
 
 **Decided 28 Aug: submit the HubSpot public app now, build the screen later.**
@@ -225,26 +225,26 @@ nightly window is a call-site change rather than new code.
 | Piece | Cost |
 |---|---|
 | Re-scope CRM connections from feed to workspace (`crm_connections.feed_id` → `workspace_id`, plus the OAuth state which signs a feed id) | ~half a day |
-| A history pull — `listRecentDeals()` with `windowDays: 365` | ~1 hour |
+| A history pull - `listRecentDeals()` with `windowDays: 365` | ~1 hour |
 | Step 2 UI, and mapping auto-filled from known HubSpot properties | ~half a day |
 
 **Estimate: ~1.5 days**, and none of it can ship before the app is approved.
 
 A feed belongs to a workspace anyway, so the re-scoping is a simplification
-rather than a workaround — worth doing even if this screen never gets built.
+rather than a workaround - worth doing even if this screen never gets built.
 
 ### Why a public app, and not the private token that already works
 
 Private app tokens work today and are right for a pilot customer at step 5:
 they are committed, and an operator can walk them through it. At step 2 they
-are worse than exporting a CSV — create an app, tick three scopes, copy a
+are worse than exporting a CSV - create an app, tick three scopes, copy a
 token. One-click OAuth is the only version of this worth building, and that
 needs a public app.
 
 ### Registering it
 
 Redirect URI (must match exactly, and this is why the domain should be settled
-first — changing it later means editing the app):
+first - changing it later means editing the app):
 
     https://<your origin>/api/crm/hubspot/callback
 
@@ -255,7 +255,7 @@ Scopes, all read-only, matching `SCOPES` in `src/lib/sync/hubspot/oauth.ts`:
     crm.objects.companies.read
 
 Nothing that can write to a customer's CRM, because the product never needs
-to. That is worth saying plainly in the review submission — read-only scopes
+to. That is worth saying plainly in the review submission - read-only scopes
 on a narrow set of objects is the easiest kind of app to approve.
 
 Then `HUBSPOT_CLIENT_ID` and `HUBSPOT_CLIENT_SECRET` in Vercel.
@@ -263,7 +263,7 @@ Then `HUBSPOT_CLIENT_ID` and `HUBSPOT_CLIENT_SECRET` in Vercel.
 ### The gate question, deferred with it
 
 Connecting a CRM needs a workspace key, and a step-2 visitor has none. The
-shape agreed for when this is built: **two doors** — CSV stays ungated exactly
+shape agreed for when this is built: **two doors** - CSV stays ungated exactly
 as it is today, HubSpot asks for an email first. Someone willing to OAuth their
 CRM is a much warmer lead than a CSV uploader, so asking at that moment is
 qualification rather than friction, and "no account needed" stays true of the
@@ -288,7 +288,7 @@ door that touches nothing.
    nightly sync at step 2 in this list already delivers the early gate for
    pilot customers; this item is about removing the export from the funnel,
    not about making the gate work.
-8. **Real sessions** — email magic link, works on any device.
+8. **Real sessions** - email magic link, works on any device.
 
 Steps 5 and 6 land together because they are the same screen and the same
 moment. Splitting them means interrupting the customer twice.
@@ -299,8 +299,8 @@ moment. Splitting them means interrupting the customer twice.
 
 Per the scope guardrails in `CLAUDE.md`, and still true:
 
-- Live Google Ads API calls — the feed URL is the integration.
-- Meta CAPI — sketched, not scheduled.
+- Live Google Ads API calls - the feed URL is the integration.
+- Meta CAPI - sketched, not scheduled.
 - Multi-tenancy beyond one workspace per customer.
 - A second LLM call anywhere. The one at intake is bounded to column mapping
   and claim extraction, and that boundary is the product's credibility.

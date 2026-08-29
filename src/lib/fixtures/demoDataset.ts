@@ -191,7 +191,7 @@ export function generateDemoDeals(opts: DemoOptions = {}): MappedDeal[] {
 
     // Not every lead reaches every stage, and that is the point of a gate.
     // A CRM leaves date_entered_<stage> empty for a stage a deal never got to,
-    // so a fixture that fills it for all of them makes the gate unpriceable —
+    // so a fixture that fills it for all of them makes the gate unpriceable -
     // there is nothing to compare against. Won deals nearly always qualified;
     // plenty of lost ones never did.
     const reachedQualified = outcome === "won" ? rand() < 0.97 : rand() < 0.45;
@@ -199,7 +199,7 @@ export function generateDemoDeals(opts: DemoOptions = {}): MappedDeal[] {
 
     // Only "Proposal" is backfilled, which is how real accounts look: a team
     // drags cards through one stage retroactively and lives the others
-    // honestly. This lets the demo show both findings at once — an untrusted
+    // honestly. This lets the demo show both findings at once - an untrusted
     // stage AND a usable early gate in "Qualified".
     const backfilled = rand() < 0.42;
     const stageDurations: Record<string, number> = {};
@@ -209,11 +209,11 @@ export function generateDemoDeals(opts: DemoOptions = {}): MappedDeal[] {
     }
     if (reachedProposal) {
       stageDurations.Proposal = backfilled
-        ? Math.floor(rand() * 50) + 3 // 3-53 seconds — nobody lived through this
+        ? Math.floor(rand() * 50) + 3 // 3-53 seconds - nobody lived through this
         : Math.floor(rand() * 9 * 86400) + 7200;
     }
 
-    // "Qualified" is reached early for most deals that reach it at all — the
+    // "Qualified" is reached early for most deals that reach it at all - the
     // intended proxy gate.
     const stageReachedAfterDays: Record<string, number> = {};
     if (reachedQualified) {
@@ -270,7 +270,7 @@ function isoDay(base: Date | null, offsetDays: number | undefined): string {
   return new Date(base.getTime() + offsetDays * 86_400_000).toISOString().slice(0, 10);
 }
 
-/** The demo CSV as the user would upload it — pre-mapping, with mixed currency. */
+/** The demo CSV as the user would upload it - pre-mapping, with mixed currency. */
 export function demoDealsToCsvRows(deals: MappedDeal[]): Record<string, string>[] {
   return deals.map((d, i) => ({
     record_id: d.id,

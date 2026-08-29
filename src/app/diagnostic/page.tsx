@@ -17,7 +17,7 @@ const EXAMPLE =
   "We sell workflow software to mid-market manufacturers, usually 200–1000 employees. " +
   "Our buyers are ops directors and plant managers. Sales cycle is usually about 2–3 months, " +
   "longer for the bigger accounts. We get maybe 80–100 leads a month. Our best customers " +
-  "come through referrals and webinars — they close faster and stick around longer.";
+  "come through referrals and webinars - they close faster and stick around longer.";
 
 export default function IntakePage() {
   const router = useRouter();
@@ -62,14 +62,14 @@ export default function IntakePage() {
         <PageHead
           eyebrow="Step 1 of 5 · Your business"
           title="Tell us about your business"
-          lede="Nothing here changes what your leads are worth. We hold it next to what your data actually says and show you where the two disagree — usually the most useful page in the report."
+          lede="Nothing here changes what your leads are worth. We hold it next to what your data actually says and show you where the two disagree - usually the most useful page in the report."
         />
 
         {/* ---- the two claims worth asking for straight, first ---- */}
         <div className="card mt-8 p-6 sm:p-7">
           <h2 className="h3">Start with two numbers</h2>
           <p className="mt-1.5 max-w-[62ch] text-[13.5px] text-[var(--muted)]">
-            Both optional. Neither prices a lead — your closed deals do that.
+            Both optional. Neither prices a lead - your closed deals do that.
           </p>
 
           {/* Sales cycle */}
@@ -125,7 +125,7 @@ export default function IntakePage() {
           <div className="mt-6 border-t border-[var(--border)] pt-5">
             <p className="text-[14px] font-semibold">How big are your best customers?</p>
             <p className="mt-0.5 text-[13px] text-[var(--muted)]">
-              Headcount. Pick as many as fit — most businesses sell to a range.
+              Headcount. Pick as many as fit - most businesses sell to a range.
             </p>
             <div className="mt-2.5 flex flex-wrap gap-2">
               {SIZE_BANDS.map((band) => {
@@ -169,14 +169,14 @@ export default function IntakePage() {
             Who actually buys, and what a good lead looks like to you. AI reads it
             against the columns in your file to work out which is which, and turns
             what you claim about your buyers into things we test against your own
-            closed deals. It never decides what a lead is worth — your data does that.
+            closed deals. It never decides what a lead is worth - your data does that.
           </p>
           <textarea
             id="ctx"
             rows={7}
             value={businessContext}
             onChange={(e) => setBusinessContext(e.target.value)}
-            placeholder="e.g. We sell workflow software to manufacturers. Our buyers are ops directors and plant managers — the ones with a budget line for downtime. Our best customers run more than one site…"
+            placeholder="e.g. We sell workflow software to manufacturers. Our buyers are ops directors and plant managers - the ones with a budget line for downtime. Our best customers run more than one site…"
             className="input mt-3.5 min-h-[150px] resize-y bg-[var(--surface-sunken)] p-3.5 text-[15px] leading-relaxed"
           />
           <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
@@ -192,7 +192,7 @@ export default function IntakePage() {
               Fill with example text
             </button>
             <span className="text-[13px] text-[var(--muted)]">
-              Free text — nothing here is parsed into a form or required.
+              Free text - nothing here is parsed into a form or required.
             </span>
           </div>
         </div>
@@ -216,7 +216,7 @@ export default function IntakePage() {
           <div>
             <p className="text-[14px] font-bold">No export handy?</p>
             <p className="mt-0.5 max-w-[58ch] text-[13.5px] text-[var(--muted)]">
-              See the whole thing end to end on a synthetic B2B dataset — 500 deals, six
+              See the whole thing end to end on a synthetic B2B dataset - 500 deals, six
               months, clearly labelled as sample data throughout.
             </p>
           </div>

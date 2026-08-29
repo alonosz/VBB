@@ -397,7 +397,7 @@ describe("publishing the model that priced the rows", () => {
     expect(loaded.error).toBeNull();
     expect(loaded.model?.modelId).toBe("model-1");
     expect(loaded.model?.baseValue).toBe(1993.73);
-    // Provenance survives the round trip — a multiplier stays explainable.
+    // Provenance survives the round trip - a multiplier stays explainable.
     expect(loaded.model?.factors[0].levels[0]).toMatchObject({
       level: "Manufacturing",
       multiplier: 1.641,
@@ -456,7 +456,7 @@ describe("publishing the model that priced the rows", () => {
         },
       ],
     });
-    // It parses fine — it is only a string. The storage guard is what refuses
+    // It parses fine - it is only a string. The storage guard is what refuses
     // it, exactly as the database would.
     const { body } = await publishWithModel(repo, model);
     expect(body.modelStored).toBe(false);
@@ -599,7 +599,7 @@ describe("feedStatus", () => {
     expect(status.message).toMatch(/3 times/);
   });
 
-  it("checking status is not a fetch — it must not spend the rate limit", async () => {
+  it("checking status is not a fetch - it must not spend the rate limit", async () => {
     const repo = new InMemoryFeedRepository(() => NOW);
     const { body } = await publishedFeed(repo);
     const token = tokenFrom(body.feedUrl as string);

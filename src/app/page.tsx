@@ -10,8 +10,8 @@ import { Logo } from "@/components/brand/Logo";
  * get or how long it would take.
  *
  * The hero states the problem and shows it. The shape on the right is the same
- * comparison the report makes with real numbers — flat grey for one value
- * repeated, brand blue for values that differ — so the promise here and the
+ * comparison the report makes with real numbers - flat grey for one value
+ * repeated, brand blue for values that differ - so the promise here and the
  * payoff there are visibly the same thing. It carries no figures and says so:
  * there is no data yet, and inventing some to decorate a landing page is the
  * exact failure the product exists to avoid.
@@ -21,7 +21,7 @@ const STAGES = [
   {
     n: "1",
     title: "Measure",
-    body: "Upload a CRM export. We work out what your leads were actually worth from your own closed deals — win rates and deal sizes, nothing invented.",
+    body: "Upload a CRM export. We work out what your leads were actually worth from your own closed deals - win rates and deal sizes, nothing invented.",
   },
   {
     n: "2",
@@ -36,7 +36,7 @@ const STAGES = [
 ];
 
 const NEEDED = [
-  "A CSV of deals from your CRM — HubSpot, Salesforce, Pipedrive, Close, or a plain spreadsheet.",
+  "A CSV of deals from your CRM - HubSpot, Salesforce, Pipedrive, Close, or a plain spreadsheet.",
   "Create dates and deal amounts in it. Close dates and email addresses make the analysis sharper.",
   "Access to your Google Ads account, for the last step.",
 ];
@@ -208,7 +208,7 @@ export default function Home() {
             <h2 className="h3">What leaves your machine</h2>
             <p className="mt-3 max-w-[52ch] text-[14px] leading-relaxed text-[var(--muted)]">
               Your file is read in your browser and never uploaded. Only the finished
-              values Google receives — hashed identifiers, timestamps and amounts — are
+              values Google receives - hashed identifiers, timestamps and amounts - are
               ever stored, and never a name, an address or a deal size.
             </p>
           </div>
@@ -223,7 +223,7 @@ export default function Home() {
             >
               Try it on a sample dataset
             </Link>{" "}
-            — 500 synthetic deals, the whole flow end to end.
+            - 500 synthetic deals, the whole flow end to end.
           </p>
         </section>
       </main>

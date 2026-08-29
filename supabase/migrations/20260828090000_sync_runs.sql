@@ -1,9 +1,9 @@
--- VBB Engine — what happened on each scheduled run.
+-- VBB Engine - what happened on each scheduled run.
 --
 -- The nightly job already recorded its outcome on the connection, which
 -- answers "did the last run work" and nothing else. The failure that actually
 -- ends a pilot is quieter than that: the cron stops firing. Vercel drops the
--- schedule, the secret rotates, a deploy removes it — and last_sync_at simply
+-- schedule, the secret rotates, a deploy removes it - and last_sync_at simply
 -- stops moving. Nobody is watching a timestamp that does not change.
 --
 -- A run that happened leaves a row. A run that should have happened and did
@@ -11,7 +11,7 @@
 -- workspace page can say "the last run was three days ago" because it knows
 -- what a normal night looks like.
 --
--- The counts here are the ones an operator is asked about — how many leads
+-- The counts here are the ones an operator is asked about - how many leads
 -- went to Google, how many were skipped and why, how many moved too late to
 -- act on. None of it identifies a lead: totals and reasons, never a row.
 
@@ -56,7 +56,7 @@ create table if not exists public.sync_runs (
   constraint sync_runs_message_is_a_sentence check (
     message is null or length(message) <= 500
   ),
-  -- A successful run that published nothing is normal — there may have been no
+  -- A successful run that published nothing is normal - there may have been no
   -- new leads. A successful run that says why it refused is a contradiction.
   constraint sync_runs_refusal_has_a_reason check (
     status <> 'refused' or message is not null

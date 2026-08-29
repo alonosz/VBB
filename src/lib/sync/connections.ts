@@ -5,13 +5,13 @@ import { decryptSecret, encryptSecret, keyFromEnv, MissingKeyError } from "./sec
  * Where a CRM connection is kept.
  *
  * Keyed on the workspace, not on a feed. A feed does not exist until a model
- * has been published, and the analysis wants to read a CRM well before that —
+ * has been published, and the analysis wants to read a CRM well before that -
  * connecting HubSpot at step 2 replaces the CSV export, which is the easiest
  * thing in this product for a human to get wrong. One customer, one portal,
  * read by whatever needs it.
  *
  * Tokens are encrypted on the way in and decrypted on the way out, so no
- * caller ever has the option of writing one down in the clear — the database
+ * caller ever has the option of writing one down in the clear - the database
  * would refuse it anyway, but the refusal should never be reached.
  *
  * A connection that cannot be decrypted is reported as needing reconnection

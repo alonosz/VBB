@@ -6,13 +6,13 @@ import { sha256Hex } from "@/lib/export/googleAds";
  *
  * The customer used to be handed a `vbb_ws_` key and asked to paste it. That
  * put a live credential through the operator's email and left no way back if
- * it was lost — the only recovery was a new workspace, which orphans the feed
+ * it was lost - the only recovery was a new workspace, which orphans the feed
  * and the saved model it was attached to.
  *
  * An invite is a link the operator sends instead. Clicking it mints the key
  * directly in the customer's browser, so the credential never exists anywhere
  * else. Nothing stored here can be used: the token is kept as a hash, and the
- * workspace key it produces is not stored at all — redeeming generates a fresh
+ * workspace key it produces is not stored at all - redeeming generates a fresh
  * one and replaces the hash on the workspace row.
  *
  * That makes "send them a new link" and "rotate their key" the same operation,
@@ -52,8 +52,8 @@ export async function hashInviteToken(token: string): Promise<string> {
 /**
  * Whether a string is even shaped like an invite token.
  *
- * Checked before hashing so a truncated link — the commonest failure, because
- * mail clients wrap long URLs — is told what it is rather than reported as
+ * Checked before hashing so a truncated link - the commonest failure, because
+ * mail clients wrap long URLs - is told what it is rather than reported as
  * "not found".
  */
 export function looksLikeInviteToken(input: string): boolean {

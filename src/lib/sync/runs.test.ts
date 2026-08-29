@@ -69,7 +69,7 @@ describe("runHealth", () => {
     expect(health.lastSuccessAt).toEqual(hoursAgo(26));
   });
 
-  it("prefers overdue over failing — a job that stopped is the bigger problem", () => {
+  it("prefers overdue over failing - a job that stopped is the bigger problem", () => {
     const health = runHealth([run({ status: "failed", message: "x", startedAt: hoursAgo(96) })], NOW);
     expect(health.state).toBe("overdue");
   });

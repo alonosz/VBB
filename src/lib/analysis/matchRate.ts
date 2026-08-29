@@ -7,7 +7,7 @@ export const TRACKING_GAP_THRESHOLD = 0.4;
 /**
  * (e) Share of rows carrying something we can join back to an ad click.
  *
- * Reported overall and for won deals separately — won-deal coverage is the
+ * Reported overall and for won deals separately - won-deal coverage is the
  * one that actually matters, since those carry the values worth sending.
  */
 export function matchRateReadiness(deals: MappedDeal[]): MatchRateReadiness {
