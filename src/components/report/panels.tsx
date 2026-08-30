@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { ArrowIcon } from "@/components/ArrowIcon";
+import { judgeClaim } from "@/lib/analysis/judgeClaim";
 import type {
   MappedDeal,
   MatchRateReadiness,
@@ -768,14 +769,30 @@ export function ClaimsTestedSection({ model }: { model: ValueModel }) {
       </p>
       <div className="grid gap-2">
         {claimed.map((f) => {
-          const best = f.levels.filter((l) => l.usable)[0];
+          const verdict = judgeClaim(f);
+          const tone =
+            verdict.kind === "confirmed"
+              ? {
+                  border: "border-[var(--accent)]/40",
+                  chip: "bg-[var(--accent-soft)] text-[var(--accent)]",
+                  label: "Holds up",
+                }
+              : verdict.kind === "refuted"
+                ? {
+                    border: "border-[var(--warn)]/40",
+                    chip: "bg-[var(--warn-soft)] text-[var(--warn)]",
+                    label: "Not what your data says",
+                  }
+                : {
+                    border: "border-[var(--border)]",
+                    chip: "bg-[var(--background-deep)] text-[var(--muted)]",
+                    label: "Couldn't test it",
+                  };
+
           return (
             <div
               key={f.key}
-              className={
-                "rounded-xl border bg-[var(--surface)] px-4 py-3 " +
-                (f.included ? "border-[var(--accent)]/40" : "border-[var(--border)]")
-              }
+              className={`rounded-xl border bg-[var(--surface)] px-4 py-3 ${tone.border}`}
             >
               <div className="flex flex-wrap items-baseline justify-between gap-2">
                 <p className="text-[13.5px] font-semibold">
@@ -784,29 +801,66 @@ export function ClaimsTestedSection({ model }: { model: ValueModel }) {
                 <span
                   className={
                     "shrink-0 rounded-full px-2.5 py-1 text-[11px] font-bold tracking-wide " +
-                    (f.included
-                      ? "bg-[var(--accent-soft)] text-[var(--accent)]"
-                      : "bg-[var(--background-deep)] text-[var(--muted)]")
+                    tone.chip
                   }
                 >
-                  {f.included ? "In your model" : "Not in your model"}
+                  {tone.label}
                 </span>
               </div>
-              <p className="mt-1 max-w-[74ch] text-[13px] text-[var(--muted)]">
-                {f.included && best ? (
+
+              <p className="mt-1 max-w-[74ch] text-[13px] text-[var(--muted-strong)]">
+                {verdict.kind === "confirmed" && (
                   <>
-                    {f.label} holds up: <span className="mono">{best.level}</span> is worth{" "}
-                    <span className="mono">{best.lift}×</span> the average lead across{" "}
-                    <span className="mono">{best.sampleSize.toLocaleString()}</span>{" "}
+                    <span className="mono">{verdict.level.level}</span> is worth{" "}
+                    <span className="mono">{verdict.level.lift}×</span> the average lead
+                    across <span className="mono">{verdict.level.sampleSize.toLocaleString()}</span>{" "}
                     resolved deals, so it prices your leads.
                   </>
-                ) : (
+                )}
+
+                {verdict.kind === "refuted" && verdict.because === "factor-dropped" && (
                   <>
-                    {f.label} did not hold up - {f.droppedReason}. We left it out
-                    rather than bid on it.
+                    {f.label} did not hold up - {f.droppedReason}. We left it out rather
+                    than bid on it.
+                  </>
+                )}
+
+                {/*
+                  The most valuable line the report can produce, and the one it
+                  used to get backwards: the factor is real, the level they
+                  named is not the good one. Saying "holds up" here told
+                  somebody their theory was confirmed while showing them
+                  evidence against it.
+                */}
+                {verdict.kind === "refuted" && verdict.because === "wrong-level" && (
+                  <>
+                    {f.label} does predict value, but not the way you said.{" "}
+                    <span className="mono">{verdict.level?.level}</span> is worth{" "}
+                    <span className="mono">{verdict.level?.lift}×</span> the average lead
+                    across{" "}
+                    <span className="mono">
+                      {verdict.level?.sampleSize.toLocaleString()}
+                    </span>{" "}
+                    resolved deals.
+                    {verdict.strongest && (
+                      <>
+                        {" "}
+                        Your strongest is{" "}
+                        <span className="mono">{verdict.strongest.level}</span> at{" "}
+                        <span className="mono">{verdict.strongest.lift}×</span>.
+                      </>
+                    )}
+                  </>
+                )}
+
+                {verdict.kind === "untested" && (
+                  <>
+                    We couldn&apos;t test that: {verdict.reason}. It is not pricing your
+                    leads either way.
                   </>
                 )}
               </p>
+
               {f.statedLevels.length > 0 && (
                 <p className="mt-1.5 text-[12px] text-[var(--muted)]">
                   You named{" "}
