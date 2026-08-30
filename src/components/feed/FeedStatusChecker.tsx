@@ -28,13 +28,16 @@ interface Status {
   modelId: string;
   fetches: { at: string; status: number; rowCount: number }[];
   lastSuccessAt: string | null;
-  verdict: "never-fetched" | "collecting" | "failing";
+  verdict: "never-fetched" | "collecting" | "failing" | "rate-limited";
   message: string;
 }
 
 const TONE: Record<Status["verdict"], { label: string; color: string; dot: string }> = {
   collecting: { label: "Collecting", color: "var(--accent)", dot: "●" },
   "never-fetched": { label: "Not yet collected", color: "var(--warn)", dot: "○" },
+  // Not an error in the feed, so not the danger colour: the URL and the file
+  // are both fine and the budget refills on its own.
+  "rate-limited": { label: "Fetched too often", color: "var(--warn)", dot: "●" },
   failing: { label: "Failing", color: "var(--danger)", dot: "●" },
 };
 

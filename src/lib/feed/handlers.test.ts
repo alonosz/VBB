@@ -12,7 +12,7 @@ import { runDiagnostic } from "@/lib/analysis";
 import { valueAllLeads, withOverrides } from "@/lib/analysis/valueModel";
 import { tokenFromFilename, tokenFromBasicAuth } from "@/app/v1/feeds/google-ads/[file]/route";
 import { isPublishableKey } from "./supabaseRepository";
-import { MAX_FETCHES_PER_DAY } from "./rateLimit";
+import { MAX_FETCHES_PER_DAY, SETUP_FETCH_COST } from "./rateLimit";
 import { buildFeedRows } from "./publish";
 import type { ValuedLead } from "@/lib/analysis/valueModel";
 import type { MappedDeal } from "@/lib/analysis/types";
@@ -322,6 +322,40 @@ describe("serveFeed", () => {
     expect(blocked.body).toMatch(/above its limit/);
   });
 
+  /*
+   * The regression this number exists for. The old budget of 10 was set from
+   * "Google collects once or twice a day" and ignored what connecting costs:
+   * the wizard reads the file to list its columns, again to map the fields,
+   * and once more to validate on Finish. A first real attempt ran out before
+   * Finish, and Google reported it as "the data source is inaccessible, not
+   * found or not authorised" - which sends you hunting for a typo in a URL
+   * that is correct.
+   */
+  it("survives a day of somebody learning the wizard, not just a day of it running", async () => {
+    const repo = new InMemoryFeedRepository(() => NOW);
+    const { body } = await publishedFeed(repo);
+    const token = tokenFrom(String(body.feedUrl));
+
+    // Three full setup attempts - two of them abandoned partway - and then the
+    // scheduled collection that follows.
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      for (let i = 0; i < SETUP_FETCH_COST; i++) {
+        const res = await serveFeed(repo, { ...ctx, token });
+        expect(res.status, `setup attempt ${attempt}, fetch ${i + 1}`).toBe(200);
+      }
+    }
+    expect((await serveFeed(repo, { ...ctx, token })).status).toBe(200);
+  });
+
+  it("still refuses a token being polled around the clock", async () => {
+    const repo = new InMemoryFeedRepository(() => NOW);
+    const { body } = await publishedFeed(repo);
+    const token = tokenFrom(String(body.feedUrl));
+    // Once a minute for an hour is nobody's collection schedule.
+    for (let i = 0; i < 60; i++) await serveFeed(repo, { ...ctx, token });
+    expect((await serveFeed(repo, { ...ctx, token })).status).toBe(429);
+  });
+
   it("logs the refusal too, so a run of them is visible", async () => {
     const repo = new InMemoryFeedRepository(() => NOW);
     const { body } = await publishedFeed(repo);
@@ -620,14 +654,45 @@ describe("feedStatus", () => {
     expect(status.fetches[0].status).toBe(200);
   });
 
-  it("says so when every attempt has failed", async () => {
+  /*
+   * The failure that looks like every other failure from Google's side. It
+   * reports a refused fetch as "the data source is inaccessible, not found or
+   * not authorised", which sends people hunting for a typo in a URL that is
+   * correct. This screen is the only place that can say what actually
+   * happened, so it has to say it in those words.
+   */
+  it("names a rate-limited feed rather than calling the URL broken", async () => {
+    const repo = new InMemoryFeedRepository(() => NOW);
+    const { body } = await publishedFeed(repo);
+    const token = tokenFrom(body.feedUrl as string);
+    const feedId = body.feedId as string;
+
+    // Collected happily, then refused - which is what running the Google
+    // wizard a few times over in one afternoon produces.
+    await repo.logFetch(feedId, { status: 200, rowCount: 2, userAgent: null, ipHash: null });
+    for (let i = 0; i < 3; i++) {
+      await repo.logFetch(feedId, { status: 429, rowCount: 0, userAgent: null, ipHash: null });
+    }
+    // Same clock throughout, so the verdict must not depend on how the
+    // repository breaks a tie between two fetches in the same second.
+
+    const res = await feedStatus(repo, token, NOW);
+    const { status } = JSON.parse(res.body);
+    expect(status.verdict).toBe("rate-limited");
+    expect(status.message).toMatch(/3 attempts were refused/);
+    // The advertiser must not be sent looking for a fault that is not there.
+    expect(status.message).toMatch(/Nothing is wrong with the URL or the file/);
+    expect(status.message).toMatch(/24 hours/);
+  });
+
+  it("says so when every attempt has failed for some other reason", async () => {
     const repo = new InMemoryFeedRepository(() => NOW);
     const { body } = await publishedFeed(repo);
     const token = tokenFrom(body.feedUrl as string);
     const feedId = body.feedId as string;
 
     for (let i = 0; i < 3; i++) {
-      await repo.logFetch(feedId, { status: 429, rowCount: 0, userAgent: null, ipHash: null });
+      await repo.logFetch(feedId, { status: 500, rowCount: 0, userAgent: null, ipHash: null });
     }
 
     const res = await feedStatus(repo, token, NOW);

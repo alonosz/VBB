@@ -1,8 +1,9 @@
 import type { SavedValueModel } from "@/lib/model/savedModel";
 import { loadSavedModel } from "@/lib/model/savedModel";
 import { buildFeedCsv } from "./csv";
-import { checkRateLimit } from "./rateLimit";
+import { checkRateLimit, MAX_FETCHES_PER_DAY } from "./rateLimit";
 import type { FeedRepository } from "./repository";
+import type { FetchRecord } from "./types";
 import { generateFeedToken, hashIp, hashToken } from "./token";
 import { assertStorableRow, type FeedIdentifier, type FeedRow } from "./types";
 
@@ -294,7 +295,7 @@ export interface FeedStatus {
   fetches: { at: string; status: number; rowCount: number }[];
   lastSuccessAt: string | null;
   /** Plain-English reading of the log, which is the whole point of the screen. */
-  verdict: "never-fetched" | "collecting" | "failing";
+  verdict: "never-fetched" | "collecting" | "failing" | "rate-limited";
   message: string;
 }
 
@@ -316,7 +317,23 @@ export async function feedStatus(
   }
 
   const fetches = await repo.recentFetches(feed.id, STATUS_FETCH_LIMIT);
-  const lastSuccess = fetches.find((f) => f.status === 200) ?? null;
+
+  /*
+   * Picked by timestamp rather than by position in the list. The repository
+   * returns newest first, but two fetches inside the same second are a real
+   * possibility once Google is retrying, and a tie-break we do not control is
+   * not something a verdict should rest on.
+   */
+  const newestWith = (matches: (status: number) => boolean): FetchRecord | null =>
+    fetches
+      .filter((f) => matches(f.status))
+      .reduce<FetchRecord | null>(
+        (best, f) => (!best || f.fetchedAt > best.fetchedAt ? f : best),
+        null
+      );
+
+  const lastSuccess = newestWith((status) => status === 200);
+  const lastRefusal = newestWith((status) => status === 429);
 
   let verdict: FeedStatus["verdict"];
   let message: string;
@@ -325,6 +342,17 @@ export async function feedStatus(
     verdict = "never-fetched";
     message =
       "Google hasn't collected this feed yet. It fetches on its own schedule after you save the data source, so a wait of up to a day is normal. If it stays empty, the URL never made it into Google Ads.";
+  } else if (lastRefusal && (!lastSuccess || lastRefusal.fetchedAt >= lastSuccess.fetchedAt)) {
+    /*
+     * Called out on its own, because it is the one failure that looks like
+     * success from every other angle: the URL is right, the file is right, and
+     * earlier fetches worked. Google reports it as "the data source is
+     * inaccessible, not found or not authorised", which sends people hunting
+     * for a typo that is not there.
+     */
+    const refused = fetches.filter((f) => f.status === 429).length;
+    verdict = "rate-limited";
+    message = `This feed has been fetched more than ${MAX_FETCHES_PER_DAY} times in the last 24 hours, so the last ${refused === 1 ? "attempt was" : `${refused} attempts were`} refused. Setting a connection up in Google Ads costs several fetches each time you go through the wizard. Nothing is wrong with the URL or the file. Wait until the 24 hours are up, or publish a fresh feed and use that URL instead.`;
   } else if (!lastSuccess) {
     verdict = "failing";
     message = `Google has tried ${fetches.length === 1 ? "once" : `${fetches.length} times`} and not been served a file. Every attempt came back an error, so nothing has reached your account.`;
