@@ -8,11 +8,11 @@ import type { LeadSource } from "@/lib/leads/leads";
 /**
  * One box, asking for one thing, in exchange for something.
  *
- * It appears in exactly one place: the bottom of the report, under a model the
- * person has just watched get built out of their own data. An address given
- * before any value has been received is the weakest lead this product can
- * collect, and on the landing page it is worse than weak - it is a box nobody
- * fills in, sitting under a line promising no account needed.
+ * It appears in exactly one place: the bottom of step 5, once they have their
+ * model, their feed and nothing left to do here. An address given before any
+ * value has been received is the weakest lead this product can collect, and on
+ * the landing page it is worse than weak - it is a box nobody fills in,
+ * sitting under a line promising no account needed.
  *
  * The `source` prop exists because that judgement could change and the schema
  * already allows the other values. Today only "report" is wired.

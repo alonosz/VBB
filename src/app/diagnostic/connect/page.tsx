@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useDiagnostic } from "@/context/DiagnosticContext";
 import { Stepper } from "@/components/diagnostic/Stepper";
 import { Alert, PageHead } from "@/components/ui";
+import { EmailCapture } from "@/components/leads/EmailCapture";
 import { VolumeFloorPanel } from "@/components/report/volumeFloor";
 import { FlowSkeleton } from "@/components/diagnostic/FlowSkeleton";
 import { ArrowIcon } from "@/components/ArrowIcon";
@@ -618,6 +619,27 @@ export default function ConnectPage() {
           >
             Get the tracking snippet
           </button>
+        </section>
+
+        {/*
+          The last thing on the last screen, and the best moment in the product
+          to ask. They have seen their own model, published a feed, and are out
+          of steps: there is nothing left for this to compete with, and whatever
+          they do next happens in Google Ads rather than here.
+
+          Nothing from their file goes with the address - not the spread, not
+          the lead count, not a value - and the copy says so, because after five
+          screens of "your data stays in your browser" it is the thing they will
+          wonder about.
+        */}
+        <section className="well mt-4 p-5">
+          <EmailCapture
+            source="flow"
+            step="connect"
+            title="Want a second pair of eyes on this?"
+            body="Leave your address and we will get in touch about what your model is showing, and how the first weeks of bidding go. Your numbers stay in this browser; only the address is sent."
+            cta="Get in touch"
+          />
         </section>
 
         <div className="mt-8 flex flex-wrap items-center justify-between gap-4 border-t border-[var(--border)] pt-6">

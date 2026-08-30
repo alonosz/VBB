@@ -27,7 +27,6 @@ import {
   recallModel,
   rememberModel,
 } from "@/lib/model/storage";
-import { EmailCapture } from "@/components/leads/EmailCapture";
 import { ModelSourcePanel } from "@/components/report/modelSource";
 import {
   AnalysisExpander,
@@ -328,28 +327,6 @@ export default function ReportPage() {
               excluded={result.excluded}
             />
           </AnalysisExpander>
-
-          {/*
-            The best address this product can collect, and the only reason it
-            is here rather than on the landing page: this person has just seen
-            their own numbers. Someone who reached their model and then stopped
-            is the most informative churn there is, and today they leave no
-            trace at all.
-
-            Below the analysis, so it never competes with the action that
-            leaves this screen. Nothing from their file goes with the address -
-            not the spread, not the lead count, not a value - and the copy says
-            so because it is the thing they will wonder about.
-          */}
-          <div className="well p-5 sm:p-6">
-            <EmailCapture
-              source="report"
-              step="report"
-              title="Want a second pair of eyes on this?"
-              body="Leave your address and we will get in touch about what your model is showing. Your numbers stay in this browser; only the address is sent."
-              cta="Get in touch"
-            />
-          </div>
         </div>
 
         {/* The report runs several screens deep and the action that leaves it

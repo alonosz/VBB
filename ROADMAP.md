@@ -101,9 +101,9 @@ per month, not at zero. Leave it.
 Not code, and not optional if selling into the EU: a sentence at the point of
 collection saying you may get in touch, and a delete-on-request path.
 
-**Status: built, 29 Aug. One box, at the bottom of the report.**
+**Status: built, 29 Aug. One box, at the bottom of step 5.**
 
-Three placements were considered and two were cut.
+Four placements were considered and three were cut.
 
 *Beside the hero button*, the original suggestion. Cut: above the fold it
 competes with the only action on that screen that matters, and it would sit a
@@ -115,10 +115,14 @@ nothing is not the same as being worth anything. Nobody fills in a box asking
 for their address in exchange for a vague future contact from a company they
 have just decided not to try.
 
-*Bottom of the report* is what shipped, and it is the only one that was ever
-going to work. The person has watched a model get built out of their own data
-and is looking at what their leads are worth. Asking there is a conversation
-about something specific: an address left at that moment is worth a phone
+*Bottom of the report* was the first version that shipped, on the argument that
+the person is looking at what their own leads are worth. Right instinct, wrong
+screen: the report still has a step after it, so the box sat next to an action
+we would rather they took.
+
+*Bottom of step 5* is where it ended up. They have their model, they have their
+feed, and there is nothing left in the product to compete with: whatever
+happens next happens in Google Ads. An address left there is worth a phone
 call, which is the whole point of collecting one.
 
 Step 1 and 2 stay clean. `leads` holds an address, a moment and a one-word
