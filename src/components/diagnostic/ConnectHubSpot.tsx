@@ -49,9 +49,10 @@ export function ConnectHubSpot({
   /** The CSV path is working. Two imports at once would race for the flow. */
   busy: boolean;
 }) {
-  const [phase, setPhase] = useState<"idle" | "connecting" | "importing">("idle");
+  const [phase, setPhase] = useState<"idle" | "connecting" | "importing" | "saving">("idle");
   const [error, setError] = useState<string | null>(null);
   const [keyInput, setKeyInput] = useState("");
+  const [tokenInput, setTokenInput] = useState("");
   const started = useRef(false);
 
   /*
@@ -168,16 +169,52 @@ export function ConnectHubSpot({
     if (key) queueMicrotask(() => void importDeals(key));
   }, [resuming, importDeals]);
 
-  function onClick() {
-    const stored = readWorkspaceKey();
-    const key = (keyInput.trim() || stored || "").trim();
+  /**
+   * The way in when OAuth is not available.
+   *
+   * A private app token needs Super Admin in the portal, so it is the wrong
+   * ask for a customer and the right one for whoever is testing: it needs no
+   * public app, no marketplace, and no signed policy. Once stored it is
+   * indistinguishable downstream from an OAuth connection, so proving this
+   * path proves the pull, the mapping and the report all at once.
+   */
+  async function saveToken(workspaceKey: string) {
+    setError(null);
+    setPhase("saving");
+    try {
+      const res = await fetch("/api/crm/hubspot/token", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ workspaceKey, token: tokenInput.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) {
+        setError(data.error ?? "That token was refused.");
+        setNeedsKey(res.status === 401);
+        setPhase("idle");
+        return;
+      }
+      await importDeals(workspaceKey);
+    } catch {
+      setError("We couldn't reach HubSpot. Try again.");
+      setPhase("idle");
+    }
+  }
+
+  /** Whichever button they pressed, it needs a workspace key first. */
+  function withKey(run: (key: string) => void) {
+    const key = (keyInput.trim() || readWorkspaceKey() || "").trim();
     if (!key) {
       setNeedsKey(true);
       setError(null);
       return;
     }
     if (keyInput.trim()) rememberWorkspaceKey(keyInput.trim());
-    void importDeals(key);
+    run(key);
+  }
+
+  function onClick() {
+    withKey((key) => void importDeals(key));
   }
 
   const working = phase !== "idle";
@@ -186,7 +223,9 @@ export function ConnectHubSpot({
       ? "Opening HubSpot…"
       : phase === "importing"
         ? "Reading your deals…"
-        : "Connect HubSpot";
+        : phase === "saving"
+          ? "Checking the token…"
+          : "Connect HubSpot";
 
   return (
     <div className="well mt-4 p-5 sm:p-6">
@@ -238,6 +277,40 @@ export function ConnectHubSpot({
           {error}
         </p>
       )}
+
+      {/*
+        Collapsed, because it is the wrong ask for a customer: a private app
+        needs Super Admin in their portal. It is the right one for anyone
+        testing, or for a portal whose admin would rather not install a public
+        app, and it needs no OAuth, no marketplace and no signed policy.
+      */}
+      <details className="mt-3.5">
+        <summary className="cursor-pointer text-[12.5px] text-[var(--muted)] underline underline-offset-2">
+          Or paste a private app token instead
+        </summary>
+        <p className="mt-2 max-w-[62ch] text-[12.5px] text-[var(--muted)]">
+          In HubSpot: Settings → Integrations → Private Apps → create one with
+          the three read scopes for deals, contacts and companies, then paste
+          its token here. Needs Super Admin in that portal.
+        </p>
+        <div className="mt-2 flex flex-wrap items-start gap-2">
+          <input
+            value={tokenInput}
+            onChange={(e) => setTokenInput(e.target.value)}
+            placeholder="pat-…"
+            aria-label="HubSpot private app token"
+            className="input mono min-w-0 flex-1 basis-[18rem] text-[13px]"
+          />
+          <button
+            type="button"
+            onClick={() => withKey((key) => void saveToken(key))}
+            disabled={working || busy || !tokenInput.trim()}
+            className="btn btn-secondary shrink-0 text-[13px]"
+          >
+            Use this token
+          </button>
+        </div>
+      </details>
     </div>
   );
 }

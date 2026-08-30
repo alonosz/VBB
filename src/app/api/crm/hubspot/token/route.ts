@@ -54,13 +54,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
   }
 
+  // Optional, and the check below says why. This guard used to require it and
+  // contradicted the comment three lines down: the feed URL stopped being
+  // necessary when connections moved from feeds to workspaces, and the
+  // requirement was left behind. It is what made a private app token
+  // unusable at step 2, where no feed exists yet - which is exactly the
+  // situation where OAuth is unavailable and this path is the only way in.
   const feedToken = tokenFromInput(typeof body.url === "string" ? body.url : "");
-  if (!feedToken) {
-    return NextResponse.json(
-      { ok: false, error: "Paste your feed URL so we know which feed to connect." },
-      { status: 400 }
-    );
-  }
 
   const accessToken = typeof body.token === "string" ? body.token.trim() : "";
   if (!accessToken) {
