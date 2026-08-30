@@ -18,13 +18,20 @@ answer.
 
 ## Before you start
 
-Decide the domain first. The redirect URL becomes part of the app, and changing
-it later means editing an app customers have already installed. Everything here
-assumes:
+`redirectUrls` is a **list**, so this is not the one-way door it looks like.
+Put every address the app will ever answer on in from the start and the day a
+custom domain goes live is a non-event.
 
-    https://app.valuebasedbidding.com
+Two are configured today:
 
-Substitute your own everywhere it appears, if it differs.
+    https://vbb-cyan.vercel.app          the Vercel URL, live now
+    https://app.valuebasedbidding.com    the custom domain, not yet pointed
+
+Our code builds the callback from whatever domain it is actually running on
+(`feedOrigin()`, falling back to `VERCEL_PROJECT_PRODUCTION_URL`). So it sends
+the Vercel one today, and starts sending the custom one the moment
+`VBB_PUBLIC_ORIGIN` is set to it. Both being listed is what makes that switch
+cost nothing.
 
 You also need a **HubSpot developer account**, which is a different thing from
 a normal HubSpot login. Free, at `developers.hubspot.com`.
@@ -95,6 +102,7 @@ it differs:
     "auth": {
       "type": "oauth",
       "redirectUrls": [
+        "https://vbb-cyan.vercel.app/api/crm/hubspot/callback",
         "https://app.valuebasedbidding.com/api/crm/hubspot/callback"
       ],
       "requiredScopes": [
@@ -117,7 +125,11 @@ Three things about this file:
   types, nothing else. Worth saying plainly if HubSpot ever reviews the app.
 - The CLI's boilerplate ships with `http://localhost:3000/oauth-callback`.
   Replace it rather than adding to it. If you want a local one too, add
-  `http://localhost:3000/api/crm/hubspot/callback` as a second entry.
+  `http://localhost:3000/api/crm/hubspot/callback` as a further entry.
+- **Write this file from Terminal, not TextEdit.** TextEdit opens in rich text
+  by default and turns straight quotes into curly ones, which is invalid JSON
+  and produces an error that does not mention quotes. A `cat > file <<'EOF'`
+  heredoc cannot do that.
 
 ## Step 6 - upload
 
