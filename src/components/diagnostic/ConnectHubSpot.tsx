@@ -201,15 +201,23 @@ export function ConnectHubSpot({
     }
   }
 
-  /** Whichever button they pressed, it needs a workspace key first. */
+  /**
+   * Whichever button they pressed, it needs a workspace key first.
+   *
+   * Saying so matters more than it looks. Revealing the field is a useful
+   * answer the first time and no answer at all the second: the field is
+   * already on screen, so the click does nothing visible and the button reads
+   * as broken. That is exactly how it was reported.
+   */
   function withKey(run: (key: string) => void) {
     const key = (keyInput.trim() || readWorkspaceKey() || "").trim();
     if (!key) {
       setNeedsKey(true);
-      setError(null);
+      setError("Paste your workspace key in the box above first.");
       return;
     }
     if (keyInput.trim()) rememberWorkspaceKey(keyInput.trim());
+    setError(null);
     run(key);
   }
 
