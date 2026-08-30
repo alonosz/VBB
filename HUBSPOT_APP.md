@@ -84,20 +84,24 @@ alternative, `private`, would mean adding each customer's portal ID by hand.
 
 ## Step 5 - set the config
 
-In the `vbb-engine` folder, open this file in TextEdit:
+The CLI generates a placeholder config. Its real shape, as of CLI 8.14.0, is
+richer than the docs suggest and it asks for **write access to contacts**,
+which we must not ship: we never write anything, and asking for write is the
+fastest way to lose someone at the approval screen.
 
-    src/app/app-hsmeta.json
+Do not open it in TextEdit. TextEdit turns straight quotes into curly ones,
+which is invalid JSON and produces an error that never mentions quotes. Write
+it from Terminal instead. The wildcard finds the app folder whatever the CLI
+named it (the name in its tree diagram is the component, not the directory):
 
-Replace everything in it with this, keeping whatever `uid` the CLI generated if
-it differs:
-
-```json
+```bash
+cat > ~/Desktop/vbb-engine/*/app/app-hsmeta.json <<'EOF'
 {
-  "uid": "vbb_engine",
+  "uid": "vbb_engine_app",
   "type": "app",
   "config": {
-    "name": "Value Based Bidding",
     "description": "Works out what each lead is worth from your own closed deals, and sends those values to Google Ads. Read-only: nothing in your CRM is changed.",
+    "name": "Value Based Bidding",
     "distribution": "marketplace",
     "auth": {
       "type": "oauth",
@@ -106,30 +110,54 @@ it differs:
         "https://app.valuebasedbidding.com/api/crm/hubspot/callback"
       ],
       "requiredScopes": [
+        "oauth",
         "crm.objects.deals.read",
         "crm.objects.contacts.read",
         "crm.objects.companies.read"
-      ]
+      ],
+      "optionalScopes": [],
+      "conditionallyRequiredScopes": []
+    },
+    "permittedUrls": {
+      "fetch": [
+        "https://api.hubapi.com"
+      ],
+      "iframe": [],
+      "img": []
+    },
+    "support": {
+      "supportEmail": "alon@bettersignals.co",
+      "documentationUrl": "https://vbb-cyan.vercel.app",
+      "supportUrl": "https://vbb-cyan.vercel.app"
     }
   }
 }
+EOF
 ```
 
-Three things about this file:
+Check it took:
 
-- **The redirect URL must match exactly** what our code sends. Ours is built by
-  `oauthConfigFromEnv()` in `src/lib/sync/hubspot/oauth.ts` as
-  `${origin}/api/crm/hubspot/callback`. No trailing slash. A one-character
-  mismatch produces an install error that does not explain itself.
-- **The scopes must match `SCOPES`** in that same file. Read-only, three object
-  types, nothing else. Worth saying plainly if HubSpot ever reviews the app.
-- The CLI's boilerplate ships with `http://localhost:3000/oauth-callback`.
-  Replace it rather than adding to it. If you want a local one too, add
-  `http://localhost:3000/api/crm/hubspot/callback` as a further entry.
-- **Write this file from Terminal, not TextEdit.** TextEdit opens in rich text
-  by default and turns straight quotes into curly ones, which is invalid JSON
-  and produces an error that does not mention quotes. A `cat > file <<'EOF'`
-  heredoc cannot do that.
+```bash
+cat ~/Desktop/vbb-engine/*/app/app-hsmeta.json
+```
+
+What changed from the generated template, and why:
+
+- **Dropped `crm.objects.contacts.write`.** We never write to a CRM. See above.
+- **Added `crm.objects.deals.read` and `crm.objects.companies.read`**, which
+  are what the analysis actually reads.
+- **Kept `oauth`.** HubSpot requires it on every OAuth app.
+- **Both redirect URLs**, replacing the boilerplate `http://localhost:3000`.
+  They must match what our code sends: `oauthConfigFromEnv()` in
+  `src/lib/sync/hubspot/oauth.ts` builds `${origin}/api/crm/hubspot/callback`,
+  no trailing slash. A one-character mismatch produces an install error that
+  does not explain itself. Add
+  `http://localhost:3000/api/crm/hubspot/callback` too if you want to test
+  against a local server.
+- **Dropped the placeholder `supportPhone`** (`+18005555555`). A fake support
+  number shown to someone installing the app is worse than no number.
+- **Real name, description and support links.** These are what a customer
+  reads on the approval screen.
 
 ## Step 6 - upload
 
