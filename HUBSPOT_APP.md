@@ -4,82 +4,85 @@ The public app is what lets a customer connect their HubSpot by clicking a
 link, instead of creating a private app in their own portal and emailing us a
 token.
 
-**There is no longer a button for this.** HubSpot sunset legacy public app
-creation on 23 June 2026. The "Create Legacy App" dialog now offers only
-Private, and the tooltip over Public says new legacy public app creation is
-disabled. Public apps are created from the command line.
+**There is no button for this.** HubSpot sunset legacy public app creation on
+23 June 2026. In a developer account, Development → Legacy Apps offers Private
+only, and Development → Projects → Create project just prints two CLI commands
+at you. Public apps are created from the command line, and that is the only
+way.
 
-This is more technical than it should be and there is no way around it. What
-follows is the whole job, in order, with nothing left implied.
+Verified against HubSpot CLI **8.14.0** on 30 August 2026. Every question the
+wizard would ask has a command-line flag, so the version below has nothing to
+answer.
 
 ---
 
 ## Before you start
 
-Decide the domain first. The redirect URL is part of the app config, and
-changing it later means editing and re-uploading a live app that customers have
-already installed. Everything below assumes:
+Decide the domain first. The redirect URL becomes part of the app, and changing
+it later means editing an app customers have already installed. Everything here
+assumes:
 
     https://app.valuebasedbidding.com
 
-Substitute your own if it differs, in every place it appears.
+Substitute your own everywhere it appears, if it differs.
 
 You also need a **HubSpot developer account**, which is a different thing from
-a normal HubSpot login. `developers.hubspot.com`, free.
+a normal HubSpot login. Free, at `developers.hubspot.com`.
 
 ---
 
-## 1. Install Node and the HubSpot CLI
+## Step 1 - open Terminal
 
-Node from `nodejs.org`, the LTS version. Then, in Terminal:
+On a Mac: `Cmd + Space`, type `terminal`, press Enter. A text window opens.
+Every command below is typed there, one at a time, each followed by Enter.
 
-```bash
-npm install -g @hubspot/cli
-```
-
-Check it worked:
+## Step 2 - check you have Node
 
 ```bash
-hs --version
+node -v
 ```
 
-## 2. Log the CLI into your developer account
+- A version number (`v22.11.0` or similar) means carry on.
+- `command not found` means go to `nodejs.org`, download the big LTS button,
+  install it, then **quit Terminal and open it again** before retrying.
+
+## Step 3 - install the CLI and log in
 
 ```bash
-hs init
+npm install -g @hubspot/cli && hs init
 ```
 
-This opens a browser, asks which account to connect, and gives you a personal
-access key to paste back. Pick the **developer** account, not a portal.
+If that fails with `EACCES` or `permission denied`, run the same thing with
+`sudo` in front. It asks for your Mac password, and nothing appears on screen
+as you type it. That is normal, keep typing and press Enter.
 
-## 3. Create the project
+`hs init` opens a browser, asks which account to connect, and gives you a long
+key to paste back into Terminal. Choose the **developer** account, not a
+customer portal.
+
+## Step 4 - create the project
 
 ```bash
-hs project create
+cd ~/Desktop
+hs project create --name vbb-engine --dest ./vbb-engine \
+  --project-base app --distribution marketplace --auth oauth
 ```
 
-It asks a series of questions. The answers that matter:
+No questions. It leaves a `vbb-engine` folder on your Desktop.
 
-| Question | Answer |
-|---|---|
-| Project name | `vbb-engine` |
-| Project template / base | **App** |
-| Distribution | **Marketplace**, not private |
-| Authentication | **OAuth** |
+`--distribution marketplace` sounds wrong and is right. It means OAuth installs
+are not restricted to a pre-approved list of portals. It does **not** list the
+app publicly, and nobody finds it unless you send them the link. The
+alternative, `private`, would mean adding each customer's portal ID by hand.
 
-"Marketplace" here does **not** mean you have to list the app publicly. It
-means OAuth installs are not restricted to a pre-approved list of portals,
-which is what you want for design partners. Nobody finds the app unless you
-send them the link.
+## Step 5 - set the config
 
-## 4. Replace the app config
-
-The project it generated contains a file at:
+In the `vbb-engine` folder, open this file in TextEdit:
 
     src/app/app-hsmeta.json
 
-Open it and replace its contents with this, keeping whatever `uid` the CLI
-generated if it differs:
+Replace everything in it with this, keeping whatever `uid` the CLI generated if
+it differs:
 
 ```json
 {
@@ -106,41 +109,42 @@ generated if it differs:
 
 Three things about this file:
 
-- **The redirect URL must match exactly** what the code sends. Our value comes
-  from `oauthConfigFromEnv()` in `src/lib/sync/hubspot/oauth.ts`, built as
-  `${origin}/api/crm/hubspot/callback`. No trailing slash. A mismatch of one
-  character produces an install error that does not explain itself.
-- **The scopes must match `SCOPES`** in that same file. They are read-only, on
-  three object types, and the app needs nothing else. That is worth stating
-  plainly if HubSpot ever reviews it.
-- The CLI's boilerplate ships with `http://localhost:3000/oauth-callback` as
-  the redirect. Replace it rather than adding to it, unless you want a local
-  one too, in which case add
+- **The redirect URL must match exactly** what our code sends. Ours is built by
+  `oauthConfigFromEnv()` in `src/lib/sync/hubspot/oauth.ts` as
+  `${origin}/api/crm/hubspot/callback`. No trailing slash. A one-character
+  mismatch produces an install error that does not explain itself.
+- **The scopes must match `SCOPES`** in that same file. Read-only, three object
+  types, nothing else. Worth saying plainly if HubSpot ever reviews the app.
+- The CLI's boilerplate ships with `http://localhost:3000/oauth-callback`.
+  Replace it rather than adding to it. If you want a local one too, add
   `http://localhost:3000/api/crm/hubspot/callback` as a second entry.
 
-## 5. Upload it
+## Step 6 - upload
 
 ```bash
+cd ~/Desktop/vbb-engine
 hs project upload
 ```
 
-## 6. Copy the credentials into Vercel
+The project now appears under Development → Projects in your developer account.
 
-The Client ID and Client Secret appear in your developer account under the app,
-on its auth settings. Put them in Vercel as:
+## Step 7 - copy the credentials into Vercel
+
+The Client ID and Client Secret are on the app's auth settings in your
+developer account. In Vercel, add:
 
     HUBSPOT_CLIENT_ID
     HUBSPOT_CLIENT_SECRET
 
-Redeploy. The connect button on step 5 is now live.
+Redeploy. The Connect HubSpot button on step 5 is now live.
 
 ---
 
 ## What a customer sees after this
 
 They click **Connect HubSpot**, HubSpot asks them to approve read access to
-deals, contacts and companies, and they land back on our page connected. No
-app to create, no token to copy, no email carrying a credential.
+deals, contacts and companies, and they land back on our page connected. No app
+to create, no token to copy, no email carrying a credential.
 
 They may need Super Admin in their own HubSpot to approve it, or the "App
 Marketplace Access" permission that Super Admins carry automatically. Worst
@@ -148,9 +152,9 @@ case that is one forwarded link.
 
 ## What this does not require
 
-**Marketplace listing.** An app can be installed through its OAuth link without
-ever being listed. Listing is a distribution channel for being found by
-strangers browsing HubSpot's directory, and nothing in our flow depends on it.
+**Marketplace listing.** An app installs through its OAuth link without ever
+being listed. Listing is a distribution channel, for being found by strangers
+browsing HubSpot's directory. Nothing in our flow depends on it.
 
 ---
 
@@ -158,7 +162,8 @@ strangers browsing HubSpot's directory, and nothing in our flow depends on it.
 
 | Symptom | Cause |
 |---|---|
-| `hs: command not found` | Node installed but the global npm bin is not on PATH. Restart Terminal first. |
-| Install fails with a redirect error | The redirect URL in `app-hsmeta.json` does not match `${origin}/api/crm/hubspot/callback` exactly. Check for a trailing slash and for http vs https. |
-| Customer approves, then our page says the connection failed | `HUBSPOT_CLIENT_ID` or `HUBSPOT_CLIENT_SECRET` missing or wrong in Vercel, or the deploy predates them being set. |
-| The sync runs but stores nothing | `VBB_TOKEN_KEY` is unset, so there is nothing to encrypt the token with. The route says so rather than storing it in the clear. |
+| `hs: command not found` | Node is installed but its global bin is not on PATH. Quit Terminal and reopen it first. |
+| `Config file not found, run hs account auth` | Step 3 did not finish. Run `hs init` again. |
+| Install fails with a redirect error | The redirect URL in `app-hsmeta.json` does not match `${origin}/api/crm/hubspot/callback` exactly. Check the trailing slash, and http against https. |
+| Customer approves, then our page says the connection failed | `HUBSPOT_CLIENT_ID` or `HUBSPOT_CLIENT_SECRET` is missing or wrong in Vercel, or the deploy predates them being set. |
+| The sync runs but stores nothing | `VBB_TOKEN_KEY` is unset, so there is nothing to encrypt the token with. The route refuses rather than storing a CRM credential in the clear. |
