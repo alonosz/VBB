@@ -383,6 +383,27 @@ begin
 end;
 $$;
 
+-- --- self-serve workspaces --------------------------------------------------
+--
+-- Creating a workspace is reachable by anyone now, so the column the rate
+-- limiter counts on has to refuse a raw address the same way every other
+-- caller record in this schema does.
+
+select pg_temp.must_pass($$
+  insert into public.workspaces (name, key_hash, key_prefix, created_ip_hash)
+  values ('Self-serve, 2026-08-30 14:22 UTC', repeat('7', 64), 'vbb_ws_77aa', repeat('c', 64))$$,
+  'a self-serve workspace records a hashed creator');
+
+select pg_temp.must_fail($$
+  insert into public.workspaces (name, key_hash, key_prefix, created_ip_hash)
+  values ('Bad', repeat('6', 64), 'vbb_ws_66aa', '203.0.113.7')$$,
+  'AN UNHASHED CREATOR ADDRESS CANNOT BE STORED');
+
+select pg_temp.must_pass($$
+  insert into public.workspaces (name, key_hash, key_prefix)
+  values ('Operator made', repeat('5', 64), 'vbb_ws_55aa')$$,
+  'a workspace an operator made needs no creator at all');
+
 -- --- leads ----------------------------------------------------------------
 --
 -- This table is the one place an address is stored in the clear, so what it

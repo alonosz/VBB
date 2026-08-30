@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { feedRepositoryFromEnv, supabaseFromEnv } from "@/lib/feed/supabaseRepository";
 import { hashToken, tokenFromInput } from "@/lib/feed/token";
 import { workspaceRepositoryFromEnv } from "@/lib/workspace/env";
-import { authorizeWorkspace, feedInWorkspace } from "@/lib/workspace/authorize";
+import { feedInWorkspace } from "@/lib/workspace/authorize";
+import { authorizeOrCreateWorkspace } from "@/lib/workspace/selfServe";
 import { CrmConnectionStore } from "@/lib/sync/connections";
 import { keyFromEnv } from "@/lib/sync/secrets";
 import { HubSpotClient, verifyAccess } from "@/lib/sync/hubspot/client";
@@ -27,6 +28,19 @@ import { HubSpotClient, verifyAccess } from "@/lib/sync/hubspot/client";
  * someone else's feed and push a stranger's leads into their account.
  */
 
+/**
+ * The caller, for rate limiting a route anyone can reach.
+ *
+ * First hop only. The rest of an x-forwarded-for chain is written by whoever
+ * is calling, so counting against it would let one script present a new
+ * "caller" on every request.
+ */
+function callerIp(request: Request): string | null {
+  const forwarded = request.headers.get("x-forwarded-for");
+  if (forwarded) return forwarded.split(",")[0].trim();
+  return request.headers.get("x-real-ip");
+}
+
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
@@ -49,7 +63,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, error: "That request could not be read." }, { status: 400 });
   }
 
-  const auth = await authorizeWorkspace(workspaces, body.workspaceKey);
+  const auth = await authorizeOrCreateWorkspace({
+    repo: workspaces,
+    presented: body.workspaceKey,
+    ip: callerIp(request),
+  });
   if (!auth.ok) {
     return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
   }
@@ -108,5 +126,8 @@ export async function POST(request: Request) {
     );
   }
 
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({
+    ok: true,
+    ...(auth.mintedKey ? { workspaceKey: auth.mintedKey } : {}),
+  });
 }

@@ -3,7 +3,7 @@ import { feedRepositoryFromEnv } from "@/lib/feed/supabaseRepository";
 import { feedOriginFromEnv } from "@/lib/feed/origin";
 import { keyFromEnv } from "@/lib/sync/secrets";
 import { workspaceRepositoryFromEnv } from "@/lib/workspace/env";
-import { authorizeWorkspace } from "@/lib/workspace/authorize";
+import { authorizeOrCreateWorkspace } from "@/lib/workspace/selfServe";
 import { authorizeUrl, oauthConfigFromEnv, signState } from "@/lib/sync/hubspot/oauth";
 
 /**
@@ -14,6 +14,19 @@ import { authorizeUrl, oauthConfigFromEnv, signState } from "@/lib/sync/hubspot/
  * server log, the browser history and the referrer header on the way out to
  * HubSpot - and that token is the whole credential for the feed.
  */
+
+/**
+ * The caller, for rate limiting a route anyone can reach.
+ *
+ * First hop only. The rest of an x-forwarded-for chain is written by whoever
+ * is calling, so counting against it would let one script present a new
+ * "caller" on every request.
+ */
+function callerIp(request: Request): string | null {
+  const forwarded = request.headers.get("x-forwarded-for");
+  if (forwarded) return forwarded.split(",")[0].trim();
+  return request.headers.get("x-real-ip");
+}
 
 export const runtime = "nodejs";
 
@@ -59,7 +72,15 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, error: "That request could not be read." }, { status: 400 });
   }
 
-  const auth = await authorizeWorkspace(workspaces, body.workspaceKey);
+  // No key at all means a new visitor, and they get a workspace rather than
+  // an instruction to find a credential they have never heard of. A key that
+  // does not work is still an error: minting around a typo would orphan the
+  // feed Google is reading.
+  const auth = await authorizeOrCreateWorkspace({
+    repo: workspaces,
+    presented: body.workspaceKey,
+    ip: callerIp(request),
+  });
   if (!auth.ok) {
     return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
   }
@@ -72,5 +93,9 @@ export async function POST(request: Request) {
   return NextResponse.json({
     ok: true,
     authorizeUrl: authorizeUrl(oauth, signState(auth.workspace.id, key)),
+    // Present only when one was just created. This is the single moment the
+    // key exists outside a hash, so the browser has to keep it now or the
+    // workspace becomes unreachable.
+    ...(auth.mintedKey ? { workspaceKey: auth.mintedKey } : {}),
   });
 }

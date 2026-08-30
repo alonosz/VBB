@@ -25,6 +25,12 @@ export interface NewWorkspace {
   name: string;
   keyHash: string;
   keyPrefix: string;
+  /**
+   * Salted hash of whoever asked, set only when a visitor minted this
+   * workspace themselves. Null for the ones an operator made at /admin, which
+   * need no limiting because creating one already required the admin password.
+   */
+  createdIpHash?: string | null;
 }
 
 interface WorkspaceDto {
@@ -63,6 +69,15 @@ export interface WorkspaceRepository {
    * customer has just said they no longer have it.
    */
   rotateKey(id: string, keyHash: string, keyPrefix: string): Promise<void>;
+  /**
+   * How many workspaces this caller has minted since `since`.
+   *
+   * Counting the rows *is* the rate limit, the same shape the feed fetch log
+   * uses: one fact rather than a counter that can drift from the thing it is
+   * supposed to describe. Zero for an unknown caller, so a proxy that strips
+   * the header cannot lock everyone out on one stranger's behalf.
+   */
+  countCreatedSince(ipHash: string | null, since: Date): Promise<number>;
 }
 
 export class SupabaseWorkspaceRepository implements WorkspaceRepository {
@@ -75,6 +90,7 @@ export class SupabaseWorkspaceRepository implements WorkspaceRepository {
         name: workspace.name,
         key_hash: workspace.keyHash,
         key_prefix: workspace.keyPrefix,
+        created_ip_hash: workspace.createdIpHash ?? null,
       })
       .select(COLUMNS)
       .single();
@@ -130,6 +146,19 @@ export class SupabaseWorkspaceRepository implements WorkspaceRepository {
       .eq("id", id);
     if (error) throw new Error(error.message);
   }
+
+  async countCreatedSince(ipHash: string | null, since: Date): Promise<number> {
+    if (!ipHash) return 0;
+
+    const { count, error } = await this.client
+      .from("workspaces")
+      .select("id", { count: "exact", head: true })
+      .eq("created_ip_hash", ipHash)
+      .gte("created_at", since.toISOString());
+
+    if (error) throw new Error(error.message);
+    return count ?? 0;
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -137,7 +166,7 @@ export class SupabaseWorkspaceRepository implements WorkspaceRepository {
 // ---------------------------------------------------------------------------
 
 export class InMemoryWorkspaceRepository implements WorkspaceRepository {
-  private rows = new Map<string, Workspace & { keyHash: string }>();
+  private rows = new Map<string, Workspace & { keyHash: string; createdIpHash: string | null }>();
   private seq = 0;
 
   constructor(private now: () => Date = () => new Date()) {}
@@ -151,6 +180,7 @@ export class InMemoryWorkspaceRepository implements WorkspaceRepository {
       name: workspace.name,
       keyPrefix: workspace.keyPrefix,
       keyHash: workspace.keyHash,
+      createdIpHash: workspace.createdIpHash ?? null,
       status: "active" as const,
       createdAt: this.now(),
     };
@@ -183,5 +213,12 @@ export class InMemoryWorkspaceRepository implements WorkspaceRepository {
     if (!row) return;
     row.keyHash = keyHash;
     row.keyPrefix = keyPrefix;
+  }
+
+  async countCreatedSince(ipHash: string | null, since: Date): Promise<number> {
+    if (!ipHash) return 0;
+    return [...this.rows.values()].filter(
+      (w) => w.createdIpHash === ipHash && w.createdAt >= since
+    ).length;
   }
 }

@@ -14,7 +14,7 @@ text. A lead exists server-side as a hashed identifier, a timestamp, and a
 number.
 
 This is not a policy anyone has to remember. Database CHECK constraints make
-the alternative impossible to store, and 46 assertions run against a real
+the alternative impossible to store, and 49 assertions run against a real
 Postgres to prove it.
 
 ---
@@ -23,7 +23,7 @@ Postgres to prove it.
 
 | Table | Holds | Never holds |
 |---|---|---|
-| `workspaces` | Customer label, hashed key | Contact details |
+| `workspaces` | Customer label, hashed key, hashed creator | Contact details |
 | `feeds` | Hashed token, currency, model id | Anything about a lead |
 | `feed_rows` | SHA-256 email **or** click ID, timestamp, value | Addresses, names, amounts |
 | `feed_models` | Multipliers, level labels, aggregates | Any individual deal |
@@ -68,6 +68,26 @@ Two supporting details. The caller's IP is stored only as a salted hash, and
 only so that counting recent rows can be the rate limiter. And the box says at
 the point of collection what the address is for, because that is what consent
 means in practice.
+
+---
+
+### Workspaces nobody signed up for
+
+A workspace can now be created without an operator: somebody clicks Connect
+HubSpot with no key, one is minted, and the key goes straight into their
+browser. They are never shown a credential and never asked for one, which is
+what keeps the "no account needed" promise true on a screen that needs a
+server-side identity.
+
+What that stores is a label saying it was self-serve, the timestamp, and a
+salted hash of the caller. The hash exists only so that counting recent rows
+can be the rate limit, the same shape the feed fetch log uses. No email, no
+name, nothing typed by a person, because nothing was typed by a person.
+
+One rule holds the whole thing up: **a key that does not work is refused, never
+replaced.** Minting around a typo would hand a customer a fresh empty workspace
+and orphan the feed Google is reading, with nothing on screen to say why their
+model vanished. Only the complete absence of a key means "new visitor".
 
 ---
 

@@ -75,6 +75,19 @@ export function ConnectHubSpot({
     () => resuming && typeof window !== "undefined" && !readWorkspaceKey()
   );
 
+  /**
+   * Keep a key the server just minted for us.
+   *
+   * This is the only moment it exists outside a hash. Miss it and the visitor
+   * owns a workspace, a connection and eventually a feed that nothing can ever
+   * reach again.
+   */
+  function keepMintedKey(data: { workspaceKey?: unknown }) {
+    if (typeof data.workspaceKey === "string" && data.workspaceKey.trim()) {
+      rememberWorkspaceKey(data.workspaceKey.trim());
+    }
+  }
+
   const beginOAuth = useCallback(async (workspaceKey: string) => {
     setPhase("connecting");
     try {
@@ -90,6 +103,9 @@ export function ConnectHubSpot({
         setPhase("idle");
         return;
       }
+      // Before the redirect, not after: this page is about to be replaced.
+      keepMintedKey(data);
+
       // Remember to finish the import when HubSpot sends them back.
       try {
         sessionStorage.setItem(RESUME, "1");
@@ -160,8 +176,10 @@ export function ConnectHubSpot({
     } catch {
       // Nothing to clean up if storage is unavailable.
     }
-    // A missing key already put the prompt on screen; there is nothing to
-    // resume until they paste one.
+    // A key is expected here: the connect call that sent them to HubSpot
+    // stored one if the server minted it. Resuming without one would ask the
+    // server for a second workspace and find no connection on it, so the
+    // import is left for them to press again.
     const key = readWorkspaceKey();
     // Queued rather than called: the import sets state as its first act, and
     // doing that synchronously inside an effect makes React render twice
@@ -194,7 +212,10 @@ export function ConnectHubSpot({
         setPhase("idle");
         return;
       }
-      await importDeals(workspaceKey);
+      keepMintedKey(data);
+      // The import needs whichever key ended up in play: the one they had, or
+      // the one that was just made for them.
+      await importDeals(readWorkspaceKey() ?? workspaceKey);
     } catch {
       setError("We couldn't reach HubSpot. Try again.");
       setPhase("idle");
@@ -211,13 +232,12 @@ export function ConnectHubSpot({
    */
   function withKey(run: (key: string) => void) {
     const key = (keyInput.trim() || readWorkspaceKey() || "").trim();
-    if (!key) {
-      setNeedsKey(true);
-      setError("Paste your workspace key in the box above first.");
-      return;
-    }
     if (keyInput.trim()) rememberWorkspaceKey(keyInput.trim());
     setError(null);
+    // Empty is a valid request now: the server mints a workspace and hands the
+    // key back, and the visitor is never shown a credential. The field below
+    // stays for the other case - somebody who has a key and is on a new
+    // machine, who must not be given a second empty workspace instead.
     run(key);
   }
 
@@ -250,8 +270,9 @@ export function ConnectHubSpot({
             Your workspace key
           </label>
           <p className="mt-1 max-w-[58ch] text-[12.5px] text-[var(--muted)]">
-            It starts <span className="mono">vbb_ws_</span> and was created when you
-            opened your invite link. The CSV route above needs no key at all.
+            It starts <span className="mono">vbb_ws_</span>. You only need this if
+            you already have a workspace and are on a new machine. Leave it empty
+            and we will set one up for you.
           </p>
           <input
             id="ws-key"
