@@ -23,12 +23,24 @@ const TOKEN = "https://api.hubapi.com/oauth/v1/token";
  * Deals for the outcome and amount, contacts for the email and click ID,
  * companies for size and industry. Nothing that would let this write to a
  * customer's CRM, because it never needs to.
+ *
+ * These must stay identical to `requiredScopes` in the app's
+ * `app-hsmeta.json` (see HUBSPOT_APP.md). HubSpot refuses an install whose
+ * authorize URL omits a scope the app declares as required, or requests one
+ * the app does not declare - in both directions, and with an error about a
+ * "mismatch" rather than about which scope. That is why `oauth` is in this
+ * list: it grants nothing on its own, it is the handshake itself, and the
+ * generated app config declares it.
  */
 export const SCOPES = [
+  "oauth",
   "crm.objects.deals.read",
   "crm.objects.contacts.read",
   "crm.objects.companies.read",
 ];
+
+/** The scopes that actually reach data. Everything here is read-only. */
+export const DATA_SCOPES = SCOPES.filter((s) => s !== "oauth");
 
 /** A connect link is for finishing now, not for keeping. */
 export const STATE_TTL_MS = 15 * 60 * 1000;

@@ -5,6 +5,7 @@ import {
   needsRefresh,
   refreshAccessToken,
   signState,
+  DATA_SCOPES,
   SCOPES,
   STATE_TTL_MS,
   verifyState,
@@ -67,8 +68,30 @@ describe("authorizeUrl", () => {
     const url = new URL(authorizeUrl(CONFIG, "state-x"));
     expect(url.origin + url.pathname).toBe("https://app.hubspot.com/oauth/authorize");
     expect(url.searchParams.get("scope")).toBe(SCOPES.join(" "));
-    // Nothing here should let the sync modify a customer's CRM.
-    for (const scope of SCOPES) expect(scope).toMatch(/\.read$/);
+    // Nothing that reaches data should let the sync modify a customer's CRM.
+    for (const scope of DATA_SCOPES) expect(scope).toMatch(/\.read$/);
+    expect(SCOPES).not.toContain("crm.objects.contacts.write");
+  });
+
+  /*
+   * The install fails without this, and the error HubSpot shows says
+   * "mismatch" without naming the scope. Required scopes must appear in every
+   * authorize URL, so this list has to stay identical to `requiredScopes` in
+   * app-hsmeta.json - in both directions, since requesting a scope the app
+   * does not declare is refused too.
+   */
+  it("requests the handshake scope the app config declares as required", () => {
+    const url = new URL(authorizeUrl(CONFIG, "state-x"));
+    expect(url.searchParams.get("scope")?.split(" ")).toContain("oauth");
+  });
+
+  it("requests exactly the four the app declares, and no more", () => {
+    expect([...SCOPES].sort()).toEqual([
+      "crm.objects.companies.read",
+      "crm.objects.contacts.read",
+      "crm.objects.deals.read",
+      "oauth",
+    ]);
   });
 
   it("never puts the feed token in the redirect", () => {

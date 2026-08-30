@@ -146,7 +146,12 @@ What changed from the generated template, and why:
 - **Dropped `crm.objects.contacts.write`.** We never write to a CRM. See above.
 - **Added `crm.objects.deals.read` and `crm.objects.companies.read`**, which
   are what the analysis actually reads.
-- **Kept `oauth`.** HubSpot requires it on every OAuth app.
+- **Kept `oauth`.** HubSpot requires it on every OAuth app, and `SCOPES` in
+  `src/lib/sync/hubspot/oauth.ts` had to gain it to match. HubSpot refuses an
+  install whose authorize URL omits a scope the app declares as required, and
+  refuses one that requests a scope the app does not declare. The two lists
+  have to be identical in both directions, and the error says "mismatch"
+  without naming the scope.
 - **Both redirect URLs**, replacing the boilerplate `http://localhost:3000`.
   They must match what our code sends: `oauthConfigFromEnv()` in
   `src/lib/sync/hubspot/oauth.ts` builds `${origin}/api/crm/hubspot/callback`,
@@ -205,5 +210,6 @@ browsing HubSpot's directory. Nothing in our flow depends on it.
 | `hs: command not found` | Node is installed but its global bin is not on PATH. Quit Terminal and reopen it first. |
 | `Config file not found, run hs account auth` | Step 3 did not finish. Run `hs init` again. |
 | Install fails with a redirect error | The redirect URL in `app-hsmeta.json` does not match `${origin}/api/crm/hubspot/callback` exactly. Check the trailing slash, and http against https. |
+| Install fails with a scope mismatch | `requiredScopes` in `app-hsmeta.json` and `SCOPES` in `src/lib/sync/hubspot/oauth.ts` have drifted apart. They must match exactly, in both directions. |
 | Customer approves, then our page says the connection failed | `HUBSPOT_CLIENT_ID` or `HUBSPOT_CLIENT_SECRET` is missing or wrong in Vercel, or the deploy predates them being set. |
 | The sync runs but stores nothing | `VBB_TOKEN_KEY` is unset, so there is nothing to encrypt the token with. The route refuses rather than storing a CRM credential in the clear. |
