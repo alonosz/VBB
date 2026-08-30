@@ -7,13 +7,24 @@
  */
 
 import type { SavedValueModel } from "@/lib/model/savedModel";
+import type { IdentifierSet } from "@/lib/export/googleAds";
 
 /**
- * Google's Click Conversion Import carries one identifier type per file, so a
- * feed picks one at publish and keeps it. Inferring it per row would produce a
- * file whose columns don't match Google's template, which is rejected whole.
+ * Which identifier columns this feed's file carries.
+ *
+ * Fixed at publish and kept, because the columns are the file's header row:
+ * inferring them per row would produce a file whose columns don't match its
+ * values, which Google accepts and misreads rather than rejecting.
+ *
+ * `both` is the usual answer and the one Google recommends. A row may fill
+ * either column or both; where both are present Google matches on the click ID
+ * and ignores the email, so nothing is counted twice, and where the click ID
+ * never survived (iOS, an ad blocker, a change of device) the email is what the
+ * lead is matched on. The single-column sets remain because a file with no
+ * emails at all should not drag the advertiser through the enhanced conversions
+ * setup, and feeds published before this existed carry one of them.
  */
-export type FeedIdentifier = "clickId" | "email";
+export type FeedIdentifier = IdentifierSet;
 
 export type FeedRowKind = "conversion" | "adjustment";
 

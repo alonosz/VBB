@@ -5,6 +5,7 @@ import {
   normalizeEmail,
   sha256Hex,
   GOOGLE_ADS_COLUMNS,
+  GOOGLE_ADS_BOTH_COLUMNS,
 } from "./googleAds";
 import type { ValuedLead } from "@/lib/analysis/valueModel";
 import type { MappedDeal } from "@/lib/analysis/types";
@@ -148,6 +149,50 @@ describe("buildValueModelCsv", () => {
     expect(r.included).toBe(0);
     expect(r.skippedReason).toBeNull();
     expect(r.csv.trim().split(/\r?\n/)).toHaveLength(1);
+  });
+
+  /*
+   * Both columns in one file is Google's own recommendation, not a shortcut:
+   * it matches on the click ID where there is one and uses the email only for
+   * the leads whose click ID never survived. The rule this replaced sent one
+   * column and dropped every lead the other would have caught.
+   */
+  it("writes both columns, and keeps a lead that has only one of them", async () => {
+    const r = await buildValueModelCsv({
+      leads: [
+        lead({ id: "1", value: 900, clickId: "Cj0abc", email: "alice@example.com" }),
+        lead({ id: "2", value: 400, clickId: null, email: "x@y.com" }),
+        lead({ id: "3", value: 700, clickId: "Cj0ccc", email: null }),
+      ],
+      identifier: "both",
+      ...BASE,
+    });
+    const lines = r.csv.split(/\r?\n/);
+    expect(lines[0].split(",")).toEqual([...GOOGLE_ADS_BOTH_COLUMNS]);
+    expect(r.included).toBe(3);
+    expect(r.skipped).toBe(0);
+    // Every row has six cells even where one identifier is blank: a short row
+    // shifts the value into the wrong column, which Google reads rather than
+    // rejects.
+    for (const line of lines.slice(1)) expect(line.split(",")).toHaveLength(6);
+    expect(lines[1].startsWith("Cj0abc,ff8d9819fc0e12bf")).toBe(true);
+    expect(lines[2].startsWith(",")).toBe(true);
+    expect(lines[3]).toMatch(/^Cj0ccc,,/);
+    expect(r.csv).not.toMatch(/@/);
+  });
+
+  it("skips only a lead carrying neither identifier", async () => {
+    const r = await buildValueModelCsv({
+      leads: [
+        lead({ id: "1", value: 900, clickId: "Cj0abc" }),
+        lead({ id: "2", value: 900, clickId: null, email: null }),
+      ],
+      identifier: "both",
+      ...BASE,
+    });
+    expect(r.included).toBe(1);
+    expect(r.skipped).toBe(1);
+    expect(r.skippedReason).toMatch(/neither a click ID nor an email/);
   });
 
   it("stamps the conversion time from the lead's create date, not today", async () => {

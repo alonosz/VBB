@@ -16,7 +16,7 @@ import { authorizeWorkspace, feedInWorkspace } from "../src/lib/workspace/author
 import { buildOverview } from "../src/lib/workspace/overview";
 import { InMemoryFeedRepository } from "../src/lib/feed/repository";
 import { publishFeed, serveFeed } from "../src/lib/feed/handlers";
-import { buildFeedRows, bestIdentifier } from "../src/lib/feed/publish";
+import { buildFeedRows, identifiersFor } from "../src/lib/feed/publish";
 import { CrmConnectionStore } from "../src/lib/sync/connections";
 import { InMemorySyncRunStore } from "../src/lib/sync/runs";
 import { fakeSupabase } from "../src/lib/sync/fakeSupabase";
@@ -101,7 +101,7 @@ async function main() {
   step(4, "Feed published");
   const feeds = new InMemoryFeedRepository(() => NOW);
   const valued = valueAllLeads(deals, applied);
-  const identifier = bestIdentifier(valued);
+  const identifier = identifiersFor(valued).identifier;
   const { rows, newConversions, skipped } = await buildFeedRows({
     leads: valued, modelId: artifact.modelId, currencyCode: "USD", identifier, gate: diagnostic.gate, now: NOW,
   });

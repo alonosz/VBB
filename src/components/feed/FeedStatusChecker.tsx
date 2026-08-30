@@ -4,6 +4,7 @@ import { useState } from "react";
 import { ArrowIcon } from "@/components/ArrowIcon";
 import { readWorkspaceKey } from "@/lib/workspace/clientKey";
 import { WorkspaceKeyPrompt } from "@/components/workspace/WorkspaceKeyPrompt";
+import type { FeedIdentifier } from "@/lib/feed/types";
 
 /**
  * Whether Google is actually collecting the feed.
@@ -23,7 +24,7 @@ interface Status {
   publishedAt: string | null;
   rowsPublished: number;
   currencyCode: string;
-  identifier: "clickId" | "email";
+  identifier: FeedIdentifier;
   modelId: string;
   fetches: { at: string; status: number; rowCount: number }[];
   lastSuccessAt: string | null;

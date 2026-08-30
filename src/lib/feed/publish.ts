@@ -126,24 +126,45 @@ export async function buildFeedRows(opts: PublishOptions): Promise<PublishResult
       continue;
     }
 
-    let hashedEmail: string | null = null;
-    let clickId: string | null = null;
+    /*
+     * Both identifiers go on the row whenever the lead has both, because that
+     * is what Google asks for: it matches on the click ID and falls back to
+     * the email when the click ID never survived. Only a lead carrying neither
+     * is left out.
+     *
+     * The single-column sets still drop a lead missing that one column - the
+     * file has nowhere to put it, and a blank identifier is not a conversion.
+     */
+    const wantsClickId = opts.identifier !== "email";
+    const wantsEmail = opts.identifier !== "clickId";
 
-    if (opts.identifier === "clickId") {
-      clickId = deal.clickId?.trim() || null;
-      if (!clickId) {
-        skip("no click ID to join the lead to an ad click");
-        continue;
-      }
-    } else {
-      const email = deal.email?.trim();
-      if (!email) {
-        skip("no email address to match against");
-        continue;
-      }
-      hashedEmail = await sha256Hex(normalizeEmail(email));
+    const clickId = wantsClickId ? deal.clickId?.trim() || null : null;
+    const email = wantsEmail ? deal.email?.trim() || null : null;
+    const hashedEmail = email ? await sha256Hex(normalizeEmail(email)) : null;
+
+    if (!clickId && !hashedEmail) {
+      skip(
+        opts.identifier === "clickId"
+          ? "no click ID to join the lead to an ad click"
+          : opts.identifier === "email"
+            ? "no email address to match against"
+            : "no click ID and no email address, so nothing to match the lead on"
+      );
+      continue;
     }
 
+    /*
+     * Keyed on the click ID where there is one, the hashed email otherwise -
+     * the same order Google matches in.
+     *
+     * This is our identity for the lead's conversion, not Google's, and it has
+     * to stay stable across publishes or a republish resends a conversion as
+     * new. It does, as long as the lead keeps the identifiers it arrived with.
+     * A lead that gains a click ID in the CRM after we first published it gets
+     * a different key and is sent again; that is a CRM backfilling a day-0
+     * field weeks later, which is rare, and the alternative - keying on the
+     * email always - breaks the far commoner file that has no emails at all.
+     */
     const rowKey = await feedRowKey(clickId ?? hashedEmail!, deal.createdAt);
     const base = {
       hashedEmail,
@@ -193,13 +214,44 @@ export async function buildFeedRows(opts: PublishOptions): Promise<PublishResult
   };
 }
 
-/** Which identifier covers more of these leads. A click ID matches directly. */
-export function bestIdentifier(leads: ValuedLead[]): FeedIdentifier {
+/** How many of these leads carry each identifier. */
+export interface IdentifierCoverage {
+  clicks: number;
+  emails: number;
+  /** Leads with neither, which no feed can carry. Counted, never guessed at. */
+  neither: number;
+  total: number;
+  identifier: FeedIdentifier;
+}
+
+/**
+ * Which identifier columns this file can fill, and how well.
+ *
+ * Not a choice anybody is offered. This used to pick the column with the wider
+ * coverage and send only that one, which threw away every lead the other column
+ * would have caught - and there was no reason for it. Google takes both in one
+ * row, matches on the click ID, and uses the email only where the click ID is
+ * missing.
+ *
+ * The single-column answers are the honest ones for a file that only has one:
+ * a file with no emails should not be sent through the enhanced conversions
+ * setup for the sake of an empty column, and a file with no click IDs cannot
+ * pretend otherwise.
+ */
+export function identifiersFor(leads: ValuedLead[]): IdentifierCoverage {
   let clicks = 0;
   let emails = 0;
+  let neither = 0;
   for (const { deal } of leads) {
-    if (deal.clickId?.trim()) clicks++;
-    if (deal.email?.trim()) emails++;
+    const hasClick = Boolean(deal.clickId?.trim());
+    const hasEmail = Boolean(deal.email?.trim());
+    if (hasClick) clicks++;
+    if (hasEmail) emails++;
+    // Counted rather than inferred from the other two: a lead carrying both is
+    // in both counts, so `clicks + emails` says nothing about who is left out.
+    if (!hasClick && !hasEmail) neither++;
   }
-  return clicks >= emails ? "clickId" : "email";
+  const identifier: FeedIdentifier =
+    clicks > 0 && emails > 0 ? "both" : emails > 0 ? "email" : "clickId";
+  return { clicks, emails, neither, total: leads.length, identifier };
 }

@@ -172,7 +172,14 @@ export async function publishFeed(
 ): Promise<HandlerResponse> {
   const modelId = typeof body.modelId === "string" ? body.modelId.trim() : "";
   const currencyCode = typeof body.currencyCode === "string" ? body.currencyCode.trim() : "";
-  const identifier: FeedIdentifier = body.identifier === "email" ? "email" : "clickId";
+  /*
+   * Whitelisted, and "both" when unsaid. "both" is the only value that cannot
+   * silently drop a stored row on the way out: the single-column sets leave
+   * out any row missing that column, which is right for a file that never had
+   * the other one and wrong as a default.
+   */
+  const identifier: FeedIdentifier =
+    body.identifier === "email" || body.identifier === "clickId" ? body.identifier : "both";
 
   if (!modelId) return bad("A feed has to say which model priced it.");
   if (!/^[A-Z]{3}$/.test(currencyCode)) return bad("A feed needs an ISO currency code.");

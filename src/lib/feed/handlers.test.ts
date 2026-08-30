@@ -166,6 +166,43 @@ describe("publishFeed", () => {
     expect(JSON.parse(res.body).error).toMatch(/hashed email or a click ID/);
   });
 
+  /*
+   * "both" is the only identifier set that cannot silently drop a stored row
+   * on the way out, so it is what an unsaid one means. Defaulting to clickId,
+   * as this once did, served a file that quietly omitted every email-only
+   * lead - published, stored, and missing from what Google fetched.
+   */
+  it("carries both identifier columns when the publish did not say", async () => {
+    const repo = new InMemoryFeedRepository();
+    const res = await publishFeed(
+      repo,
+      {
+        modelId: "m", currencyCode: "USD",
+        rows: [
+          { clickId: "Cj0aaaaaaaaa", hashedEmail: "a".repeat(64),
+            conversionTime: NOW.toISOString(), value: 100, rowKey: "k1" },
+          { hashedEmail: "b".repeat(64),
+            conversionTime: NOW.toISOString(), value: 250, rowKey: "k2" },
+        ],
+      },
+      ORIGIN,
+      WORKSPACE
+    );
+    const body = JSON.parse(res.body);
+    expect(body.identifier).toBe("both");
+
+    const served = await serveFeed(repo, {
+      token: tokenFrom(String(body.feedUrl)), userAgent: null, ip: null, now: NOW,
+    });
+    const lines = served.body.trim().split(/\r?\n/);
+    expect(lines[0]).toBe(
+      "Google Click ID,Email,Conversion Name,Conversion Time,Conversion Value,Conversion Currency"
+    );
+    // Both rows served, including the one with no click ID.
+    expect(lines).toHaveLength(3);
+    expect(lines[2].startsWith(",bbbb")).toBe(true);
+  });
+
   it("refuses a feed with no currency, rather than guessing one", async () => {
     const res = await publishFeed(
       new InMemoryFeedRepository(),

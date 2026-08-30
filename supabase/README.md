@@ -27,7 +27,7 @@ identifier column.
 | Table | Holds |
 |---|---|
 | `feeds` | One tokenized URL. The token is stored only as a SHA-256 hash, plus a prefix long enough to recognise it in a list and too short to use. |
-| `feed_rows` | The Google Ads Click Conversion Import rows: hashed email or click ID, conversion time, value, currency, and the model that priced it. |
+| `feed_rows` | The Google Ads Click Conversion Import rows: a click ID, a hashed email, or both, plus conversion time, value, currency, and the model that priced it. |
 | `feed_fetches` | Every fetch attempt, with a hashed IP. Counting the last 24 hours *is* the rate limiter, so the limit and its audit trail are one fact. |
 | `leads` | An email address a visitor typed into a box, when, and a one-word label for where they stopped. The only table holding an address in the clear, and the only one not about a customer. No numeric column and no free-text column, so nothing derived from their file can go here. |
 | `feed_models` | The frozen `SavedValueModel` for a feed - multipliers, levels, calibration, cap. One current model per feed; a refit replaces it, and rows already sent keep the `model_id` that priced them. Re-read through `loadSavedModel()`, because a row in our own database is not more trustworthy than a file someone uploaded. |

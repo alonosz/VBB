@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildFeedRows,
-  bestIdentifier,
+  identifiersFor,
   feedRowKey,
   ADJUSTMENT_MIN_CHANGE,
   ADJUSTMENT_WINDOW_DAYS,
@@ -355,17 +355,116 @@ describe("InMemoryFeedRepository", () => {
   });
 });
 
-describe("bestIdentifier", () => {
-  it("prefers whichever covers more leads", () => {
-    expect(bestIdentifier([
+describe("identifiersFor", () => {
+  /*
+   * The rule this replaced sent whichever column covered more leads and threw
+   * the other away. On the file below that meant dropping the third lead for
+   * no reason: Google takes both columns in one file.
+   */
+  it("sends both when the file has both, rather than picking a winner", () => {
+    const c = identifiersFor([
       lead({ id: "1", value: 1, clickId: "Cj0aaaaaaaaa" }),
       lead({ id: "2", value: 1, clickId: "Cj0bbbbbbbbb" }),
       lead({ id: "3", value: 1, email: "a@b.com" }),
-    ])).toBe("clickId");
-    expect(bestIdentifier([
+    ]);
+    expect(c.identifier).toBe("both");
+    expect(c).toMatchObject({ clicks: 2, emails: 1, total: 3 });
+  });
+
+  it("says clickId only when there is not a single email", () => {
+    expect(identifiersFor([
+      lead({ id: "1", value: 1, clickId: "Cj0aaaaaaaaa" }),
+    ]).identifier).toBe("clickId");
+  });
+
+  it("says email only when there is not a single click ID", () => {
+    expect(identifiersFor([
       lead({ id: "1", value: 1, email: "a@b.com" }),
       lead({ id: "2", value: 1, email: "c@d.com" }),
-    ])).toBe("email");
+    ]).identifier).toBe("email");
+  });
+
+  it("counts a lead carrying both once in each column", () => {
+    const c = identifiersFor([
+      lead({ id: "1", value: 1, clickId: "Cj0aaaaaaaaa", email: "a@b.com" }),
+    ]);
+    expect(c).toMatchObject({ clicks: 1, emails: 1, neither: 0, total: 1, identifier: "both" });
+  });
+
+  /*
+   * `clicks + emails` is not the number of leads covered - a lead with both is
+   * in both counts - so who is left out has to be counted, not subtracted.
+   */
+  it("counts who carries neither rather than inferring it", () => {
+    const c = identifiersFor([
+      lead({ id: "1", value: 1, clickId: "Cj0aaaaaaaaa", email: "a@b.com" }),
+      lead({ id: "2", value: 1 }),
+      lead({ id: "3", value: 1, email: "c@d.com" }),
+    ]);
+    expect(c).toMatchObject({ clicks: 1, emails: 2, neither: 1, total: 3 });
+  });
+});
+
+describe("a feed carrying both identifiers", () => {
+  const both = (
+    leads: ValuedLead[],
+    extra: Partial<Parameters<typeof buildFeedRows>[0]> = {}
+  ) => publish(leads, { identifier: "both", ...extra });
+
+  it("puts both on the row when the lead has both", async () => {
+    const r = await both([
+      lead({ id: "1", value: 900, clickId: "Cj0aaaaaaaaa", email: "Alice@Example.com" }),
+    ]);
+    expect(r.rows[0].clickId).toBe("Cj0aaaaaaaaa");
+    expect(r.rows[0].hashedEmail).toBe(
+      "ff8d9819fc0e12bf0d24892e45987e249a28dce836a85cad60e28eaaa8c6d976"
+    );
+  });
+
+  /*
+   * The whole reason for this shape. Under the old one-column rule the second
+   * lead here was dropped, silently, because the first one had a click ID.
+   */
+  it("keeps a lead that has only one of the two", async () => {
+    const r = await both([
+      lead({ id: "1", value: 900, clickId: "Cj0aaaaaaaaa" }),
+      lead({ id: "2", value: 900, email: "b@c.com" }),
+    ]);
+    expect(r.newConversions).toBe(2);
+    expect(r.rows[0].hashedEmail).toBeNull();
+    expect(r.rows[1].clickId).toBeNull();
+    expect(r.skipped).toEqual([]);
+  });
+
+  it("drops only a lead carrying neither, and says so", async () => {
+    const r = await both([lead({ id: "1", value: 900 })]);
+    expect(r.rows).toEqual([]);
+    expect(r.skipped[0].reason).toMatch(/no click ID and no email/);
+  });
+
+  it("keys a lead on its click ID, so a republish does not resend it", async () => {
+    const l = lead({ id: "1", value: 900, clickId: "Cj0aaaaaaaaa", email: "a@b.com" });
+    const first = await both([l]);
+    const again = await both([l], { previous: first.rows });
+    expect(again.rows).toEqual([]);
+    expect(again.unchanged).toBe(1);
+  });
+
+  it("writes both columns, blank where the lead has only one", async () => {
+    const { rows } = await both([
+      lead({ id: "1", value: 100, clickId: "Cj0aaaaaaaaa", email: "a@b.com", createdAt: day(2) }),
+      lead({ id: "2", value: 200, email: "b@c.com", createdAt: day(1) }),
+    ]);
+    const lines = buildFeedCsv(rows, "both", "VBB Lead Value").split(/\r?\n/);
+    expect(lines[0]).toBe(
+      "Google Click ID,Email,Conversion Name,Conversion Time,Conversion Value,Conversion Currency"
+    );
+    expect(lines[1].startsWith("Cj0aaaaaaaaa,")).toBe(true);
+    // The click ID cell is empty, not missing: a short row shifts every value
+    // after it into the wrong column, which Google reads rather than rejects.
+    expect(lines[2].startsWith(",")).toBe(true);
+    expect(lines[2].split(",")).toHaveLength(6);
+    expect(lines.join("\n")).not.toMatch(/@/);
   });
 });
 

@@ -6,7 +6,7 @@ import {
   savedModelToValueModel,
   type SavedValueModel,
 } from "@/lib/model/savedModel";
-import { bestIdentifier, buildFeedRows } from "@/lib/feed/publish";
+import { identifiersFor, buildFeedRows } from "@/lib/feed/publish";
 import type { FeedRepository } from "@/lib/feed/repository";
 import type { FeedRecord } from "@/lib/feed/types";
 
@@ -141,4 +141,4 @@ export async function runSync(opts: SyncOptions): Promise<SyncReport> {
   };
 }
 
-export { bestIdentifier };
+export { identifiersFor };

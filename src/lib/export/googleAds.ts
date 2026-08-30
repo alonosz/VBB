@@ -9,6 +9,19 @@ import type { ValuedLead } from "@/lib/analysis/valueModel";
  * offset; a bare local timestamp is the most common reason an upload fails.
  */
 
+/**
+ * Which identifiers a file carries.
+ *
+ * Not a preference and not a question anybody is asked: it is a fact about the
+ * rows. A file whose leads all carry a click ID is a plain click import. A file
+ * with no click IDs at all has to go the enhanced conversions route. A file
+ * with some of each carries both columns, which is what Google itself
+ * recommends - the click ID matches the exact click it recorded, and the email
+ * catches the leads whose click ID never survived iOS, an ad blocker or a
+ * change of device.
+ */
+export type IdentifierSet = "clickId" | "email" | "both";
+
 export const GOOGLE_ADS_COLUMNS = [
   "Google Click ID",
   "Conversion Name",
@@ -24,6 +37,55 @@ export const GOOGLE_ADS_EMAIL_COLUMNS = [
   "Conversion Value",
   "Conversion Currency",
 ] as const;
+
+/**
+ * Both, in Google's order of precedence.
+ *
+ * A row may fill either or both. Where both are present Google uses the click
+ * ID and ignores the email, so nothing is double counted; where the click ID is
+ * blank the email is what the lead is matched on.
+ */
+export const GOOGLE_ADS_BOTH_COLUMNS = [
+  "Google Click ID",
+  "Email",
+  "Conversion Name",
+  "Conversion Time",
+  "Conversion Value",
+  "Conversion Currency",
+] as const;
+
+/** What this feed matches on, for a person reading a screen. */
+export function identifierLabel(identifier: IdentifierSet): string {
+  if (identifier === "clickId") return "Ad click ID";
+  if (identifier === "email") return "Hashed email";
+  return "Click ID and hashed email";
+}
+
+/** The header row for a file carrying this identifier set. */
+export function googleAdsFields(identifier: IdentifierSet): string[] {
+  if (identifier === "clickId") return [...GOOGLE_ADS_COLUMNS];
+  if (identifier === "email") return [...GOOGLE_ADS_EMAIL_COLUMNS];
+  return [...GOOGLE_ADS_BOTH_COLUMNS];
+}
+
+/**
+ * The leading cells of one row, matching `googleAdsFields` exactly.
+ *
+ * Null means this lead cannot go in this file at all. Keeping the header and
+ * the cells in one place is the point: they drifting apart produces a file
+ * whose columns do not line up with its values, which Google accepts and
+ * misreads rather than rejecting.
+ */
+export function identifierCells(
+  identifier: IdentifierSet,
+  ids: { clickId?: string | null; hashedEmail?: string | null }
+): string[] | null {
+  const clickId = ids.clickId?.trim() || "";
+  const hashedEmail = ids.hashedEmail?.trim() || "";
+  if (identifier === "clickId") return clickId ? [clickId] : null;
+  if (identifier === "email") return hashedEmail ? [hashedEmail] : null;
+  return clickId || hashedEmail ? [clickId, hashedEmail] : null;
+}
 
 /** Formats a date as Google's required "yyyy-MM-dd HH:mm:ss+00:00". */
 export function formatConversionTime(date: Date): string {
@@ -52,7 +114,7 @@ export interface ModelExportOptions {
   leads: ValuedLead[];
   conversionName: string;
   currencyCode: string;
-  identifier: "clickId" | "email";
+  identifier: IdentifierSet;
 }
 
 export interface ModelExportResult {
@@ -60,6 +122,13 @@ export interface ModelExportResult {
   included: number;
   skipped: number;
   skippedReason: string | null;
+}
+
+/** What a lead needed and did not have, in the advertiser's words. */
+function missingIdentifier(identifier: IdentifierSet): string {
+  if (identifier === "clickId") return "no click ID";
+  if (identifier === "email") return "no email address";
+  return "neither a click ID nor an email address";
 }
 
 /**
@@ -85,20 +154,21 @@ export async function buildValueModelCsv(
       continue;
     }
 
-    let id: string | null = null;
-    if (opts.identifier === "clickId") {
-      id = deal.clickId?.trim() || null;
-    } else if (deal.email?.trim()) {
-      id = await sha256Hex(normalizeEmail(deal.email));
-    }
+    const hashedEmail = deal.email?.trim()
+      ? await sha256Hex(normalizeEmail(deal.email))
+      : null;
+    const cells = identifierCells(opts.identifier, {
+      clickId: deal.clickId,
+      hashedEmail,
+    });
 
-    if (!id) {
+    if (!cells) {
       skipped++;
       continue;
     }
 
     rows.push([
-      id,
+      ...cells,
       opts.conversionName,
       formatConversionTime(deal.createdAt),
       value.toFixed(2),
@@ -106,20 +176,15 @@ export async function buildValueModelCsv(
     ]);
   }
 
-  const fields =
-    opts.identifier === "clickId"
-      ? [...GOOGLE_ADS_COLUMNS]
-      : [...GOOGLE_ADS_EMAIL_COLUMNS];
-
   return {
-    csv: Papa.unparse({ fields, data: rows }),
+    csv: Papa.unparse({ fields: googleAdsFields(opts.identifier), data: rows }),
     included: rows.length,
     skipped,
     skippedReason:
       skipped > 0
-        ? `${skipped.toLocaleString()} lead${skipped === 1 ? "" : "s"} had no ${
-            opts.identifier === "clickId" ? "click ID" : "email address"
-          }, no create date, or no value the model could price`
+        ? `${skipped.toLocaleString()} lead${skipped === 1 ? "" : "s"} had ${missingIdentifier(
+            opts.identifier
+          )}, no create date, or no value the model could price`
         : null,
   };
 }

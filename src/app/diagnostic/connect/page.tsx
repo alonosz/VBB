@@ -14,8 +14,8 @@ import { runDiagnostic, valueAllLeads, withOverrides } from "@/lib/analysis";
 import { resolveHypotheses } from "@/lib/intake/merge";
 import { savedModelToValueModel, saveValueModel } from "@/lib/model/savedModel";
 import { recallModel } from "@/lib/model/storage";
-import { buildValueModelCsv, downloadCsv } from "@/lib/export/googleAds";
-import { bestIdentifier, buildFeedRows } from "@/lib/feed/publish";
+import { buildValueModelCsv, downloadCsv, identifierLabel } from "@/lib/export/googleAds";
+import { identifiersFor, buildFeedRows } from "@/lib/feed/publish";
 import type { FeedIdentifier } from "@/lib/feed/types";
 import { isDeploymentOrigin } from "@/lib/feed/origin";
 import { readWorkspaceKey } from "@/lib/workspace/clientKey";
@@ -36,7 +36,7 @@ import { CONVERSION_NAME } from "@/lib/feed/handlers";
 interface Published {
   feedUrl: string;
   rowsPublished: number;
-  identifier: "clickId" | "email";
+  identifier: FeedIdentifier;
   /** Leads sent at a higher value because they reached the gate in time. */
   gateAdjustments: number;
   /** Reached it, but after Google stopped listening. */
@@ -68,19 +68,20 @@ interface Published {
  * that no longer comes first. The settings below still all have to be right;
  * they are just reached in Google's order, not ours.
  *
- * A feed keyed on a click ID is the plain offline import: Google matches the
- * gclid against the click it already recorded. A feed keyed on a hashed email
- * is a different product with a different name, enhanced conversions for
- * leads, and it has to be switched on before Google will accept an email as
- * an identifier at all.
+ * A file of click IDs alone is the plain offline import: Google matches the
+ * gclid against the click it already recorded. The moment an email column is
+ * in the file it is a different product with a different name, enhanced
+ * conversions for leads, and that has to be switched on before Google will
+ * accept an email as an identifier at all.
  *
  * Told the wrong one, an advertiser reaches the mapping screen, finds a
  * required GCLID row their file has no column for, and is stuck with nothing
  * on screen explaining why. That happened on the first real run of this, which
- * is why these branch on the identifier rather than assuming clicks.
+ * is why these branch on what the file carries rather than assuming clicks.
  */
 function setupSteps(identifier: FeedIdentifier) {
   const byClick = identifier === "clickId";
+  const both = identifier === "both";
   const steps = [
     {
       title: "Open Conversions",
@@ -91,7 +92,9 @@ function setupSteps(identifier: FeedIdentifier) {
   if (!byClick) {
     steps.push({
       title: "Turn on enhanced conversions for leads first",
-      body: "Your feed is keyed on a hashed email rather than a click ID, and Google only accepts that once this is on: Goals → Conversions → Settings → Enhanced conversions for leads. Switch it on and accept the terms. Skip this and the import will demand a GCLID column your file does not have.",
+      body: both
+        ? "Your feed carries a hashed email as well as a click ID, and Google only accepts an email once this is on: Goals → Conversions → Settings → Enhanced conversions for leads. Switch it on and accept the terms. It also asks for a Google tag on your site collecting email addresses, because that is what it matches your feed against."
+        : "Your feed is keyed on a hashed email rather than a click ID, and Google only accepts that once this is on: Goals → Conversions → Settings → Enhanced conversions for leads. Switch it on and accept the terms. Skip this and the import will demand a GCLID column your file does not have.",
     });
   }
 
@@ -103,7 +106,11 @@ function setupSteps(identifier: FeedIdentifier) {
         }
       : {
           title: "Create a new conversion action",
-          body: 'Click + New conversion action, then Import → CRM, files or other data sources. Choose the option that is not "track conversions from clicks" - it will mention enhanced conversions, or skipping click tracking.',
+          body:
+            'Click + New conversion action, then Import → CRM, files or other data sources. Choose the option that is not "track conversions from clicks" - it will mention enhanced conversions, or skipping click tracking.' +
+            (both
+              ? " This is the route that takes both columns. Your click IDs still match exactly; the email only does any work on the leads whose click ID never arrived."
+              : ""),
         },
     {
       title: `Name it exactly "${CONVERSION_NAME}"`,
@@ -123,7 +130,12 @@ function setupSteps(identifier: FeedIdentifier) {
 }
 
 function scheduleSteps(identifier: FeedIdentifier) {
-  const idColumn = identifier === "clickId" ? "Google Click ID" : "Email";
+  const idColumn =
+    identifier === "clickId"
+      ? "Google Click ID"
+      : identifier === "email"
+        ? "Email"
+        : "Google Click ID and Email";
   return [
     {
       title: "Start the offline data source wizard",
@@ -150,7 +162,14 @@ function scheduleSteps(identifier: FeedIdentifier) {
        * reports that, so it has to be said here.
        */
       title: "Map the fields, and refuse the suggestions",
-      body: `Map ${idColumn} as the identifier, then Conversion_Value and Conversion_Currency to value and currency. Set everything else to None: Google will offer to fill GBRAID, WBRAID and IP address with your ${idColumn} column, and those are different things. Do not click "accept suggestions".`,
+      body:
+        `Map ${idColumn} as the ${identifier === "both" ? "identifiers" : "identifier"}, then ` +
+        "Conversion_Value and Conversion_Currency to value and currency. Set everything else " +
+        `to None: Google will offer to fill GBRAID, WBRAID and IP address from your ${idColumn} ` +
+        'column, and those are different things. Do not click "accept suggestions".' +
+        (identifier === "both"
+          ? " Both identifier columns are mapped, not one of them. Rows carry whichever they have, and Google uses the click ID when it is there."
+          : ""),
     },
     {
       title: "Save",
@@ -263,38 +282,22 @@ export default function ConnectPage() {
   }, [mapped, businessContext, currency.reportingCurrency, customSignalKeys, hypotheses, saved, freshModelId]);
 
   /*
-   * Which identifier the feed carries, and who decides.
+   * Which identifier columns the feed carries. Read off the file, not chosen.
    *
-   * This used to be `bestIdentifier` alone: whichever column covered more
-   * leads won, silently, with nothing on screen saying so or letting anyone
-   * disagree. Two things were wrong with that.
+   * This was briefly a choice between a click ID and an email, on the grounds
+   * that they behave differently and picking silently was wrong. Picking was
+   * the part that was wrong. Google takes both columns in the same file: it
+   * matches on the click ID where there is one, and uses the email only for
+   * the leads whose click ID never survived - iOS, an ad blocker, a change of
+   * device. Sending both is its own recommendation, and asking an advertiser
+   * to give up one of them was asking them to throw away leads for nothing.
    *
-   * A click ID matches the exact click Google recorded. An email is matched
-   * against what Google can find, so a click ID on 40% of leads is often
-   * worth more than an email on 90%. Coverage alone is the wrong test.
-   *
-   * And the two routes need completely different setups in Google Ads: the
-   * email one lives behind enhanced conversions for leads, which has to be
-   * switched on first. Picking it for someone who then cannot find that
-   * setting leaves them at a required GCLID row with no way forward. That
-   * happened on the first real run.
-   *
-   * So the suggestion stands, and it is now a suggestion. Principle 3: every
-   * rule the product applies is visible and arguable.
+   * So there is nothing to decide, only something to state. The single-column
+   * answers still happen, because a file with no emails at all should not be
+   * dragged through the enhanced conversions setup for an empty column.
    */
-  const suggested = useMemo(() => bestIdentifier(valued), [valued]);
-  const [chosenIdentifier, setChosenIdentifier] = useState<FeedIdentifier | null>(null);
-  const identifier = chosenIdentifier ?? suggested;
-
-  const coverage = useMemo(() => {
-    let clicks = 0;
-    let emails = 0;
-    for (const { deal } of valued) {
-      if (deal.clickId?.trim()) clicks++;
-      if (deal.email?.trim()) emails++;
-    }
-    return { clicks, emails, total: valued.length };
-  }, [valued]);
+  const coverage = useMemo(() => identifiersFor(valued), [valued]);
+  const identifier = coverage.identifier;
   const setup = useMemo(() => setupSteps(identifier), [identifier]);
   const schedule = useMemo(() => scheduleSteps(identifier), [identifier]);
 
@@ -314,9 +317,9 @@ export default function ConnectPage() {
     setPublishing(true);
     setError(null);
     try {
-      // Deliberately the chosen one, not bestIdentifier again: recomputing
-      // here would publish a feed keyed differently from the instructions
-      // shown two inches above the button.
+      // The same value the instructions above the button were written from.
+      // Recomputing here would publish a feed whose columns disagree with the
+      // mapping step two inches up the page.
       const { rows, skipped, gateAdjustments, gateTooLate } = await buildFeedRows({
         leads: valued,
         modelId,
@@ -435,73 +438,64 @@ export default function ConnectPage() {
           {!feed ? (
             <>
               {/*
-                The choice that used to be made silently. Shown before the
-                steps because it changes them: the two routes need different
-                things switched on in Google Ads.
+                Stated, not chosen. What Google matches on is a fact about the
+                file: the columns it can fill. The one thing worth surfacing is
+                that leads carrying neither identifier are left out rather than
+                guessed at.
               */}
               <div className="well mb-5 p-4">
                 <p className="label">How Google matches these to clicks</p>
-                <div className="mt-2.5 flex flex-wrap gap-2">
-                  {(["clickId", "email"] as FeedIdentifier[]).map((option) => {
-                    const chosen = identifier === option;
-                    const count = option === "clickId" ? coverage.clicks : coverage.emails;
-                    const share =
-                      coverage.total > 0 ? Math.round((count / coverage.total) * 100) : 0;
-                    return (
-                      <button
-                        key={option}
-                        type="button"
-                        onClick={() => setChosenIdentifier(option)}
-                        aria-pressed={chosen}
-                        disabled={count === 0}
-                        className={
-                          "rounded-xl border px-3.5 py-2.5 text-left transition-colors " +
-                          (chosen
-                            ? "border-[var(--primary)] bg-[var(--primary-soft)]"
-                            : "border-[var(--border)] bg-[var(--surface)] hover:border-[var(--primary)]/40") +
-                          (count === 0 ? " cursor-not-allowed opacity-50" : "")
-                        }
-                      >
-                        <span className="block text-[13.5px] font-bold">
-                          {option === "clickId" ? "Click ID" : "Hashed email"}
-                          {option === suggested && (
-                            <span className="ml-2 text-[11px] font-semibold text-[var(--muted)]">
-                              suggested
-                            </span>
-                          )}
-                        </span>
-                        <span className="mono mt-0.5 block text-[11.5px] text-[var(--muted)]">
-                          {count.toLocaleString()} of {coverage.total.toLocaleString()} leads · {share}%
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-                <p className="mt-2.5 max-w-[66ch] text-[12.5px] text-[var(--muted)]">
-                  {identifier === "clickId" ? (
+                <p className="mt-2 max-w-[68ch] text-[13px] text-[var(--muted-strong)]">
+                  <span className="mono font-semibold text-[var(--foreground)]">
+                    {coverage.clicks.toLocaleString()}
+                  </span>{" "}
+                  of {coverage.total.toLocaleString()} leads carry a click ID and{" "}
+                  <span className="mono font-semibold text-[var(--foreground)]">
+                    {coverage.emails.toLocaleString()}
+                  </span>{" "}
+                  carry an email address.
+                </p>
+                <p className="mt-2 max-w-[68ch] text-[12.5px] text-[var(--muted)]">
+                  {identifier === "both" ? (
                     <>
-                      A click ID matches the exact click Google recorded, so every
-                      row that has one lands precisely. Leads without one are left
-                      out of the feed rather than guessed at.
+                      Your feed sends both. Google matches on the click ID, which
+                      lands on the exact click it recorded, and falls back to the
+                      email for the leads whose click ID never arrived. Nothing is
+                      counted twice, and no lead is dropped for having only one of
+                      them.{" "}
+                      <span className="font-semibold text-[var(--foreground)]">
+                        The email half needs enhanced conversions for leads switched
+                        on in Google Ads
+                      </span>{" "}
+                      - the steps below say where.
+                    </>
+                  ) : identifier === "clickId" ? (
+                    <>
+                      No lead in this file carries an email address, so the feed is
+                      click IDs alone. That is the most precise match there is: every
+                      row lands on the exact click Google recorded.
                     </>
                   ) : (
                     <>
-                      An email is matched against what Google can find, which
-                      reaches more leads but less precisely.{" "}
+                      No lead in this file carries a click ID, so the feed is matched
+                      on hashed emails.{" "}
                       <span className="font-semibold text-[var(--foreground)]">
-                        This route needs enhanced conversions for leads switched on
-                        in Google Ads first
+                        This route needs enhanced conversions for leads switched on in
+                        Google Ads first
                       </span>{" "}
                       - without it the import will insist on a click ID column your
-                      feed does not have.
+                      feed does not have. The tracking snippet on the next screen fixes
+                      that for future leads.
                     </>
                   )}
                 </p>
-                {coverage.clicks === 0 && (
-                  <p className="mt-2 max-w-[66ch] text-[12.5px] text-[var(--muted)]">
-                    No lead in this file carries a click ID, so only the email route
-                    is available. The tracking snippet on the next screen fixes that
-                    for future leads.
+                {coverage.neither > 0 && (
+                  <p className="mt-2 max-w-[68ch] text-[12.5px] text-[var(--muted)]">
+                    <span className="mono font-semibold text-[var(--foreground)]">
+                      {coverage.neither.toLocaleString()}
+                    </span>{" "}
+                    carry neither, so they are left out of the feed rather than sent
+                    with a placeholder. They still count in your model.
                   </p>
                 )}
               </div>
@@ -547,7 +541,7 @@ export default function ConnectPage() {
                   </p>
                   <p className="mono text-[12px]" style={{ color: "var(--on-navy-muted)" }}>
                     {feed.rowsPublished.toLocaleString()} conversions ·{" "}
-                    {feed.identifier === "clickId" ? "click ID" : "hashed email"}
+                    {identifierLabel(feed.identifier)}
                   </p>
                 </div>
                 <div className="mt-4 flex flex-wrap items-center gap-2">

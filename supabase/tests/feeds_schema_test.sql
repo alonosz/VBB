@@ -98,6 +98,24 @@ select pg_temp.must_fail($$
   values (repeat('a', 64), 'x', 'm', 'USD')$$,
   'two feeds cannot share a token');
 
+select pg_temp.must_pass($$
+  insert into public.feeds (client_id, token_hash, token_prefix, model_id, currency_code, identifier)
+  values ('99999999-9999-9999-9999-999999999999', repeat('d', 64), 'vbb_live_dddd', 'm', 'USD', 'both')$$,
+  'a feed may carry both identifier columns');
+
+select pg_temp.must_fail($$
+  insert into public.feeds (client_id, token_hash, token_prefix, model_id, currency_code, identifier)
+  values ('99999999-9999-9999-9999-999999999999', repeat('e', 64), 'vbb_live_eeee', 'm', 'USD', 'guess')$$,
+  'an identifier set nothing knows how to serve is rejected');
+
+select pg_temp.must_pass($$
+  insert into public.feed_rows
+    (feed_id, click_id, hashed_email, conversion_time, value, currency_code, model_id, row_key)
+  values ('11111111-1111-1111-1111-111111111111', 'Cj0KCQiAxxxxxxxx',
+    'ff8d9819fc0e12bf0d24892e45987e249a28dce836a85cad60e28eaaa8c6d976',
+    '2026-05-01T09:07:05Z', 1200.00, 'USD', 'model-1', 'k7')$$,
+  'a row may carry a click ID and a hashed email together');
+
 -- --- feed_rows: the privacy guard ----------------------------------------
 
 select pg_temp.must_pass($$

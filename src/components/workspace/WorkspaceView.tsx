@@ -6,6 +6,8 @@ import Link from "next/link";
 import { forgetWorkspaceKey, readWorkspaceKey, rememberWorkspaceKey } from "@/lib/workspace/clientKey";
 import { LiveShell } from "@/components/shell/LiveShell";
 import { Alert, Badge, DataRow, Empty, Metric, Section, StatusDot, type Tone } from "@/components/ui";
+import { identifierLabel } from "@/lib/export/googleAds";
+import type { FeedIdentifier } from "@/lib/feed/types";
 
 /**
  * One customer, one page.
@@ -34,7 +36,7 @@ interface ActionItem {
 interface Overview {
   workspace: { name: string; keyPrefix: string; status: string; createdAt: string };
   feed: {
-    tokenPrefix: string; identifier: "clickId" | "email"; currencyCode: string;
+    tokenPrefix: string; identifier: FeedIdentifier; currencyCode: string;
     status: string; rowsPublished: number; publishedAt: string | null;
     lastFetchedAt: string | null; fetchesLast24h: number;
   } | null;
@@ -344,7 +346,7 @@ export function WorkspaceView() {
               <DataRow label="Key" value={`${feed.tokenPrefix}…`} />
               <DataRow
                 label="Matches on"
-                value={feed.identifier === "clickId" ? "Ad click ID" : "Hashed email"}
+                value={identifierLabel(feed.identifier)}
               />
               <DataRow label="Currency" value={feed.currencyCode} />
               <DataRow label="Rows published" value={feed.rowsPublished.toLocaleString()} />

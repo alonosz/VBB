@@ -7,7 +7,7 @@ import { buildOverview } from "@/lib/workspace/overview";
 
 import { InMemoryFeedRepository } from "@/lib/feed/repository";
 import { publishFeed, serveFeed, feedStatus, CONVERSION_NAME } from "@/lib/feed/handlers";
-import { buildFeedRows, bestIdentifier } from "@/lib/feed/publish";
+import { buildFeedRows, identifiersFor } from "@/lib/feed/publish";
 import { generateFeedToken } from "@/lib/feed/token";
 import { normalizeEmail, sha256Hex } from "@/lib/export/googleAds";
 
@@ -104,7 +104,7 @@ describe("the golden path", () => {
     // --- 3. They publish a feed -------------------------------------------
     const feeds = new InMemoryFeedRepository(() => NOW);
     const valued = valueAllLeads(deals, applied);
-    const identifier = bestIdentifier(valued);
+    const identifier = identifiersFor(valued).identifier;
     const { rows } = await buildFeedRows({
       leads: valued, modelId: artifact.modelId, currencyCode: "USD", identifier,
       gate: diagnostic.gate, now: NOW,
@@ -159,17 +159,16 @@ describe("the golden path", () => {
     const rowsAfter = await feeds.rowsFor(feedId);
     expect(rowsAfter.length).toBe(rowsBefore + 1);
 
-    // The new lead is priced by the frozen model, not a refit - and it is
-    // stored under whichever identifier the feed was published with. This
-    // demo file has 464 emails to 85 click IDs, so it matches on hashed
-    // email; the row must follow the feed rather than the lead.
-    const expectedId = identifier === "clickId"
-      ? "Cj0KCQgoldenpath1"
-      : await sha256Hex(normalizeEmail("dana.k@northridgefab.com"));
-    const fromHubSpot = rowsAfter.find(
-      (r) => (identifier === "clickId" ? r.clickId : r.hashedEmail) === expectedId
-    );
+    // The new lead is priced by the frozen model, not a refit. The demo file
+    // carries both click IDs and emails, so the feed carries both columns and
+    // this lead lands under both - which is the point: Google matches on the
+    // click ID and keeps the email for the leads whose click ID never made it.
+    expect(identifier).toBe("both");
+    const fromHubSpot = rowsAfter.find((r) => r.clickId === "Cj0KCQgoldenpath1");
     expect(fromHubSpot, `no row for the HubSpot lead under ${identifier}`).toBeDefined();
+    expect(fromHubSpot!.hashedEmail).toBe(
+      await sha256Hex(normalizeEmail("dana.k@northridgefab.com"))
+    );
     expect(fromHubSpot!.modelId).toBe("model-golden");
 
     // The exact figure the frozen model predicts, recomputed here rather than
@@ -192,16 +191,11 @@ describe("the golden path", () => {
     const [predicted] = valueAllLeads(asHubSpotSentIt, savedModelToValueModel(artifact));
     expect(fromHubSpot!.value).toBe(predicted.value);
 
-    // Google's import carries one identifier type per file, so every row has
-    // to agree with the feed - a mixed file is rejected outright.
+    // Every row has to be matchable on something, and an address must never
+    // reach the row in the clear.
     for (const row of rowsAfter) {
-      if (identifier === "clickId") {
-        expect(row.clickId).not.toBeNull();
-        expect(row.hashedEmail).toBeNull();
-      } else {
-        expect(row.hashedEmail).toMatch(/^[0-9a-f]{64}$/);
-        expect(row.clickId).toBeNull();
-      }
+      expect(row.clickId || row.hashedEmail).toBeTruthy();
+      if (row.hashedEmail) expect(row.hashedEmail).toMatch(/^[0-9a-f]{64}$/);
     }
 
     // --- 6. Google collects the file --------------------------------------
