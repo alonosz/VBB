@@ -286,8 +286,19 @@ needs a public app.
 
 ### Registering it
 
+**Updated 30 Aug: there is no longer a button for this.** HubSpot sunset
+legacy public app creation on 23 June 2026. The dialog in a developer account
+now offers Private only, and the tooltip over Public says new legacy public app
+creation is disabled. Public apps are created with the HubSpot CLI:
+`hs project create`, an `app-hsmeta.json` holding the redirect URL and scopes,
+then `hs project upload`.
+
+Full click-by-click, including the exact config file, is in `HUBSPOT_APP.md`.
+The values below are still the values, they just live in a file now rather
+than a form.
+
 Redirect URI (must match exactly, and this is why the domain should be settled
-first - changing it later means editing the app):
+first - changing it later means editing an app customers have installed):
 
     https://<your origin>/api/crm/hubspot/callback
 
