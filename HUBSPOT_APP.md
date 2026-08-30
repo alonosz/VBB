@@ -195,11 +195,36 @@ They may need Super Admin in their own HubSpot to approve it, or the "App
 Marketplace Access" permission that Super Admins carry automatically. Worst
 case that is one forwarded link.
 
-## What this does not require
+## Approval, and the 25-install ceiling
 
-**Marketplace listing.** An app installs through its OAuth link without ever
-being listed. Listing is a distribution channel, for being found by strangers
-browsing HubSpot's directory. Nothing in our flow depends on it.
+**Nothing has to be approved before a customer can connect.** The app exists,
+it is deployed, and its OAuth link works today. Listing on the App Marketplace
+is a separate, optional thing.
+
+**But an unlisted app is capped at 25 installs.** A marketplace-distribution
+app that has not been reviewed and listed stops accepting new installs at 25
+accounts, and HubSpot does not grant exceptions or temporary increases, in any
+circumstance including an active migration or a burst of onboarding.
+
+For comparison, the alternatives are worse: a private-distribution OAuth app
+caps at 10 allowlisted accounts, and a static-token app installs into 1
+standard account. Marketplace distribution is the right choice, it just has a
+ceiling.
+
+What that means in practice:
+
+| Customers | What is needed |
+|---|---|
+| 1 to 25 | Nothing. Send the link. |
+| 25 onward | The Marketplace listing must be approved first. |
+
+The listing also cannot be done first: it requires a small number of live
+installs before HubSpot will review it, reported as three. So the order is
+forced, and it is the right order anyway - onboard pilots, then apply.
+
+**Start the listing well before customer 20.** Review takes weeks and is
+outside our control, and hitting 25 with no listing in flight means telling a
+customer to wait.
 
 ---
 

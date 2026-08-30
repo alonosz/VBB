@@ -215,8 +215,17 @@ gate, and it never blocked us.
 
 So the sequence is: create the app, put `HUBSPOT_CLIENT_ID` and
 `HUBSPOT_CLIENT_SECRET` in the environment, and pilot customers can one-click
-connect the same week. Marketplace submission becomes an ordinary growth item,
-scheduled whenever being discoverable is worth the listing work.
+connect the same week.
+
+**Corrected again, 30 Aug: there is a ceiling.** An unlisted
+marketplace-distribution app stops accepting installs at **25 accounts**, and
+HubSpot grants no exceptions of any kind. So the listing is not the optional
+growth item the paragraph above made it sound like. It is a hard requirement
+for customer 26, it takes weeks of someone else's time, and it cannot be
+applied for until the app has a few live installs (reported as three).
+
+The practical rule: **start the listing before customer 20.** Everything below
+25 needs nothing at all.
 
 One caveat left open: installing an app that is not listed may still require
 the customer's Super Admin, or the "App Marketplace Access" permission that
@@ -344,8 +353,9 @@ door that touches nothing.
    nightly sync at step 2 in this list already delivers the early gate for
    pilot customers; this item is about removing the export from the funnel,
    not about making the gate work.
-8. **Marketplace listing**, if and when being discoverable is worth the
-   listing work. Nothing depends on it.
+8. **Marketplace listing**, once a few pilots are live and before customer 20.
+   Not optional: an unlisted app stops accepting installs at 25 accounts, with
+   no exceptions, and review is weeks of someone else's time.
 9. **Real sessions** - email magic link, works on any device.
 
 Steps 5 and 6 land together because they are the same screen and the same
