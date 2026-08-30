@@ -263,12 +263,38 @@ export default function ConnectPage() {
   }, [mapped, businessContext, currency.reportingCurrency, customSignalKeys, hypotheses, saved, freshModelId]);
 
   /*
-   * Which identifier the feed will carry, worked out the same way publishing
-   * works it out. The Google Ads instructions differ completely between the
-   * two, so showing both, or the wrong one, is how somebody ends up at a
-   * required GCLID row with no click IDs in their file.
+   * Which identifier the feed carries, and who decides.
+   *
+   * This used to be `bestIdentifier` alone: whichever column covered more
+   * leads won, silently, with nothing on screen saying so or letting anyone
+   * disagree. Two things were wrong with that.
+   *
+   * A click ID matches the exact click Google recorded. An email is matched
+   * against what Google can find, so a click ID on 40% of leads is often
+   * worth more than an email on 90%. Coverage alone is the wrong test.
+   *
+   * And the two routes need completely different setups in Google Ads: the
+   * email one lives behind enhanced conversions for leads, which has to be
+   * switched on first. Picking it for someone who then cannot find that
+   * setting leaves them at a required GCLID row with no way forward. That
+   * happened on the first real run.
+   *
+   * So the suggestion stands, and it is now a suggestion. Principle 3: every
+   * rule the product applies is visible and arguable.
    */
-  const identifier = useMemo(() => bestIdentifier(valued), [valued]);
+  const suggested = useMemo(() => bestIdentifier(valued), [valued]);
+  const [chosenIdentifier, setChosenIdentifier] = useState<FeedIdentifier | null>(null);
+  const identifier = chosenIdentifier ?? suggested;
+
+  const coverage = useMemo(() => {
+    let clicks = 0;
+    let emails = 0;
+    for (const { deal } of valued) {
+      if (deal.clickId?.trim()) clicks++;
+      if (deal.email?.trim()) emails++;
+    }
+    return { clicks, emails, total: valued.length };
+  }, [valued]);
   const setup = useMemo(() => setupSteps(identifier), [identifier]);
   const schedule = useMemo(() => scheduleSteps(identifier), [identifier]);
 
@@ -288,7 +314,9 @@ export default function ConnectPage() {
     setPublishing(true);
     setError(null);
     try {
-      const identifier = bestIdentifier(valued);
+      // Deliberately the chosen one, not bestIdentifier again: recomputing
+      // here would publish a feed keyed differently from the instructions
+      // shown two inches above the button.
       const { rows, skipped, gateAdjustments, gateTooLate } = await buildFeedRows({
         leads: valued,
         modelId,
@@ -354,7 +382,6 @@ export default function ConnectPage() {
   }
 
   async function downloadFile() {
-    const identifier = bestIdentifier(valued);
     const r = await buildValueModelCsv({
       leads: valued,
       conversionName: "VBB Lead Value",
@@ -407,6 +434,77 @@ export default function ConnectPage() {
 
           {!feed ? (
             <>
+              {/*
+                The choice that used to be made silently. Shown before the
+                steps because it changes them: the two routes need different
+                things switched on in Google Ads.
+              */}
+              <div className="well mb-5 p-4">
+                <p className="label">How Google matches these to clicks</p>
+                <div className="mt-2.5 flex flex-wrap gap-2">
+                  {(["clickId", "email"] as FeedIdentifier[]).map((option) => {
+                    const chosen = identifier === option;
+                    const count = option === "clickId" ? coverage.clicks : coverage.emails;
+                    const share =
+                      coverage.total > 0 ? Math.round((count / coverage.total) * 100) : 0;
+                    return (
+                      <button
+                        key={option}
+                        type="button"
+                        onClick={() => setChosenIdentifier(option)}
+                        aria-pressed={chosen}
+                        disabled={count === 0}
+                        className={
+                          "rounded-xl border px-3.5 py-2.5 text-left transition-colors " +
+                          (chosen
+                            ? "border-[var(--primary)] bg-[var(--primary-soft)]"
+                            : "border-[var(--border)] bg-[var(--surface)] hover:border-[var(--primary)]/40") +
+                          (count === 0 ? " cursor-not-allowed opacity-50" : "")
+                        }
+                      >
+                        <span className="block text-[13.5px] font-bold">
+                          {option === "clickId" ? "Click ID" : "Hashed email"}
+                          {option === suggested && (
+                            <span className="ml-2 text-[11px] font-semibold text-[var(--muted)]">
+                              suggested
+                            </span>
+                          )}
+                        </span>
+                        <span className="mono mt-0.5 block text-[11.5px] text-[var(--muted)]">
+                          {count.toLocaleString()} of {coverage.total.toLocaleString()} leads · {share}%
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+                <p className="mt-2.5 max-w-[66ch] text-[12.5px] text-[var(--muted)]">
+                  {identifier === "clickId" ? (
+                    <>
+                      A click ID matches the exact click Google recorded, so every
+                      row that has one lands precisely. Leads without one are left
+                      out of the feed rather than guessed at.
+                    </>
+                  ) : (
+                    <>
+                      An email is matched against what Google can find, which
+                      reaches more leads but less precisely.{" "}
+                      <span className="font-semibold text-[var(--foreground)]">
+                        This route needs enhanced conversions for leads switched on
+                        in Google Ads first
+                      </span>{" "}
+                      - without it the import will insist on a click ID column your
+                      feed does not have.
+                    </>
+                  )}
+                </p>
+                {coverage.clicks === 0 && (
+                  <p className="mt-2 max-w-[66ch] text-[12.5px] text-[var(--muted)]">
+                    No lead in this file carries a click ID, so only the email route
+                    is available. The tracking snippet on the next screen fixes that
+                    for future leads.
+                  </p>
+                )}
+              </div>
               <button
                 type="button"
                 onClick={() => void publish()}
