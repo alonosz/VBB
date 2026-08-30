@@ -195,6 +195,27 @@ They may need Super Admin in their own HubSpot to approve it, or the "App
 Marketplace Access" permission that Super Admins carry automatically. Worst
 case that is one forwarded link.
 
+## Sign the Acceptable Use Policy before testing
+
+Found the hard way, 30 Aug. The first install attempt failed with:
+
+> The app could not be installed because the app developer has not signed the
+> acceptable use policy. Please contact the app developer.
+
+Everything on our side had worked. HubSpot accepted the redirect URL, the
+scopes and the signed state, then refused at the last step because the
+**developer account** had never accepted HubSpot's developer terms. This
+applies to every OAuth app, listed or not.
+
+In the developer account's left sidebar, look under **Technology Partner**
+first (the Technology Partner Program Agreement lives there), then
+**Marketplace Listings**. It is well hidden. If neither offers it, HubSpot
+developer support can enable it.
+
+This is a signature, not a review. It costs a click, not weeks. But nothing
+installs until it is done, so do it before booking a call with a design
+partner.
+
 ## Approval, and the 25-install ceiling
 
 **Nothing has to be approved before a customer can connect.** The app exists,
