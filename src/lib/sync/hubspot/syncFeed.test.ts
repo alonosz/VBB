@@ -92,7 +92,7 @@ function portal(over: { dealsStatus?: number; tokenStatus?: number } = {}) {
 
 async function scenario(opts: { expiresAt?: Date | null; withModel?: boolean } = {}) {
   const repo = new InMemoryFeedRepository(() => NOW);
-  const { client, rows } = fakeSupabase();
+  const { client, rows, rowFor } = fakeSupabase();
   const connections = new CrmConnectionStore(client, KEY);
 
   const deals = generateDemoDeals();
@@ -114,12 +114,12 @@ async function scenario(opts: { expiresAt?: Date | null; withModel?: boolean } =
     expiresAt: opts.expiresAt === undefined ? new Date(NOW.getTime() + 3_600_000) : opts.expiresAt,
   });
 
-  return { repo, connections, feed, model, rows };
+  return { repo, connections, feed, model, rows, rowFor };
 }
 
 describe("syncFeed", () => {
   it("pulls, prices and publishes without anyone watching", async () => {
-    const { repo, connections, feed } = await scenario();
+    const { repo, connections, feed, rowFor } = await scenario();
     const { fetchImpl } = portal();
 
     const outcome = await syncFeed({
@@ -138,13 +138,13 @@ describe("syncFeed", () => {
   });
 
   it("records the run so a connection that stopped working is visible", async () => {
-    const { repo, connections, feed, rows } = await scenario();
+    const { repo, connections, feed, rows, rowFor } = await scenario();
     await syncFeed({ feedId: feed.id, repo, connections, oauth: OAUTH, fetchImpl: portal().fetchImpl, now: NOW });
-    expect(rows.get(WORKSPACE)).toMatchObject({ last_sync_status: "ok", last_sync_rows: 1 });
+    expect(rowFor(WORKSPACE)).toMatchObject({ last_sync_status: "ok", last_sync_rows: 1 });
   });
 
   it("renews an expired token and stores the new one before pulling", async () => {
-    const { repo, connections, feed, rows } = await scenario({
+    const { repo, connections, feed, rows, rowFor } = await scenario({
       expiresAt: new Date(NOW.getTime() - 1000),
     });
     const { fetchImpl, paths } = portal();
@@ -158,22 +158,22 @@ describe("syncFeed", () => {
     expect(paths[0]).toBe("/oauth/v1/token");
     expect(paths).toContain("/crm/v3/objects/deals/search");
 
-    const stored = await connections.load(WORKSPACE);
+    const stored = await connections.load(WORKSPACE, "hubspot");
     expect(stored.connection?.accessToken).toBe("renewed-access");
     expect(stored.connection?.refreshToken).toBe("renewed-refresh");
     // And still never in the clear.
-    expect(JSON.stringify(rows.get(WORKSPACE))).not.toContain("renewed-access");
+    expect(JSON.stringify(rowFor(WORKSPACE))).not.toContain("renewed-access");
   });
 
   it("does not renew a token that is still good", async () => {
-    const { repo, connections, feed } = await scenario();
+    const { repo, connections, feed, rowFor } = await scenario();
     const { fetchImpl, paths } = portal();
     await syncFeed({ feedId: feed.id, repo, connections, oauth: OAUTH, fetchImpl, now: NOW });
     expect(paths).not.toContain("/oauth/v1/token");
   });
 
   it("says to reconnect when the renewal is refused, and publishes nothing", async () => {
-    const { repo, connections, feed, rows } = await scenario({
+    const { repo, connections, feed, rows, rowFor } = await scenario({
       expiresAt: new Date(NOW.getTime() - 1000),
     });
     const { fetchImpl } = portal({ tokenStatus: 400 });
@@ -184,11 +184,11 @@ describe("syncFeed", () => {
 
     expect(outcome.error).toMatch(/[Rr]econnect/);
     expect(await repo.rowsFor(feed.id)).toHaveLength(0);
-    expect(rows.get(WORKSPACE)).toMatchObject({ last_sync_status: "refused" });
+    expect(rowFor(WORKSPACE)).toMatchObject({ last_sync_status: "refused" });
   });
 
   it("treats an unreachable CRM as a night missed, not a failure to hide", async () => {
-    const { repo, connections, feed, rows } = await scenario();
+    const { repo, connections, feed, rows, rowFor } = await scenario();
     const { fetchImpl } = portal({ dealsStatus: 500 });
 
     const waits: number[] = [];
@@ -201,12 +201,12 @@ describe("syncFeed", () => {
     // drop a day of leads on one bad response.
     expect(waits.length).toBeGreaterThan(0);
     expect(outcome.error).toMatch(/next run will pick these up/);
-    expect(rows.get(WORKSPACE)).toMatchObject({ last_sync_status: "failed" });
+    expect(rowFor(WORKSPACE)).toMatchObject({ last_sync_status: "failed" });
     expect(await repo.rowsFor(feed.id)).toHaveLength(0);
   });
 
   it("refuses a feed with no saved model rather than pricing at zero", async () => {
-    const { repo, connections, feed } = await scenario({ withModel: false });
+    const { repo, connections, feed, rowFor } = await scenario({ withModel: false });
     const outcome = await syncFeed({
       feedId: feed.id, repo, connections, oauth: OAUTH, fetchImpl: portal().fetchImpl, now: NOW,
     });
@@ -215,7 +215,7 @@ describe("syncFeed", () => {
   });
 
   it("refuses a revoked feed without touching the customer's CRM", async () => {
-    const { repo, connections, feed } = await scenario();
+    const { repo, connections, feed, rowFor } = await scenario();
     await repo.revokeFeed(feed.id);
     const { fetchImpl, paths } = portal();
 
@@ -231,7 +231,7 @@ describe("syncFeed", () => {
   });
 
   it("is idempotent - a second run the same night sends nothing again", async () => {
-    const { repo, connections, feed } = await scenario();
+    const { repo, connections, feed, rowFor } = await scenario();
     const { fetchImpl } = portal();
     await syncFeed({ feedId: feed.id, repo, connections, oauth: OAUTH, fetchImpl, now: NOW });
     const second = await syncFeed({ feedId: feed.id, repo, connections, oauth: OAUTH, fetchImpl, now: NOW });
@@ -243,7 +243,7 @@ describe("syncFeed", () => {
 describe("syncAllFeeds", () => {
   it("one portal's failure does not cost every other advertiser their night", async () => {
     const repo = new InMemoryFeedRepository(() => NOW);
-    const { client } = fakeSupabase();
+    const { client, rowFor } = fakeSupabase();
     const connections = new CrmConnectionStore(client, KEY);
 
     const deals = generateDemoDeals();
@@ -287,7 +287,7 @@ describe("syncAllFeeds", () => {
 
 describe("recording the run", () => {
   it("records a success with the counts an operator is asked about", async () => {
-    const { repo, connections, feed } = await scenario();
+    const { repo, connections, feed, rowFor } = await scenario();
     const runs = new InMemorySyncRunStore();
     await syncFeed({
       feedId: feed.id, repo, connections, runs, oauth: OAUTH,
@@ -303,7 +303,7 @@ describe("recording the run", () => {
   });
 
   it("records a refusal WITH ITS REASON, never a silent one", async () => {
-    const { repo, connections, feed } = await scenario({ withModel: false });
+    const { repo, connections, feed, rowFor } = await scenario({ withModel: false });
     const runs = new InMemorySyncRunStore();
     await syncFeed({
       feedId: feed.id, repo, connections, runs, oauth: OAUTH,
@@ -315,7 +315,7 @@ describe("recording the run", () => {
   });
 
   it("records a failure when the CRM is unreachable", async () => {
-    const { repo, connections, feed } = await scenario();
+    const { repo, connections, feed, rowFor } = await scenario();
     const runs = new InMemorySyncRunStore();
     await syncFeed({
       feedId: feed.id, repo, connections, runs, oauth: OAUTH,
@@ -328,7 +328,7 @@ describe("recording the run", () => {
   });
 
   it("records a revoked feed rather than exiting quietly", async () => {
-    const { repo, connections, feed } = await scenario();
+    const { repo, connections, feed, rowFor } = await scenario();
     await repo.revokeFeed(feed.id);
     const runs = new InMemorySyncRunStore();
     await syncFeed({
@@ -347,7 +347,7 @@ describe("recording the run", () => {
       {
         name: "success",
         run: async () => {
-          const { repo, connections, feed } = await scenario();
+          const { repo, connections, feed, rowFor } = await scenario();
           const runs = new InMemorySyncRunStore();
           await syncFeed({ feedId: feed.id, repo, connections, runs, oauth: OAUTH, fetchImpl: portal().fetchImpl, now: NOW });
           return runs;
@@ -356,7 +356,7 @@ describe("recording the run", () => {
       {
         name: "no model",
         run: async () => {
-          const { repo, connections, feed } = await scenario({ withModel: false });
+          const { repo, connections, feed, rowFor } = await scenario({ withModel: false });
           const runs = new InMemorySyncRunStore();
           await syncFeed({ feedId: feed.id, repo, connections, runs, oauth: OAUTH, fetchImpl: portal().fetchImpl, now: NOW });
           return runs;
@@ -365,7 +365,7 @@ describe("recording the run", () => {
       {
         name: "renewal refused",
         run: async () => {
-          const { repo, connections, feed } = await scenario({ expiresAt: new Date(NOW.getTime() - 1000) });
+          const { repo, connections, feed, rowFor } = await scenario({ expiresAt: new Date(NOW.getTime() - 1000) });
           const runs = new InMemorySyncRunStore();
           await syncFeed({ feedId: feed.id, repo, connections, runs, oauth: OAUTH, fetchImpl: portal({ tokenStatus: 400 }).fetchImpl, now: NOW });
           return runs;
@@ -374,7 +374,7 @@ describe("recording the run", () => {
       {
         name: "CRM unreachable",
         run: async () => {
-          const { repo, connections, feed } = await scenario();
+          const { repo, connections, feed, rowFor } = await scenario();
           const runs = new InMemorySyncRunStore();
           await syncFeed({ feedId: feed.id, repo, connections, runs, oauth: OAUTH, fetchImpl: portal({ dealsStatus: 500 }).fetchImpl, now: NOW, sleep: async () => {} });
           return runs;
@@ -383,7 +383,7 @@ describe("recording the run", () => {
       {
         name: "feed missing",
         run: async () => {
-          const { repo, connections } = await scenario();
+          const { repo, connections, rowFor } = await scenario();
           const runs = new InMemorySyncRunStore();
           await syncFeed({ feedId: "no-such-feed", repo, connections, runs, oauth: OAUTH, fetchImpl: portal().fetchImpl, now: NOW });
           return runs;

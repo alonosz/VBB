@@ -189,7 +189,7 @@ async function summariseConnection(
   workspaceId: string,
   connections: CrmConnectionStore
 ): Promise<ConnectionSummary> {
-  const { connection, error } = await connections.load(workspaceId);
+  const { connection, error } = await connections.load(workspaceId, "hubspot");
   if (!connection) {
     return {
       ...noConnection(),

@@ -335,6 +335,29 @@ select pg_temp.must_fail($$
   )$$,
   'a provider we have not built is rejected');
 
+-- One row per provider, not one per workspace. A customer needs their CRM read
+-- and their ads account written at the same time; the old one-per-workspace
+-- unique would have made the second connection overwrite the first.
+select pg_temp.must_pass($$
+  insert into public.crm_connections (workspace_id, provider, access_token)
+  values ('99999999-9999-9999-9999-999999999999', 'google_ads',
+    'v1.dddddddddddd.eeeeeeeeeeee.ffffffffffff')$$,
+  'THE SAME WORKSPACE CAN HOLD A CRM AND AN ADS CONNECTION AT ONCE');
+
+select pg_temp.must_fail($$
+  insert into public.crm_connections (workspace_id, provider, access_token)
+  values ('99999999-9999-9999-9999-999999999999', 'google_ads',
+    'v1.111111111111.222222222222.333333333333')$$,
+  'but not two connections to the same provider');
+
+-- The promise that matters most, checked again for the new provider: a Google
+-- refresh token is a standing key to somebody else's ad spend.
+select pg_temp.must_fail($$
+  insert into public.crm_connections (workspace_id, provider, access_token)
+  values ('88888888-8888-8888-8888-888888888888', 'google_ads', 'ya29.a0AfB_plaintext')$$,
+  'A PLAINTEXT GOOGLE ADS TOKEN CANNOT BE STORED');
+
+
 select pg_temp.must_fail($$
   update public.crm_connections
      set last_sync_error = repeat('x', 501)

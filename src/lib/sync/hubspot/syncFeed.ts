@@ -96,10 +96,10 @@ export async function syncFeed(opts: SyncFeedOptions): Promise<FeedSyncOutcome> 
   // above, so its owner is known by the time any of this runs.
   const workspaceId = feed.clientId;
 
-  const { connection, error: connectionError } = await connections.load(workspaceId);
+  const { connection, error: connectionError } = await connections.load(workspaceId, "hubspot");
   if (!connection) {
     const why = connectionError ?? "No CRM is connected.";
-    await connections.recordRun(workspaceId, { status: "refused", error: why, at: now });
+    await connections.recordRun(workspaceId, "hubspot", { status: "refused", error: why, at: now });
     await record("refused", why);
     return failed(feedId, why);
   }
@@ -107,7 +107,7 @@ export async function syncFeed(opts: SyncFeedOptions): Promise<FeedSyncOutcome> 
   const { model, error: modelError } = await repo.modelFor(feedId);
   if (!model) {
     const why = modelError ?? "This feed has no saved model, so nothing can be priced.";
-    await connections.recordRun(workspaceId, { status: "refused", error: why, at: now });
+    await connections.recordRun(workspaceId, "hubspot", { status: "refused", error: why, at: now });
     await record("refused", why);
     return failed(feedId, why);
   }
@@ -127,7 +127,7 @@ export async function syncFeed(opts: SyncFeedOptions): Promise<FeedSyncOutcome> 
     now,
   });
   if (fresh.token === null) {
-    await connections.recordRun(workspaceId, { status: "refused", error: fresh.error, at: now });
+    await connections.recordRun(workspaceId, "hubspot", { status: "refused", error: fresh.error, at: now });
     await record("refused", fresh.error);
     return failed(feedId, fresh.error);
   }
@@ -159,14 +159,14 @@ export async function syncFeed(opts: SyncFeedOptions): Promise<FeedSyncOutcome> 
       error instanceof HubSpotError
         ? error.message
         : "The CRM could not be read. Nothing was published; the next run will pick these up.";
-    await connections.recordRun(workspaceId, { status: "failed", error: why, at: now });
+    await connections.recordRun(workspaceId, "hubspot", { status: "failed", error: why, at: now });
     await record("failed", why);
     return failed(feedId, why);
   }
 
   const report = await runSync({ repo, feed, model, deals, now });
 
-  await connections.recordRun(workspaceId, {
+  await connections.recordRun(workspaceId, "hubspot", {
     status: report.refusedBecause ? "refused" : "ok",
     rows: report.rowsAdded,
     error: report.refusedBecause,
@@ -192,7 +192,7 @@ export async function syncFeed(opts: SyncFeedOptions): Promise<FeedSyncOutcome> 
 export async function syncAllFeeds(
   opts: Omit<SyncFeedOptions, "feedId">
 ): Promise<FeedSyncOutcome[]> {
-  const workspaceIds = await opts.connections.connectedWorkspaceIds();
+  const workspaceIds = await opts.connections.connectedWorkspaceIds("hubspot");
 
   const feedIds: string[] = [];
   for (const workspaceId of workspaceIds) {

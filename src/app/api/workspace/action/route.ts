@@ -99,7 +99,7 @@ export async function POST(request: Request) {
     );
   }
 
-  await new CrmConnectionStore(client, encryptionKey).disconnect(auth.workspace.id);
+  await new CrmConnectionStore(client, encryptionKey).disconnect(auth.workspace.id, "hubspot");
   return NextResponse.json({
     ok: true,
     action,

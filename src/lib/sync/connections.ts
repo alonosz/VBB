@@ -22,9 +22,24 @@ import { decryptSecret, encryptSecret, keyFromEnv, MissingKeyError } from "./sec
 
 export type SyncStatus = "ok" | "refused" | "failed";
 
+/**
+ * Who the credentials are for.
+ *
+ * A workspace holds one row per provider, not one row: a customer needs their
+ * CRM read and their ads account written at the same time. Every method here
+ * takes the provider explicitly rather than defaulting to one, because a
+ * defaulted provider is a Google code path silently reading and overwriting
+ * the HubSpot row, and both halves keep working just long enough for it not to
+ * be obvious.
+ */
+export type ConnectionProvider = "hubspot" | "google_ads";
+
+/** The ones we read deals from. The nightly CRM sync walks only these. */
+export const CRM_PROVIDERS: ConnectionProvider[] = ["hubspot"];
+
 export interface CrmConnection {
   workspaceId: string;
-  provider: "hubspot";
+  provider: ConnectionProvider;
   externalAccountId: string | null;
   accessToken: string;
   refreshToken: string | null;
@@ -38,7 +53,7 @@ export interface CrmConnection {
 
 export interface NewCrmConnection {
   workspaceId: string;
-  provider: "hubspot";
+  provider: ConnectionProvider;
   externalAccountId?: string | null;
   accessToken: string;
   refreshToken?: string | null;
@@ -57,7 +72,7 @@ const MAX_ERROR = 500;
 
 interface ConnectionDto {
   workspace_id: string;
-  provider: "hubspot";
+  provider: ConnectionProvider;
   external_account_id: string | null;
   access_token: string;
   refresh_token: string | null;
@@ -98,13 +113,13 @@ export class CrmConnectionStore {
         scopes: connection.scopes ?? null,
         updated_at: new Date().toISOString(),
       },
-      { onConflict: "workspace_id" }
+      { onConflict: "workspace_id,provider" }
     );
 
     if (error) throw new Error(error.message);
   }
 
-  async load(workspaceId: string): Promise<ConnectionLoad> {
+  async load(workspaceId: string, provider: ConnectionProvider): Promise<ConnectionLoad> {
     if (!this.key) {
       return { connection: null, error: new MissingKeyError().message };
     }
@@ -113,17 +128,26 @@ export class CrmConnectionStore {
       .from("crm_connections")
       .select(COLUMNS)
       .eq("workspace_id", workspaceId)
+      .eq("provider", provider)
       .maybeSingle();
 
     if (error) throw new Error(error.message);
-    if (!data) return { connection: null, error: "This feed has no CRM connected." };
+    if (!data) {
+      return {
+        connection: null,
+        error:
+          provider === "google_ads"
+            ? "This workspace has no Google Ads account connected."
+            : "This feed has no CRM connected.",
+      };
+    }
 
     const dto = data as ConnectionDto;
     const accessToken = decryptSecret(dto.access_token, this.key);
     if (accessToken === null) {
       return {
         connection: null,
-        error: "The stored CRM credentials could not be read. Reconnect the account.",
+        error: "The stored credentials could not be read. Reconnect the account.",
       };
     }
 
@@ -150,6 +174,7 @@ export class CrmConnectionStore {
   /** What happened on the last run, so a connection that stopped working shows. */
   async recordRun(
     workspaceId: string,
+    provider: ConnectionProvider,
     outcome: { status: SyncStatus; rows?: number; error?: string | null; at?: Date }
   ): Promise<void> {
     const { error } = await this.client
@@ -161,21 +186,35 @@ export class CrmConnectionStore {
         last_sync_error: outcome.error ? outcome.error.slice(0, MAX_ERROR) : null,
         updated_at: new Date().toISOString(),
       })
-      .eq("workspace_id", workspaceId);
+      .eq("workspace_id", workspaceId)
+      .eq("provider", provider);
 
     // A failure to record the outcome must not turn a good run into a bad one,
     // but it does need to be visible rather than swallowed.
     if (error) console.error("recording a sync outcome failed:", error.message);
   }
 
-  async disconnect(workspaceId: string): Promise<void> {
-    const { error } = await this.client.from("crm_connections").delete().eq("workspace_id", workspaceId);
+  async disconnect(workspaceId: string, provider: ConnectionProvider): Promise<void> {
+    const { error } = await this.client
+      .from("crm_connections")
+      .delete()
+      .eq("workspace_id", workspaceId)
+      .eq("provider", provider);
     if (error) throw new Error(error.message);
   }
 
-  /** All feeds with a connection, for the scheduled run to walk. */
-  async connectedWorkspaceIds(): Promise<string[]> {
-    const { data, error } = await this.client.from("crm_connections").select("workspace_id");
+  /**
+   * Workspaces with a connection to this provider, for a scheduled run to walk.
+   *
+   * Filtered rather than listing everything: the nightly CRM sync handed a
+   * Google Ads workspace would try to pull deals out of an ads account and
+   * record the failure against a connection that is working perfectly.
+   */
+  async connectedWorkspaceIds(provider: ConnectionProvider): Promise<string[]> {
+    const { data, error } = await this.client
+      .from("crm_connections")
+      .select("workspace_id")
+      .eq("provider", provider);
     if (error) throw new Error(error.message);
     return (data as { workspace_id: string }[]).map((r) => r.workspace_id);
   }

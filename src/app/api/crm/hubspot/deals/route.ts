@@ -100,7 +100,7 @@ export async function POST(request: Request) {
   }
 
   const connections = new CrmConnectionStore(client, key);
-  const { connection, error: connectionError } = await connections.load(auth.workspace.id);
+  const { connection, error: connectionError } = await connections.load(auth.workspace.id, "hubspot");
   if (!connection) {
     return NextResponse.json(
       { ok: false, error: connectionError ?? "No CRM is connected to this workspace." },
