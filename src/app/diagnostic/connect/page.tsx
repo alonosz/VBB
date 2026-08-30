@@ -16,6 +16,7 @@ import { savedModelToValueModel, saveValueModel } from "@/lib/model/savedModel";
 import { recallModel } from "@/lib/model/storage";
 import { buildValueModelCsv, downloadCsv } from "@/lib/export/googleAds";
 import { bestIdentifier, buildFeedRows } from "@/lib/feed/publish";
+import type { FeedIdentifier } from "@/lib/feed/types";
 import { isDeploymentOrigin } from "@/lib/feed/origin";
 import { readWorkspaceKey } from "@/lib/workspace/clientKey";
 import { WorkspaceKeyPrompt } from "@/components/workspace/WorkspaceKeyPrompt";
@@ -57,55 +58,106 @@ interface Published {
  * rejected - a failure that looks like nothing happening at all. So this is
  * spelled out before the feed URL, not after it.
  */
-const SETUP_STEPS = [
-  {
-    title: "Open Conversions",
-    body: 'In Google Ads, click Goals in the left menu, then Conversions → Summary. On older accounts this is Tools & Settings → Measurement → Conversions.',
-  },
-  {
-    title: "Create a new conversion action",
-    body: 'Click + New conversion action, then choose Import → CRM, files or other data sources → Track conversions from clicks.',
-  },
-  {
-    title: `Name it exactly "${CONVERSION_NAME}"`,
-    body: "Case and spacing have to match - this is the name Google looks for in every row of your feed. A mismatch rejects the whole upload.",
-  },
-  {
-    title: "Set the value to vary per conversion",
-    body: 'Under Value, choose "Use different values for each conversion". Leave the default value blank. This is the setting that lets your model matter - the other options flatten every lead back to one number.',
-  },
-  {
-    title: "Check the rest, then save",
-    body: 'Count: "One". Click-through conversion window: 90 days, or longer if your cycle runs long. Set "Include in Conversions" to Yes so Smart Bidding actually optimises toward it.',
-  },
-];
+/**
+ * Two routes through Google's wizard, and the file decides which.
+ *
+ * Note on ordering: Google's current flow is one wizard, and it asks for the
+ * data source connection *before* the conversion action is fully set up.
+ * These steps used to promise the opposite - create the action, then point
+ * Google at the feed - which is how somebody ends up hunting for a screen
+ * that no longer comes first. The settings below still all have to be right;
+ * they are just reached in Google's order, not ours.
+ *
+ * A feed keyed on a click ID is the plain offline import: Google matches the
+ * gclid against the click it already recorded. A feed keyed on a hashed email
+ * is a different product with a different name, enhanced conversions for
+ * leads, and it has to be switched on before Google will accept an email as
+ * an identifier at all.
+ *
+ * Told the wrong one, an advertiser reaches the mapping screen, finds a
+ * required GCLID row their file has no column for, and is stuck with nothing
+ * on screen explaining why. That happened on the first real run of this, which
+ * is why these branch on the identifier rather than assuming clicks.
+ */
+function setupSteps(identifier: FeedIdentifier) {
+  const byClick = identifier === "clickId";
+  const steps = [
+    {
+      title: "Open Conversions",
+      body: "In Google Ads, click Goals in the left menu, then Conversions → Summary. On older accounts this is Tools & Settings → Measurement → Conversions.",
+    },
+  ];
 
-const SCHEDULE_STEPS = [
-  {
-    title: "Start the offline data source wizard",
-    body: 'Goals → Conversions → New conversion action again - this second pass sets up the delivery, not another action. On "Choose data sources to measure conversions", tick Conversions offline.',
-  },
-  {
-    title: "Add HTTPS as the data source",
-    body: 'On "Add an offline data source", leave "Connect a new product" selected and pick HTTPS from the grid - it sits next to Google Sheets and SFTP. Tick the customer-data consent box, then Done, then Save and continue.',
-  },
-  {
-    title: "Paste the URL exactly as shown above",
-    body: "It has to end in .csv - Google checks the file extension off the end of the URL and rejects anything finishing in a query string.",
-  },
-  {
-    title: "Fill in the username and password",
-    body: "Google requires both. The username can be anything - your name is fine. For the password, paste your feed key again (the part between the last / and .csv). We accept it there as well as in the URL.",
-  },
-  {
-    title: "Map the fields, then review",
-    body: 'Google walks you through "Select data" and "Map fields". The column names in the file already match what it expects, so this should confirm rather than require choices.',
-  },
-  {
-    title: "Save",
-    body: "Google collects your values on schedule from here on, and republishing serves new leads through the same URL.",
-  },
-];
+  if (!byClick) {
+    steps.push({
+      title: "Turn on enhanced conversions for leads first",
+      body: "Your feed is keyed on a hashed email rather than a click ID, and Google only accepts that once this is on: Goals → Conversions → Settings → Enhanced conversions for leads. Switch it on and accept the terms. Skip this and the import will demand a GCLID column your file does not have.",
+    });
+  }
+
+  steps.push(
+    byClick
+      ? {
+          title: "Create a new conversion action",
+          body: "Click + New conversion action, then Import → CRM, files or other data sources → Track conversions from clicks. Your feed carries click IDs, so this is the route that matches them exactly.",
+        }
+      : {
+          title: "Create a new conversion action",
+          body: 'Click + New conversion action, then Import → CRM, files or other data sources. Choose the option that is not "track conversions from clicks" - it will mention enhanced conversions, or skipping click tracking.',
+        },
+    {
+      title: `Name it exactly "${CONVERSION_NAME}"`,
+      body: "Case and spacing have to match - this is the name Google looks for in every row of your feed. A mismatch rejects the whole upload.",
+    },
+    {
+      title: "Set the value to vary per conversion",
+      body: 'Under Value, choose "Use different values for each conversion". Leave the default value blank. This is the setting that lets your model matter - the other options flatten every lead back to one number.',
+    },
+    {
+      title: "Check the rest, then save",
+      body: 'Count: "One". Click-through conversion window: 90 days, or longer if your cycle runs long. Set "Include in Conversions" to Yes so Smart Bidding actually optimises toward it.',
+    }
+  );
+
+  return steps;
+}
+
+function scheduleSteps(identifier: FeedIdentifier) {
+  const idColumn = identifier === "clickId" ? "Google Click ID" : "Email";
+  return [
+    {
+      title: "Start the offline data source wizard",
+      body: 'Goals → Conversions → New conversion action. On "Choose data sources to measure conversions", tick Conversions offline, then pick HTTPS underneath it and Save and continue.',
+    },
+    {
+      title: "Choose a category",
+      body: 'Pick "Qualified lead". Your feed sends what a lead is expected to be worth on arrival, not a completed purchase. This only decides which reporting group it appears in, so it is not fatal either way.',
+    },
+    {
+      title: "Paste the URL exactly as shown above",
+      body: "It has to end in .csv - Google checks the file extension off the end of the URL and rejects anything finishing in a query string.",
+    },
+    {
+      title: "Fill in the username and password",
+      body: "Google requires both. The username can be anything - your name is fine. For the password, paste your feed key again (the part between the last / and .csv). We accept it there as well as in the URL.",
+    },
+    {
+      /*
+       * The step that goes wrong. Google offers to "automatically accept
+       * suggestions", and its suggestion is to put your one identifier column
+       * into every identifier slot it has: an email into GBRAID and WBRAID,
+       * which are click IDs for iOS and app traffic. Nothing downstream ever
+       * reports that, so it has to be said here.
+       */
+      title: "Map the fields, and refuse the suggestions",
+      body: `Map ${idColumn} as the identifier, then Conversion_Value and Conversion_Currency to value and currency. Set everything else to None: Google will offer to fill GBRAID, WBRAID and IP address with your ${idColumn} column, and those are different things. Do not click "accept suggestions".`,
+    },
+    {
+      title: "Save",
+      body: "Google collects your values on schedule from here on, and republishing serves new leads through the same URL.",
+    },
+  ];
+}
 
 /**
  * The step everything else is for, and the easiest one to leave undone.
@@ -209,6 +261,17 @@ export default function ConnectPage() {
         saveValueModel(applied, { deals: mapped.deals, modelId: freshModelId, gate: result.gate }),
     };
   }, [mapped, businessContext, currency.reportingCurrency, customSignalKeys, hypotheses, saved, freshModelId]);
+
+  /*
+   * Which identifier the feed will carry, worked out the same way publishing
+   * works it out. The Google Ads instructions differ completely between the
+   * two, so showing both, or the wrong one, is how somebody ends up at a
+   * required GCLID row with no click IDs in their file.
+   */
+  const identifier = useMemo(() => bestIdentifier(valued), [valued]);
+  const setup = useMemo(() => setupSteps(identifier), [identifier]);
+  const schedule = useMemo(() => scheduleSteps(identifier), [identifier]);
+
 
   // Same markup on the server and during hydration; the restored flow only
   // exists in the browser and appears on the pass after.
@@ -458,9 +521,9 @@ export default function ConnectPage() {
               </p>
 
               <div className="mt-6 border-t border-[var(--border)] pt-5">
-                <p className="label">Do this once, first</p>
+                <p className="label">The settings that decide whether this works</p>
                 <p className="mt-1.5 text-[16px] font-bold">
-                  Create the conversion action in Google Ads
+                  Your conversion action in Google Ads
                 </p>
                 <p className="mt-1 max-w-[64ch] text-[13.5px] text-[var(--muted)]">
                   Google matches each row in your feed to a conversion action{" "}
@@ -473,7 +536,7 @@ export default function ConnectPage() {
                   exactly like nothing happening.
                 </p>
                 <ol className="mt-3.5 grid gap-3">
-                  {SETUP_STEPS.map((step, i) => (
+                  {setup.map((step, i) => (
                     <li key={step.title} className="flex gap-3">
                       <span className="mono mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full bg-[var(--primary-soft)] text-[12px] font-bold text-[var(--primary-deep)]">
                         {i + 1}
@@ -490,9 +553,9 @@ export default function ConnectPage() {
               </div>
 
               <div className="mt-6 border-t border-[var(--border)] pt-5">
-                <p className="label">Then point Google at your feed</p>
+                <p className="label">Pointing Google at your feed</p>
                 <ol className="mt-3 grid gap-3">
-                  {SCHEDULE_STEPS.map((step, i) => (
+                  {schedule.map((step, i) => (
                     <li key={step.title} className="flex gap-3">
                       <span className="mono mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full bg-[var(--navy)] text-[12px] font-bold text-[var(--on-navy)]">
                         {i + 1}
