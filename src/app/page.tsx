@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { ArrowIcon } from "@/components/ArrowIcon";
 import { Logo } from "@/components/brand/Logo";
-import { EmailCapture } from "@/components/leads/EmailCapture";
 
 /**
  * What this is, before anyone is asked to do anything.
@@ -226,23 +225,6 @@ export default function Home() {
             </Link>{" "}
             - 500 synthetic deals, the whole flow end to end.
           </p>
-
-          {/*
-            The exit ramp, and deliberately the last thing on the page rather
-            than a second box beside the hero button. Someone who has scrolled
-            this far and not clicked has already decided not to start today,
-            so asking here costs no starts. Asking above the fold would, and
-            it would sit six pixels under a line promising no account.
-          */}
-          <div className="card mt-8 max-w-[46rem] p-5 sm:p-6">
-            <EmailCapture
-              source="landing"
-              step="landing"
-              title="Not ready to run it today?"
-              body="Leave your address and we will get in touch. Useful if you need to pull the export first, or get someone else to."
-              cta="Keep in touch"
-            />
-          </div>
         </section>
       </main>
     </div>

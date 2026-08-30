@@ -101,22 +101,25 @@ per month, not at zero. Leave it.
 Not code, and not optional if selling into the EU: a sentence at the point of
 collection saying you may get in touch, and a delete-on-request path.
 
-**Status: built, 29 Aug.** Two boxes, neither of them at step 1.
+**Status: built, 29 Aug. One box, at the bottom of the report.**
 
-The suggestion on the day was an email box above the fold, beside the hero
-button. It went at the bottom of the landing page instead, and at the bottom of
-the report, for three reasons:
+Three placements were considered and two were cut.
 
-- Above the fold it competes with the only action on that screen that matters,
-  and two asks reliably lowers the number of people who do either.
-- It would sit a few pixels under the line promising no account needed.
-- It is the weakest address the product can collect. Someone who has seen
-  nothing owes nothing. Someone who reached their own model and stopped is
-  worth a phone call.
+*Beside the hero button*, the original suggestion. Cut: above the fold it
+competes with the only action on that screen that matters, and it would sit a
+few pixels under the line promising no account needed.
 
-So: the **report** box is the good one, and the **landing page bottom** box is
-the exit ramp for a reader who was never going to start today, which costs no
-starts because they had already not started.
+*Bottom of the landing page*, as an exit ramp. Built, then cut the same day.
+The argument for it was that it costs no starts, and that is true, but costing
+nothing is not the same as being worth anything. Nobody fills in a box asking
+for their address in exchange for a vague future contact from a company they
+have just decided not to try.
+
+*Bottom of the report* is what shipped, and it is the only one that was ever
+going to work. The person has watched a model get built out of their own data
+and is looking at what their leads are worth. Asking there is a conversation
+about something specific: an address left at that moment is worth a phone
+call, which is the whole point of collecting one.
 
 Step 1 and 2 stay clean. `leads` holds an address, a moment and a one-word
 label, and the schema has no numeric or free-text column, so nothing derived

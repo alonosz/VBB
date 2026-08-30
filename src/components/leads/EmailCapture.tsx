@@ -8,11 +8,14 @@ import type { LeadSource } from "@/lib/leads/leads";
 /**
  * One box, asking for one thing, in exchange for something.
  *
- * The reason this is not next to the hero button: an address given before any
- * value has been received is the weakest lead this product can collect, and it
- * competes with the only action on that screen that matters. So the two places
- * it appears are both places where the person either has their model in front
- * of them or has already decided not to start.
+ * It appears in exactly one place: the bottom of the report, under a model the
+ * person has just watched get built out of their own data. An address given
+ * before any value has been received is the weakest lead this product can
+ * collect, and on the landing page it is worse than weak - it is a box nobody
+ * fills in, sitting under a line promising no account needed.
+ *
+ * The `source` prop exists because that judgement could change and the schema
+ * already allows the other values. Today only "report" is wired.
  *
  * The consent line is not decoration. Collecting an address in order to get in
  * touch means saying so at the point of collection, and saying it plainly is
