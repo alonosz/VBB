@@ -7,6 +7,7 @@ import { useDiagnostic } from "@/context/DiagnosticContext";
 import { Stepper } from "@/components/diagnostic/Stepper";
 import { Alert, PageHead } from "@/components/ui";
 import { ExportGuide } from "@/components/diagnostic/ExportGuide";
+import { ConnectHubSpot, type ImportedRows } from "@/components/diagnostic/ConnectHubSpot";
 import { generateDemoDeals, demoDealsToCsvRows } from "@/lib/fixtures/demoDataset";
 import { useIngest } from "@/lib/diagnostic/useIngest";
 
@@ -28,6 +29,37 @@ export default function UploadPage() {
 
   const appendLog = useCallback((line: string) => setLog((l) => [...l, line]), []);
   const ingest = useIngest(appendLog);
+
+  /**
+   * Deals read from HubSpot, entering the flow exactly where a file would.
+   *
+   * The point of converting the pull back to rows is here: from this line
+   * onwards nothing distinguishes the two sources, so the mapping screen still
+   * shows what it matched and the report is fitted by the same code. The name
+   * is what appears where a filename would, and it says where the rows came
+   * from rather than pretending to be a file.
+   */
+  const handleImported = useCallback(
+    ({ headers, rows, dealCount, currencies }: ImportedRows) => {
+      setError(null);
+      setParsing(true);
+      setLog([]);
+      if (currencies.length > 1) {
+        appendLog(
+          `Deals reported in ${currencies.length} currencies: ` +
+            currencies.map((c) => `${c.code} (${c.count})`).join(", ")
+        );
+      }
+      appendLog(`Read ${dealCount.toLocaleString()} deals from HubSpot`);
+      void ingest({
+        name: "HubSpot · last 12 months",
+        sizeBytes: 0,
+        headers,
+        rows,
+      });
+    },
+    [ingest, appendLog]
+  );
 
   const handleFile = useCallback(
     (file: File) => {
@@ -191,32 +223,17 @@ export default function UploadPage() {
             />
 
             {/*
-              The second door, before it opens.
-              
-              Deliberately not a column beside the dropzone yet: HubSpot does
-              not work, so the CSV is the only way through, and halving the
-              primary action for something inert would be worse than saying
-              nothing. It moves up beside the dropzone the day it works - the
-              card is written so that is a content swap, not a redesign.
+              The second door, open.
 
-              No button. A control that does nothing when clicked is worse than
-              no control, and "notify me" would need somewhere to put an email
-              address that does not exist yet.
+              Deliberately below the dropzone rather than beside it. Most CRMs
+              are not HubSpot, so for most visitors a column here would be
+              half a screen that does not apply to them, and the CSV route is
+              the one that needs no credential and nobody's permission.
+
+              Both land on the same rows, so nothing after this screen knows
+              or cares which was used.
             */}
-            <div className="well mt-4 p-5 sm:p-6">
-              <div className="min-w-0">
-                <p className="flex flex-wrap items-center gap-2.5">
-                  <span className="text-[15px] font-bold">Connect HubSpot instead</span>
-                  <span className="badge badge-primary">Soon</span>
-                </p>
-                <p className="mt-1.5 max-w-[62ch] text-[13.5px] text-[var(--muted)]">
-                  We&apos;re building a direct connection, so there&apos;s no export to
-                  get right and no columns to map - your deals come straight across
-                  and the next screen is your model. Until then the CSV route above
-                  does the same job.
-                </p>
-              </div>
-            </div>
+            <ConnectHubSpot busy={parsing} onImported={handleImported} />
 
             <ExportGuide />
 

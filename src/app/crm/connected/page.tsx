@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ResumeAfterConnect } from "@/components/diagnostic/ResumeAfterConnect";
 
 /**
  * Where HubSpot sends people back to.
@@ -14,12 +15,19 @@ interface Props {
   searchParams: Promise<{ status?: string; reason?: string }>;
 }
 
+/**
+ * Copied verbatim from the callback, and it has to stay that way: a message
+ * that drifts out of this set is silently replaced by the generic fallback,
+ * so the advertiser is told "start it again" when the real reason was that
+ * their workspace is suspended. Two of these had already drifted when
+ * connections moved from feeds to workspaces.
+ */
 const SAFE_REASONS = new Set([
   "Connecting a CRM is not set up on this deployment.",
   "HubSpot did not complete the connection.",
   "That link is incomplete. Start the connection again.",
-  "That connection link has expired or was altered. Start it again from your feed.",
-  "That feed no longer exists.",
+  "That connection link has expired or was altered. Start it again.",
+  "That workspace is no longer active.",
   "HubSpot would not complete the connection. Try again.",
   "The connection could not be saved. Nothing was stored.",
 ]);
@@ -32,7 +40,7 @@ export default async function CrmConnectedPage({ searchParams }: Props) {
   // place to let someone else put words on our page.
   const message = reason && SAFE_REASONS.has(reason)
     ? reason
-    : "The connection did not complete. Start it again from your feed.";
+    : "The connection did not complete. Start it again.";
 
   return (
     <div className="animate-page-in flex min-h-screen flex-col">
@@ -41,6 +49,9 @@ export default async function CrmConnectedPage({ searchParams }: Props) {
         <h1 className="text-3xl font-bold tracking-tight text-balance">
           {connected ? "Your CRM is connected" : "That didn't connect"}
         </h1>
+
+        {/* Someone who started at step 2 goes straight back to their import. */}
+        {connected && <ResumeAfterConnect />}
 
         {connected ? (
           <>

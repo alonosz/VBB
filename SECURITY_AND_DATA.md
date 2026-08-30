@@ -71,6 +71,23 @@ means in practice.
 
 ---
 
+### The one route CRM records pass through
+
+`POST /api/crm/hubspot/deals` reads twelve months of deals from a connected
+portal so step 2 can replace the CSV export. Those records pass **through** the
+server; none of them stay.
+
+They exist in one function's memory for the length of one request and are
+handed to the browser, which is where the CSV path already keeps them. Nothing
+is written: no table here has a column that could hold a deal, a name or an
+address, and the CHECK constraints would refuse them if one tried.
+
+The alternative was calling HubSpot from the browser, which would have put the
+customer's CRM token into their page. Passing through a server that stores
+nothing is the smaller exposure, and it is why the route exists.
+
+---
+
 ## Where the raw CRM data actually lives
 
 **In the customer's browser, and nowhere else.**

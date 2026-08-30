@@ -4,11 +4,8 @@ import type { SyncRunStore } from "../runs";
 import { CrmConnectionStore } from "../connections";
 import { HubSpotClient, HubSpotError, pullFromHubSpot } from "./client";
 import { hubspotToDeals } from "./map";
-import {
-  needsRefresh,
-  refreshAccessToken,
-  type OAuthConfig,
-} from "./oauth";
+import { type OAuthConfig } from "./oauth";
+import { freshAccessToken } from "./accessToken";
 
 /**
  * One feed's scheduled run, end to end.
@@ -116,27 +113,25 @@ export async function syncFeed(opts: SyncFeedOptions): Promise<FeedSyncOutcome> 
   }
 
   // Refreshed and stored before anything else uses it. HubSpot rotates the
-  // refresh token on use, so losing the new one costs the connection.
-  let accessToken = connection.accessToken;
-  if (oauth && needsRefresh(connection.expiresAt, now) && connection.refreshToken) {
-    const refreshed = await refreshAccessToken(oauth, connection.refreshToken, fetchImpl, now);
-    if (!refreshed) {
-      const why = "HubSpot would not renew the connection. Reconnect the account.";
-      await connections.recordRun(workspaceId, { status: "refused", error: why, at: now });
-      await record("refused", why);
-      return failed(feedId, why);
-    }
-    await connections.save({
-      workspaceId,
-      provider: "hubspot",
-      externalAccountId: connection.externalAccountId,
-      accessToken: refreshed.accessToken,
-      refreshToken: refreshed.refreshToken ?? connection.refreshToken,
-      expiresAt: refreshed.expiresAt,
-      scopes: connection.scopes,
-    });
-    accessToken = refreshed.accessToken;
+  // refresh token on use, so losing the new one costs the connection. Shared
+  // with the step-2 history pull rather than copied, because two copies of
+  // that rule is how one of them ends up not saving the new token.
+  // Not destructured: the result is a discriminated union, and pulling the
+  // two fields apart loses the narrowing that proves the error is a string
+  // wherever the token is null.
+  const fresh = await freshAccessToken({
+    connections,
+    connection,
+    oauth: oauth ?? null,
+    fetchImpl,
+    now,
+  });
+  if (fresh.token === null) {
+    await connections.recordRun(workspaceId, { status: "refused", error: fresh.error, at: now });
+    await record("refused", fresh.error);
+    return failed(feedId, fresh.error);
   }
+  const accessToken = fresh.token;
 
   let deals;
   try {
