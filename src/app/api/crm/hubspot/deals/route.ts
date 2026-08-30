@@ -33,6 +33,30 @@ import { oauthConfigFromEnv } from "@/lib/sync/hubspot/oauth";
  * resolve.
  */
 
+/**
+ * Which piece of the configuration is missing, for the log.
+ *
+ * The advertiser gets one sentence, deliberately: a stranger poking at this
+ * route should not be handed a list of what this deployment has and has not
+ * configured. Whoever deployed it needs the opposite, and they can read the
+ * platform log, so the detail goes there.
+ *
+ * This existed as a bare boolean check and cost an evening. "Reading a CRM is
+ * not set up on this deployment yet" is true and useless: the commonest cause
+ * by far is a VBB_TOKEN_KEY under 24 characters, which is refused rather than
+ * padded and looks from the outside exactly like Supabase being absent.
+ */
+function missingConfig(parts: Record<string, unknown>): string[] {
+  return Object.entries(parts)
+    .filter(([, value]) => !value)
+    .map(([name]) => name);
+}
+
+/** Named here so the log says the variable, not the internal helper. */
+const TOKEN_KEY_HINT =
+  "VBB_TOKEN_KEY (must be 64 hex characters, base64 decoding to 32 bytes, " +
+  "or a passphrase of at least 24 characters - anything shorter is refused)";
+
 export const runtime = "nodejs";
 export const maxDuration = 120;
 
@@ -46,8 +70,19 @@ export async function POST(request: Request) {
   const key = keyFromEnv();
 
   if (!workspaces || !client || !key) {
+    const missing = missingConfig({
+      Supabase: client,
+      "workspace store": workspaces,
+      [TOKEN_KEY_HINT]: key,
+    });
+    console.error(`Cannot read a CRM: not configured - ${missing.join(", ")}`);
     return NextResponse.json(
-      { ok: false, error: "Reading a CRM is not set up on this deployment yet." },
+      {
+        ok: false,
+        error:
+          "Reading a CRM is not set up on this deployment yet. Whoever deployed it " +
+          "can see which setting is missing in the server log.",
+      },
       { status: 503 }
     );
   }

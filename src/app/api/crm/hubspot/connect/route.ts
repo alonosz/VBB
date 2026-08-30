@@ -24,11 +24,29 @@ export async function POST(request: Request) {
   const repo = feedRepositoryFromEnv();
   const workspaces = workspaceRepositoryFromEnv();
 
+  // Same trap as the deals route: one sentence for the advertiser, the actual
+  // missing setting in the log for whoever deployed it. A VBB_TOKEN_KEY under
+  // 24 characters is refused rather than padded, and from out here that is
+  // indistinguishable from having no database at all.
+  // The guard stays a plain boolean so TypeScript keeps narrowing these to
+  // non-null past it; the list is only built once we know one is missing.
   if (!repo || !oauth || !key || !workspaces) {
+    const missing = Object.entries({
+      Supabase: repo,
+      "workspace store": workspaces,
+      "HUBSPOT_CLIENT_ID / HUBSPOT_CLIENT_SECRET": oauth,
+      "VBB_TOKEN_KEY (64 hex, base64 of 32 bytes, or 24+ characters)": key,
+    })
+      .filter(([, value]) => !value)
+      .map(([name]) => name);
+
+    console.error(`Cannot connect a CRM: not configured - ${missing.join(", ")}`);
     return NextResponse.json(
       {
         ok: false,
-        error: "Connecting a CRM is not set up on this deployment yet.",
+        error:
+          "Connecting a CRM is not set up on this deployment yet. Whoever deployed " +
+          "it can see which setting is missing in the server log.",
       },
       { status: 503 }
     );
