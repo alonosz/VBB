@@ -6,10 +6,12 @@ import { ArrowIcon } from "@/components/ArrowIcon";
 import { WorkspaceKeyPrompt } from "@/components/workspace/WorkspaceKeyPrompt";
 import { DidItWorkPanel } from "@/components/report/didItWork";
 import { StrategyPanel } from "@/components/report/campaignStrategy";
+import { MixShiftPanel } from "@/components/report/mixShift";
 import { detectColumns, detectStageTimingColumns } from "@/lib/mapping/detect";
 import { rowsToDeals } from "@/lib/mapping/toDeals";
 import { runDiagnostic } from "@/lib/analysis";
 import { didItWork, type ProofVerdict } from "@/lib/analysis/didItWork";
+import { mixShift, type MixVerdict } from "@/lib/analysis/mixShift";
 import { readWorkspaceKey } from "@/lib/workspace/clientKey";
 import type { MappedDeal } from "@/lib/analysis/types";
 import type { StrategyAudit } from "@/lib/sync/google/campaigns";
@@ -50,6 +52,7 @@ export function EvaluationView() {
   const [phase, setPhase] = useState<Phase>("loading");
   const [error, setError] = useState<string | null>(null);
   const [verdict, setVerdict] = useState<ProofVerdict | null>(null);
+  const [mix, setMix] = useState<MixVerdict | null>(null);
   const [currency, setCurrency] = useState("USD");
   const [dealCount, setDealCount] = useState(0);
   const [switchedAt, setSwitchedAt] = useState<Date | null>(null);
@@ -167,6 +170,16 @@ export function EvaluationView() {
           medianCycleDays: diagnostic.cycle.medianDays ?? 30,
         })
       );
+
+      // The leading indicator. Answerable from leads that have closed nothing,
+      // which is most of them for most of the first year.
+      setMix(
+        mixShift({
+          deals: mapped.deals as MappedDeal[],
+          model: diagnostic.valueModel,
+          switchedAt: at,
+        })
+      );
       setPhase("ready");
     } catch {
       setError("We couldn't reach your CRM. Try again.");
@@ -242,6 +255,12 @@ export function EvaluationView() {
                 }}
               />
             </div>
+            {mix && (
+              <div className="mt-4">
+                <MixShiftPanel verdict={mix} currency={currency} />
+              </div>
+            )}
+
             {/*
               The other half of the answer. Leads getting no better is the
               expected result when Google is bidding on lead count, so this

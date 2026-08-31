@@ -1,5 +1,5 @@
 import type { MappedDeal } from "./types";
-import { median } from "./helpers";
+import { median, mulberry32, shuffleInPlace } from "./helpers";
 
 /**
  * Did switching to value-based bidding actually work?
@@ -306,25 +306,6 @@ export function controlFor(dated: MappedDeal[], switchTime: number): ControlVerd
 
 function round2(n: number): number {
   return Math.round(n * 100) / 100;
-}
-
-/** Same generator the demo dataset uses; small, fast, and reproducible. */
-function mulberry32(seed: number): () => number {
-  let a = seed;
-  return function () {
-    a |= 0;
-    a = (a + 0x6d2b79f5) | 0;
-    let t = Math.imul(a ^ (a >>> 15), 1 | a);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-
-function shuffleInPlace<T>(arr: T[], rand: () => number): void {
-  for (let i = arr.length - 1; i > 0; i--) {
-    const j = Math.floor(rand() * (i + 1));
-    [arr[i], arr[j]] = [arr[j], arr[i]];
-  }
 }
 
 /** The change a random before/after split of this pool produces. */
