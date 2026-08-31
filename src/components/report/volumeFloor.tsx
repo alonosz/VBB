@@ -140,8 +140,10 @@ export function VolumeFloorPanel({
               values - they cost nothing and the data starts accumulating. But
               hold off on switching the campaign to{" "}
               <span className="font-semibold">Maximize conversion value</span>{" "}
-              until volume is there, or raise the budget to get it there. Switching
-              early means a learning period that never finishes.
+              until volume is there. Budget is one way up; broader targeting is
+              another, and if the volume exists but is split across several small
+              campaigns, folding them into one gets there without spending more.
+              Switching early means a learning period that never finishes.
             </p>
           </Alert>
         </div>

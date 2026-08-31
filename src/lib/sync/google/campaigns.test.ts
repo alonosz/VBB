@@ -168,3 +168,59 @@ describe("the audit", () => {
     expect(audit.totalSpend).toBe(5000);
   });
 });
+
+describe("volume across the value campaigns", () => {
+  const value = (over: Partial<CampaignRow> = {}) =>
+    campaign({
+      biddingStrategyType: "MAXIMIZE_CONVERSION_VALUE",
+      strategyLabel: "Maximize conversion value",
+      verdict: "uses-value",
+      ...over,
+    });
+
+  /*
+   * The silent failure: 36 conversions across the account, and no campaign
+   * sees more than 12. Each learns on its own conversions, so the account has
+   * enough volume and nothing that can use it.
+   */
+  it("flags volume split across campaigns none of which can learn", () => {
+    const audit = auditStrategies([
+      value({ id: "1", conversions: 12 }),
+      value({ id: "2", conversions: 12 }),
+      value({ id: "3", conversions: 12 }),
+    ]);
+    expect(audit.valueConversions).toBe(36);
+    expect(audit.underVolume).toHaveLength(3);
+    expect(audit.splitVolume).toBe(true);
+  });
+
+  it("does not call one healthy campaign a split", () => {
+    const audit = auditStrategies([
+      value({ id: "1", conversions: 45 }),
+      value({ id: "2", conversions: 10 }),
+    ]);
+    expect(audit.splitVolume).toBe(false);
+    expect(audit.underVolume).toHaveLength(1);
+    expect(audit.underVolume[0].id).toBe("2");
+  });
+
+  it("does not call genuinely thin volume a split", () => {
+    // 18 total: consolidating would still be under the floor. The fix there
+    // is budget or reach, not rearranging campaigns.
+    const audit = auditStrategies([
+      value({ id: "1", conversions: 9 }),
+      value({ id: "2", conversions: 9 }),
+    ]);
+    expect(audit.splitVolume).toBe(false);
+    expect(audit.underVolume).toHaveLength(2);
+  });
+
+  it("judges volume only on campaigns already bidding on value", () => {
+    const audit = auditStrategies([
+      value({ id: "1", conversions: 12 }),
+      campaign({ id: "2", conversions: 500 }), // count strategy, huge volume
+    ]);
+    expect(audit.valueConversions).toBe(12);
+    expect(audit.splitVolume).toBe(false);
+  });
+});

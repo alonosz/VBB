@@ -1,4 +1,5 @@
 import type { AdsClient } from "./client";
+import { MIN_LEADS_PER_MONTH } from "@/lib/analysis/volume";
 
 /**
  * Is Google actually using the values we send?
@@ -147,6 +148,17 @@ export interface StrategyAudit {
   totalSpend: number;
   /** 0-1. The number that decides whether this matters at all. */
   shareIgnoringValue: number;
+  /** Value-strategy campaigns starving under the learning floor, worst first. */
+  underVolume: CampaignRow[];
+  /** Conversions across all value-strategy campaigns, last 30 days. */
+  valueConversions: number;
+  /**
+   * The silent failure mode: together the value campaigns clear the floor,
+   * separately none does. Each campaign learns on its own conversions (unless
+   * they share a portfolio bid strategy), so this account has enough volume
+   * and no campaign that can use it.
+   */
+  splitVolume: boolean;
 }
 
 /**
@@ -165,11 +177,28 @@ export function auditStrategies(campaigns: CampaignRow[]): StrategyAudit {
   const spendIgnoringValue = ignoring.reduce((sum, c) => sum + c.cost, 0);
   const totalSpend = campaigns.reduce((sum, c) => sum + c.cost, 0);
 
+  /*
+   * Volume is judged only on the campaigns already bidding on value. A
+   * count-strategy campaign short of conversions has a different problem, and
+   * it is the one the strategy warning above already covers.
+   */
+  const valueCampaigns = campaigns.filter((c) => c.verdict === "uses-value");
+  const underVolume = valueCampaigns
+    .filter((c) => c.conversions < MIN_LEADS_PER_MONTH)
+    .sort((a, b) => b.cost - a.cost);
+  const valueConversions = valueCampaigns.reduce((sum, c) => sum + c.conversions, 0);
+
   return {
     campaigns,
     ignoring,
     spendIgnoringValue,
     totalSpend,
     shareIgnoringValue: totalSpend > 0 ? spendIgnoringValue / totalSpend : 0,
+    underVolume,
+    valueConversions,
+    splitVolume:
+      valueCampaigns.length > 1 &&
+      valueConversions >= MIN_LEADS_PER_MONTH &&
+      underVolume.length === valueCampaigns.length,
   };
 }
