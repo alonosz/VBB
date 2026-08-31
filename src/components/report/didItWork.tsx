@@ -3,8 +3,10 @@
 import { useState } from "react";
 import { readWorkspaceKey } from "@/lib/workspace/clientKey";
 import {
+  CONTROLLED_CAVEAT,
   MIN_COHORT,
   PROOF_CAVEAT,
+  type CohortPair,
   type CohortOutcome,
   type ProofVerdict,
 } from "@/lib/analysis/didItWork";
@@ -73,6 +75,71 @@ function Column({
   );
 }
 
+function signed(n: number): string {
+  return `${n > 0 ? "+" : n < 0 ? "-" : ""}${(Math.abs(n) * 100).toFixed(1)}%`;
+}
+
+/**
+ * Google's leads beside the ones its bidding could never have reached.
+ *
+ * The second row is the control, and it is what makes the first row mean
+ * anything. A rising market, a better landing page and a new salesperson all
+ * show up in both rows; only the difference between them is attributable to
+ * the bid change.
+ *
+ * Not a table. The change is the whole point of the row, and in a four column
+ * table it is the first thing off the right edge of a phone.
+ */
+function ControlRow({
+  label,
+  hint,
+  pair,
+  currency,
+  emphasis,
+}: {
+  label: string;
+  hint: string;
+  pair: CohortPair;
+  currency: string;
+  emphasis?: boolean;
+}) {
+  return (
+    <div
+      className={
+        "flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 rounded-xl border px-4 py-3 " +
+        (emphasis
+          ? "border-[var(--primary)]/30 bg-[var(--surface)]"
+          : "border-[var(--border)] bg-transparent")
+      }
+    >
+      <div className="min-w-[10rem]">
+        <p className="text-[13.5px] font-bold">{label}</p>
+        <p className="text-[12px] text-[var(--muted)]">{hint}</p>
+      </div>
+      <div className="flex items-baseline gap-3">
+        <p className="mono text-[13px] text-[var(--muted)]">
+          {money(pair.before.valuePerLead, currency)}
+          <span className="px-1.5 text-[var(--muted)]">&rarr;</span>
+          <span className="font-semibold text-[var(--foreground)]">
+            {money(pair.after.valuePerLead, currency)}
+          </span>
+        </p>
+        <p
+          className={
+            "mono text-[15px] font-bold " +
+            (emphasis
+              ? pair.change > 0
+                ? "text-[var(--accent)]"
+                : "text-[var(--warn)]"
+              : "text-[var(--muted-strong)]")
+          }
+        >
+          {signed(pair.change)}
+        </p>
+      </div>
+    </div>
+  );
+}
 
 /**
  * Marking the day, on the day.
@@ -213,7 +280,81 @@ export function DidItWorkPanel({
         </Waiting>
       )}
 
-      {verdict.kind === "measured" && (
+      {verdict.kind === "measured" && verdict.control.kind === "controlled" && (
+        <>
+          {/*
+            The controlled headline. Not "your leads got better" - that number
+            contains the whole market. This is the part the switch can be
+            credited with, and it is smaller and truer.
+          */}
+          <div
+            className={
+              "rounded-[var(--radius-lg)] border px-5 py-4 " +
+              (verdict.control.improved
+                ? "border-[var(--accent)]/40 bg-[var(--accent-soft)]"
+                : "border-[var(--warn)]/40 bg-[var(--warn-soft)]")
+            }
+          >
+            <p className="text-[14px] font-bold">
+              {verdict.control.improved ? (
+                <>
+                  Google&rsquo;s leads improved{" "}
+                  <span className="mono">
+                    {pct(Math.abs(verdict.control.attributable))}
+                  </span>{" "}
+                  more than the rest of your pipeline.
+                </>
+              ) : (
+                <>
+                  Google&rsquo;s leads did not improve any faster than the rest of
+                  your pipeline.
+                </>
+              )}
+            </p>
+            <p className="mt-1 max-w-[72ch] text-[13px] text-[var(--muted-strong)]">
+              Leads that never came from Google are the control. Seasonality, your
+              landing pages and a better sales month land in both rows, so only the
+              gap between them is down to the bid change.
+            </p>
+          </div>
+
+          <div className="mt-3 grid gap-2">
+            <ControlRow
+              label="Google ads"
+              hint="what the bid strategy can move"
+              pair={verdict.control.google}
+              currency={currency}
+              emphasis
+            />
+            <ControlRow
+              label="Everything else"
+              hint="the control, untouched by bidding"
+              pair={verdict.control.other}
+              currency={currency}
+            />
+          </div>
+
+          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            <Column
+              label="Google, before the switch"
+              outcome={verdict.control.google.before}
+              currency={currency}
+            />
+            <Column
+              label="Google, since the switch"
+              outcome={verdict.control.google.after}
+              currency={currency}
+              emphasis
+            />
+          </div>
+
+          <p className="mt-3 max-w-[74ch] text-[12.5px] text-[var(--muted)]">
+            {CONTROLLED_CAVEAT}
+          </p>
+        </>
+      )}
+
+      {verdict.kind === "measured" && verdict.control.kind === "no-control" && (
         <>
           <div
             className={
@@ -224,19 +365,9 @@ export function DidItWorkPanel({
             }
           >
             <p className="text-[14px] font-bold">
-              {verdict.improved ? (
-                <>
-                  The leads Google buys are worth{" "}
-                  <span className="mono">{pct(Math.abs(verdict.change))}</span> more
-                  than before the switch.
-                </>
-              ) : (
-                <>
-                  The leads Google buys are worth{" "}
-                  <span className="mono">{pct(Math.abs(verdict.change))}</span> less
-                  than before the switch.
-                </>
-              )}
+              The leads Google buys are worth{" "}
+              <span className="mono">{pct(Math.abs(verdict.change))}</span>{" "}
+              {verdict.improved ? "more" : "less"} than before the switch.
             </p>
             <p className="mt-1 max-w-[72ch] text-[13px] text-[var(--muted-strong)]">
               Close rate times median won amount, on deals that have actually
@@ -255,15 +386,15 @@ export function DidItWorkPanel({
           </div>
 
           {/*
-            Always, next to any result. A before-and-after is not an
-            experiment, and a real finding stays trustworthy only if what it
-            cannot rule out is said out loud.
+            Why this result carries the long caveat rather than the short one:
+            there was no group to hold the rest of the world constant against.
           */}
           <p className="mt-3 max-w-[74ch] text-[12.5px] text-[var(--muted)]">
-            {PROOF_CAVEAT}
+            {verdict.control.reason} {PROOF_CAVEAT}
           </p>
         </>
       )}
+
     </section>
   );
 }

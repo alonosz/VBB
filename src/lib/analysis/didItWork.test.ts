@@ -5,6 +5,7 @@ import {
   PROOF_CAVEAT,
   cohortOutcome,
   didItWork,
+  isGoogleSourced,
 } from "./didItWork";
 import type { MappedDeal } from "./types";
 
@@ -193,5 +194,127 @@ describe("the caveat", () => {
     expect(PROOF_CAVEAT).toMatch(/seasonality/i);
     expect(PROOF_CAVEAT).toMatch(/experiment/i);
     expect(PROOF_CAVEAT).toMatch(/not two groups running at the same time/i);
+  });
+});
+
+describe("using the leads Google never touched as a control", () => {
+  /** Same as `cohort`, but every lead carries a Google click ID. */
+  function googleCohort(
+    prefix: string,
+    when: Date,
+    n: number,
+    won: number,
+    amount: number
+  ): MappedDeal[] {
+    return cohort(prefix, when, n, won, amount).map((d) => ({
+      ...d,
+      clickId: `gclid-${d.id}`,
+    }));
+  }
+
+  it("counts a click ID as Google whatever the source column says", () => {
+    expect(isGoogleSourced(deal({ id: "c", createdAt: BEFORE, clickId: "abc" }))).toBe(true);
+  });
+
+  it("counts a source that names Google", () => {
+    expect(isGoogleSourced(deal({ id: "s", createdAt: BEFORE, source: "Google Ads" }))).toBe(true);
+    expect(isGoogleSourced(deal({ id: "a", createdAt: BEFORE, source: "adwords" }))).toBe(true);
+  });
+
+  /*
+   * The error worth making. "cpc" and "paid search" are Bing too, and a Bing
+   * lead sitting in the control group only dilutes the control; a Bing lead
+   * counted as Google would invent a result.
+   */
+  it("does not claim an unnamed paid source for Google", () => {
+    expect(isGoogleSourced(deal({ id: "p", createdAt: BEFORE, source: "Paid Search" }))).toBe(false);
+    expect(isGoogleSourced(deal({ id: "b", createdAt: BEFORE, source: "Bing CPC" }))).toBe(false);
+  });
+
+  /*
+   * The whole point. Both cohorts improved because the market improved; only
+   * the gap between them is ours to claim.
+   */
+  it("credits the switch with the gap, not with the whole rise", () => {
+    const verdict = didItWork({
+      deals: [
+        // Google: 20% close before, 34% after.
+        ...googleCohort("gb", BEFORE, 100, 20, 5000),
+        ...googleCohort("ga", AFTER, 100, 34, 5000),
+        // Everything else rose too, from 20% to 26%. Not our doing.
+        ...cohort("ob", BEFORE, 100, 20, 5000),
+        ...cohort("oa", AFTER, 100, 26, 5000),
+      ],
+      switchedAt: SWITCH,
+      medianCycleDays: 20,
+      now: NOW,
+    });
+
+    expect(verdict.kind).toBe("measured");
+    if (verdict.kind !== "measured") return;
+    expect(verdict.control.kind).toBe("controlled");
+    if (verdict.control.kind !== "controlled") return;
+
+    expect(verdict.control.google.change).toBeCloseTo(0.7, 5);
+    expect(verdict.control.other.change).toBeCloseTo(0.3, 5);
+    expect(verdict.control.attributable).toBeCloseTo(0.4, 5);
+    expect(verdict.control.improved).toBe(true);
+  });
+
+  it("reports no gain when everything rose equally", () => {
+    const verdict = didItWork({
+      deals: [
+        ...googleCohort("gb", BEFORE, 100, 20, 5000),
+        ...googleCohort("ga", AFTER, 100, 30, 5000),
+        ...cohort("ob", BEFORE, 100, 20, 5000),
+        ...cohort("oa", AFTER, 100, 30, 5000),
+      ],
+      switchedAt: SWITCH,
+      medianCycleDays: 20,
+      now: NOW,
+    });
+
+    if (verdict.kind !== "measured" || verdict.control.kind !== "controlled") {
+      throw new Error("expected a controlled comparison");
+    }
+    expect(verdict.control.attributable).toBeCloseTo(0, 5);
+    expect(verdict.control.improved).toBe(false);
+  });
+
+  it("refuses a control group too small to be one", () => {
+    const verdict = didItWork({
+      deals: [
+        ...googleCohort("gb", BEFORE, 100, 20, 5000),
+        ...googleCohort("ga", AFTER, 100, 34, 5000),
+        ...cohort("ob", BEFORE, 5, 1, 5000),
+        ...cohort("oa", AFTER, 5, 2, 5000),
+      ],
+      switchedAt: SWITCH,
+      medianCycleDays: 20,
+      now: NOW,
+    });
+
+    if (verdict.kind !== "measured") throw new Error("expected a measurement");
+    expect(verdict.control.kind).toBe("no-control");
+    if (verdict.control.kind !== "no-control") return;
+    expect(verdict.control.reason).toMatch(/came from Google/i);
+  });
+
+  it("refuses when too few leads came from Google to judge separately", () => {
+    const verdict = didItWork({
+      deals: [
+        ...cohort("ob", BEFORE, 100, 20, 5000),
+        ...cohort("oa", AFTER, 100, 30, 5000),
+        ...googleCohort("gb", BEFORE, 4, 1, 5000),
+      ],
+      switchedAt: SWITCH,
+      medianCycleDays: 20,
+      now: NOW,
+    });
+
+    if (verdict.kind !== "measured") throw new Error("expected a measurement");
+    expect(verdict.control.kind).toBe("no-control");
+    if (verdict.control.kind !== "no-control") return;
+    expect(verdict.control.reason).toMatch(/from a Google ad/i);
   });
 });

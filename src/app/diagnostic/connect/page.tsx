@@ -9,6 +9,7 @@ import { EmailCapture } from "@/components/leads/EmailCapture";
 import { VolumeFloorPanel } from "@/components/report/volumeFloor";
 import { DidItWorkPanel } from "@/components/report/didItWork";
 import { ConnectGoogleAds } from "@/components/diagnostic/ConnectGoogleAds";
+import { SentSpreadPanel } from "@/components/report/sentSpread";
 import type { FeedRow } from "@/lib/feed/types";
 import { didItWork } from "@/lib/analysis/didItWork";
 import { FlowSkeleton } from "@/components/diagnostic/FlowSkeleton";
@@ -489,6 +490,20 @@ export default function ConnectPage() {
           . Right now Google counts every one of them as a single identical conversion.
           This is the step that changes that.
         </p>
+
+        {/*
+          Before either route: are these values worth sending at all?
+
+          A flat feed makes value bidding arithmetically identical to volume
+          bidding, and that is knowable now rather than in April. It sits above
+          both options because it is true of the values themselves, whichever
+          way they travel.
+        */}
+        {apiRows.length > 0 && (
+          <div className="mt-6">
+            <SentSpreadPanel values={apiRows.map((r) => r.value)} currency={cur} />
+          </div>
+        )}
 
         {/*
           The recommended route, and the better one on every axis that matters.

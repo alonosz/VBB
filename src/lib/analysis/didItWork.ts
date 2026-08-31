@@ -46,6 +46,54 @@ export interface CohortOutcome {
   valuePerLead: number;
 }
 
+/**
+ * Which leads Google's bidding could possibly have changed.
+ *
+ * A click ID is proof: the lead arrived through a Google ad click. A source
+ * label is the CRM's own word for it, and only counted where it names Google
+ * outright - "cpc" and "paid search" are Bing too, and a Bing lead sitting in
+ * the control group is harmless where a Bing lead counted as Google is not.
+ * The error this makes is the safe one: a missed Google lead dilutes the
+ * control and understates the difference, rather than inventing one.
+ */
+const GOOGLE_SOURCE = /google|adwords|\bgads\b/i;
+
+export function isGoogleSourced(deal: MappedDeal): boolean {
+  if (deal.clickId?.trim()) return true;
+  return GOOGLE_SOURCE.test(deal.source ?? "");
+}
+
+export interface CohortPair {
+  before: CohortOutcome;
+  after: CohortOutcome;
+  /** Change in value per lead. 0.23 is 23% better. */
+  change: number;
+}
+
+/**
+ * The comparison that survives an objection.
+ *
+ * A before-and-after on its own is not evidence: seasonality, a new landing
+ * page, a better salesperson and a competitor leaving the auction all land in
+ * the "after" bucket. But every one of those hits the leads that never came
+ * from Google too - and Google's bid strategy cannot touch those. So they are
+ * a control group the advertiser already owns.
+ *
+ * Google improved 28% while everything else improved 26% means we did nothing.
+ * Google improved 28% while everything else fell 4% is a result. The gap is
+ * the part worth claiming, and it is the only part we do claim.
+ */
+export type ControlVerdict =
+  | {
+      kind: "controlled";
+      google: CohortPair;
+      other: CohortPair;
+      /** google.change - other.change. What the switch plausibly did. */
+      attributable: number;
+      improved: boolean;
+    }
+  | { kind: "no-control"; reason: string };
+
 export type ProofVerdict =
   | { kind: "no-baseline" }
   | { kind: "too-early"; daysIn: number; daysNeeded: number }
@@ -57,6 +105,8 @@ export type ProofVerdict =
       /** Change in value per lead. 0.23 is 23% better. */
       change: number;
       improved: boolean;
+      /** Google's leads against the ones it never touched. */
+      control: ControlVerdict;
     };
 
 export function cohortOutcome(deals: MappedDeal[]): CohortOutcome {
@@ -105,11 +155,8 @@ export function didItWork(input: ProofInput): ProofVerdict {
 
   const switchTime = input.switchedAt.getTime();
   const dated = input.deals.filter((d) => d.createdAt !== null);
-  const beforeDeals = dated.filter((d) => d.createdAt!.getTime() < switchTime);
-  const afterDeals = dated.filter((d) => d.createdAt!.getTime() >= switchTime);
 
-  const before = cohortOutcome(beforeDeals);
-  const after = cohortOutcome(afterDeals);
+  const { before, after, change } = cohortPair(dated, switchTime);
 
   // Resolved deals, not leads: an unresolved lead tells us nothing about
   // whether it was a good one.
@@ -117,10 +164,63 @@ export function didItWork(input: ProofInput): ProofVerdict {
     return { kind: "too-few", before: before.resolved, after: after.resolved, needed: MIN_COHORT };
   }
 
+  return {
+    kind: "measured",
+    before,
+    after,
+    change,
+    improved: change > 0,
+    control: controlFor(dated, switchTime),
+  };
+}
+
+/** One cohort split at the switch, and what happened between the halves. */
+export function cohortPair(dated: MappedDeal[], switchTime: number): CohortPair {
+  const before = cohortOutcome(dated.filter((d) => d.createdAt!.getTime() < switchTime));
+  const after = cohortOutcome(dated.filter((d) => d.createdAt!.getTime() >= switchTime));
   const change =
     before.valuePerLead > 0 ? (after.valuePerLead - before.valuePerLead) / before.valuePerLead : 0;
+  return { before, after, change };
+}
 
-  return { kind: "measured", before, after, change, improved: change > 0 };
+/**
+ * Google's leads against everything else, when both halves are big enough.
+ *
+ * Refused rather than approximated. A control group of nine is not a control
+ * group, and an attributable figure computed from one would be the most
+ * confident wrong number on the screen. Plenty of advertisers are entirely
+ * Google-sourced and will never have one; they get the plain before-and-after
+ * with its caveat, which is the honest answer for them.
+ */
+export function controlFor(dated: MappedDeal[], switchTime: number): ControlVerdict {
+  const googleDeals = dated.filter(isGoogleSourced);
+  const otherDeals = dated.filter((d) => !isGoogleSourced(d));
+
+  const google = cohortPair(googleDeals, switchTime);
+  const other = cohortPair(otherDeals, switchTime);
+
+  const thin = (pair: CohortPair) =>
+    pair.before.resolved < MIN_COHORT || pair.after.resolved < MIN_COHORT;
+
+  if (thin(google)) {
+    return {
+      kind: "no-control",
+      reason:
+        "Not enough resolved leads that came from a Google ad to measure them " +
+        "on their own yet.",
+    };
+  }
+  if (thin(other)) {
+    return {
+      kind: "no-control",
+      reason:
+        "Almost everything in your CRM came from Google, so there is no group " +
+        "the bid change could not have touched to compare against.",
+    };
+  }
+
+  const attributable = google.change - other.change;
+  return { kind: "controlled", google, other, attributable, improved: attributable > 0 };
 }
 
 /**
@@ -132,6 +232,19 @@ export function didItWork(input: ProofInput): ProofVerdict {
  * a genuine result trustworthy, and it is the difference between a measurement
  * and a marketing claim.
  */
+/**
+ * What a controlled comparison still cannot tell you.
+ *
+ * Much shorter than the uncontrolled one, because the control has already
+ * absorbed most of it. What survives is that Google's leads and everybody
+ * else's are not interchangeable populations.
+ */
+export const CONTROLLED_CAVEAT =
+  "Leads that come from Google and leads that come from elsewhere are not the " +
+  "same kind of buyer, so this is a strong signal rather than an experiment. " +
+  "For proof, run a campaign experiment in Google Ads, which splits the same " +
+  "traffic in two.";
+
 export const PROOF_CAVEAT =
   "This compares two periods, not two groups running at the same time. Anything " +
   "else that changed since the switch - seasonality, your landing pages, who " +
