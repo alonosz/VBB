@@ -445,6 +445,25 @@ select pg_temp.must_pass($$
   values ('Operator made', repeat('5', 64), 'vbb_ws_55aa')$$,
   'a workspace an operator made needs no creator at all');
 
+-- --- the switch date -------------------------------------------------------
+
+select pg_temp.must_pass($$
+  update public.workspaces set value_bidding_switched_at = now() - interval '30 days'
+  where id = '99999999-9999-9999-9999-999999999999'$$,
+  'the day they switched to value-based bidding is recorded');
+
+-- A future date puts every lead in the "before" cohort and reports a
+-- comparison against nothing at all.
+select pg_temp.must_fail($$
+  update public.workspaces set value_bidding_switched_at = now() + interval '30 days'
+  where id = '99999999-9999-9999-9999-999999999999'$$,
+  'a switch date in the future is rejected');
+
+select pg_temp.must_pass($$
+  update public.workspaces set value_bidding_switched_at = null
+  where id = '99999999-9999-9999-9999-999999999999'$$,
+  'and it can be cleared by somebody who recorded the wrong day');
+
 -- --- leads ----------------------------------------------------------------
 --
 -- This table is the one place an address is stored in the clear, so what it

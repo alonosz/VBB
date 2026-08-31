@@ -19,6 +19,14 @@ export interface Workspace {
   keyPrefix: string;
   status: WorkspaceStatus;
   createdAt: Date;
+  /**
+   * When they moved their campaigns to a value-based bid strategy, and the
+   * dividing line for the before/after comparison. Null means they have not
+   * switched, or have not told us - the screen says which rather than
+   * guessing. It is the one part of that comparison nobody can reconstruct
+   * afterwards, which is why it is recorded the day it happens.
+   */
+  valueBiddingSwitchedAt: Date | null;
 }
 
 export interface NewWorkspace {
@@ -39,9 +47,10 @@ interface WorkspaceDto {
   key_prefix: string;
   status: WorkspaceStatus;
   created_at: string;
+  value_bidding_switched_at: string | null;
 }
 
-const COLUMNS = "id, name, key_prefix, status, created_at";
+const COLUMNS = "id, name, key_prefix, status, created_at, value_bidding_switched_at";
 
 function toWorkspace(dto: WorkspaceDto): Workspace {
   return {
@@ -50,6 +59,9 @@ function toWorkspace(dto: WorkspaceDto): Workspace {
     keyPrefix: dto.key_prefix,
     status: dto.status,
     createdAt: new Date(dto.created_at),
+    valueBiddingSwitchedAt: dto.value_bidding_switched_at
+      ? new Date(dto.value_bidding_switched_at)
+      : null,
   };
 }
 
@@ -69,6 +81,9 @@ export interface WorkspaceRepository {
    * customer has just said they no longer have it.
    */
   rotateKey(id: string, keyHash: string, keyPrefix: string): Promise<void>;
+
+  /** Records, or clears, the day they switched to value-based bidding. */
+  setSwitchedAt(id: string, at: Date | null): Promise<void>;
   /**
    * How many workspaces this caller has minted since `since`.
    *
@@ -147,6 +162,14 @@ export class SupabaseWorkspaceRepository implements WorkspaceRepository {
     if (error) throw new Error(error.message);
   }
 
+  async setSwitchedAt(id: string, at: Date | null): Promise<void> {
+    const { error } = await this.client
+      .from("workspaces")
+      .update({ value_bidding_switched_at: at ? at.toISOString() : null })
+      .eq("id", id);
+    if (error) throw new Error(error.message);
+  }
+
   async countCreatedSince(ipHash: string | null, since: Date): Promise<number> {
     if (!ipHash) return 0;
 
@@ -183,6 +206,7 @@ export class InMemoryWorkspaceRepository implements WorkspaceRepository {
       createdIpHash: workspace.createdIpHash ?? null,
       status: "active" as const,
       createdAt: this.now(),
+      valueBiddingSwitchedAt: null as Date | null,
     };
     this.rows.set(row.id, row);
     return { ...row };
@@ -206,6 +230,11 @@ export class InMemoryWorkspaceRepository implements WorkspaceRepository {
   async suspend(id: string): Promise<void> {
     const row = this.rows.get(id);
     if (row) row.status = "suspended";
+  }
+
+  async setSwitchedAt(id: string, at: Date | null): Promise<void> {
+    const row = this.rows.get(id);
+    if (row) row.valueBiddingSwitchedAt = at;
   }
 
   async rotateKey(id: string, keyHash: string, keyPrefix: string): Promise<void> {

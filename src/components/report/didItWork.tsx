@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+import { readWorkspaceKey } from "@/lib/workspace/clientKey";
 import {
   MIN_COHORT,
   PROOF_CAVEAT,
@@ -71,12 +73,100 @@ function Column({
   );
 }
 
+
+/**
+ * Marking the day, on the day.
+ *
+ * Deliberately a button rather than something inferred. We could eventually
+ * spot the change by reading campaign settings each night, but that needs the
+ * Ads API and it needs to have been watching beforehand - and the advertiser
+ * standing here having just switched knows the answer now. The date is the one
+ * thing that cannot be recovered later, so the cheap version that works today
+ * beats the clever one that works eventually.
+ */
+function RecordSwitch({ onRecorded }: { onRecorded?: (at: Date) => void }) {
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [when, setWhen] = useState(() => new Date().toISOString().slice(0, 10));
+
+  async function record() {
+    setSaving(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/workspace/switched", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          workspaceKey: readWorkspaceKey(),
+          switchedAt: new Date(`${when}T00:00:00Z`).toISOString(),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) {
+        setError(data.error ?? "We couldn't record that.");
+        return;
+      }
+      onRecorded?.(new Date(data.switchedAt as string));
+    } catch {
+      setError("We couldn't record that. Try again.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="well p-5">
+      <p className="text-[14px] font-bold">Nothing to compare yet</p>
+      <p className="mt-1.5 max-w-[70ch] text-[13.5px] text-[var(--muted)]">
+        The day you move your campaigns to Maximize conversion value, tell us
+        here. From then on this compares the leads Google buys against the ones
+        it bought before - measured in deals that actually closed.
+      </p>
+      <p className="mt-1.5 max-w-[70ch] text-[12.5px] text-[var(--muted)]">
+        Worth doing on the day. The &ldquo;before&rdquo; cannot be worked out
+        later once the date is forgotten.
+      </p>
+
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <label htmlFor="switched-on" className="text-[13px] text-[var(--muted)]">
+          Switched on
+        </label>
+        <input
+          id="switched-on"
+          type="date"
+          value={when}
+          max={new Date().toISOString().slice(0, 10)}
+          onChange={(e) => setWhen(e.target.value)}
+          className="input mono w-auto text-[13px]"
+        />
+        <button
+          type="button"
+          onClick={() => void record()}
+          disabled={saving || !when}
+          className="btn btn-secondary text-[13px]"
+        >
+          {saving ? "Recording…" : "Record it"}
+        </button>
+      </div>
+
+      {error && (
+        <p role="alert" className="mt-2.5 max-w-[62ch] text-[13px] text-[var(--danger)]">
+          {error}
+        </p>
+      )}
+    </div>
+  );
+}
+
 export function DidItWorkPanel({
   verdict,
   currency,
+  onRecorded,
 }: {
   verdict: ProofVerdict;
   currency: string;
+  /** Called once a switch date lands, so the page can recompute. */
+  onRecorded?: (at: Date) => void;
 }) {
   return (
     <section>
@@ -89,13 +179,7 @@ export function DidItWorkPanel({
         </p>
       </div>
 
-      {verdict.kind === "no-baseline" && (
-        <Waiting title="Nothing to compare yet">
-          We record where you started on the day you switch to a value-based bid
-          strategy. From then on this compares the leads Google bought after
-          against the ones it bought before.
-        </Waiting>
-      )}
+      {verdict.kind === "no-baseline" && <RecordSwitch onRecorded={onRecorded} />}
 
       {verdict.kind === "too-early" && (
         <Waiting title="Too early to tell">

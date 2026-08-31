@@ -304,15 +304,38 @@ export default function ConnectPage() {
    * advertiser moving to a value-based bid strategy, so today every visitor
    * sees the "nothing to compare yet" state - which is the true one.
    */
+  const [switchedAt, setSwitchedAt] = useState<Date | null>(null);
   const proof = useMemo(
     () =>
       didItWork({
         deals: mapped?.deals ?? [],
-        switchedAt: null,
+        switchedAt,
         medianCycleDays: cycle?.medianDays ?? 30,
       }),
-    [mapped, cycle]
+    [mapped, cycle, switchedAt]
   );
+
+  /*
+   * What we already recorded, if anything. Fetched rather than assumed: an
+   * advertiser who switched last month and is back to look should see the
+   * comparison, not be asked for the date again.
+   */
+  useEffect(() => {
+    const key = readWorkspaceKey();
+    if (!key) return;
+    let live = true;
+    fetch(`/api/workspace/switched?workspaceKey=${encodeURIComponent(key)}`)
+      .then((r) => r.json())
+      .then((d) => {
+        if (live && d?.ok && d.switchedAt) setSwitchedAt(new Date(d.switchedAt as string));
+      })
+      .catch(() => {
+        // Without it the panel asks for the date, which is the safe default.
+      });
+    return () => {
+      live = false;
+    };
+  }, []);
 
   const identifier = coverage.identifier;
   const setup = useMemo(() => setupSteps(identifier), [identifier]);
@@ -789,7 +812,7 @@ export default function ConnectPage() {
           time to play out.
         */}
         <div className="mt-8">
-          <DidItWorkPanel verdict={proof} currency={cur} />
+          <DidItWorkPanel verdict={proof} currency={cur} onRecorded={setSwitchedAt} />
         </div>
 
         {/* ---- the next thing worth doing ---- */}
