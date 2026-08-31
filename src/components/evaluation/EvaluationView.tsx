@@ -5,12 +5,14 @@ import { PageHead } from "@/components/ui";
 import { ArrowIcon } from "@/components/ArrowIcon";
 import { WorkspaceKeyPrompt } from "@/components/workspace/WorkspaceKeyPrompt";
 import { DidItWorkPanel } from "@/components/report/didItWork";
+import { StrategyPanel } from "@/components/report/campaignStrategy";
 import { detectColumns, detectStageTimingColumns } from "@/lib/mapping/detect";
 import { rowsToDeals } from "@/lib/mapping/toDeals";
 import { runDiagnostic } from "@/lib/analysis";
 import { didItWork, type ProofVerdict } from "@/lib/analysis/didItWork";
 import { readWorkspaceKey } from "@/lib/workspace/clientKey";
 import type { MappedDeal } from "@/lib/analysis/types";
+import type { StrategyAudit } from "@/lib/sync/google/campaigns";
 
 /**
  * The screen somebody comes back to.
@@ -29,6 +31,21 @@ import type { MappedDeal } from "@/lib/analysis/types";
 
 type Phase = "loading" | "ready" | "no-connection" | "needs-key" | "error";
 
+/**
+ * The Google half, which answers a different question from the CRM half.
+ *
+ * The CRM says whether the leads got better. This says whether Google is even
+ * bidding on the values we send, which is the commonest reason the CRM half
+ * says nothing changed. It is deliberately allowed to fail on its own: an ads
+ * account nobody connected, or a token that lapsed, must not take the outcome
+ * comparison down with it.
+ */
+type AdsState =
+  | { kind: "off" }
+  | { kind: "loading" }
+  | { kind: "audit"; audit: StrategyAudit }
+  | { kind: "unavailable"; reason: string };
+
 export function EvaluationView() {
   const [phase, setPhase] = useState<Phase>("loading");
   const [error, setError] = useState<string | null>(null);
@@ -36,6 +53,36 @@ export function EvaluationView() {
   const [currency, setCurrency] = useState("USD");
   const [dealCount, setDealCount] = useState(0);
   const [switchedAt, setSwitchedAt] = useState<Date | null>(null);
+  const [ads, setAds] = useState<AdsState>({ kind: "off" });
+
+  /**
+   * Asked for separately and never awaited by the CRM half.
+   *
+   * A lapsed Google token or an account nobody has published to yet is a
+   * footnote on this screen, not a reason to withhold the outcome comparison
+   * that came from somewhere else entirely.
+   */
+  const loadAds = useCallback(async (key: string) => {
+    setAds({ kind: "loading" });
+    try {
+      const res = await fetch("/api/ads/google/campaigns", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ workspaceKey: key }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) {
+        setAds({
+          kind: "unavailable",
+          reason: (data.error as string) ?? "We couldn't read your campaigns.",
+        });
+        return;
+      }
+      setAds({ kind: "audit", audit: data.strategies as StrategyAudit });
+    } catch {
+      setAds({ kind: "unavailable", reason: "We couldn't reach Google Ads." });
+    }
+  }, []);
 
   const load = useCallback(async () => {
     setPhase("loading");
@@ -65,6 +112,10 @@ export function EvaluationView() {
       }
       const at = dateData.switchedAt ? new Date(dateData.switchedAt as string) : null;
       setSwitchedAt(at);
+
+      // Started here rather than awaited: the two halves are independent
+      // questions and neither should wait on the other's network.
+      void loadAds(key);
 
       const dealsRes = await fetch("/api/crm/hubspot/deals", {
         method: "POST",
@@ -121,7 +172,7 @@ export function EvaluationView() {
       setError("We couldn't reach your CRM. Try again.");
       setPhase("error");
     }
-  }, []);
+  }, [loadAds]);
 
   useEffect(() => {
     // Queued rather than called: the load sets state as its first act, and
@@ -191,9 +242,35 @@ export function EvaluationView() {
                 }}
               />
             </div>
+            {/*
+              The other half of the answer. Leads getting no better is the
+              expected result when Google is bidding on lead count, so this
+              belongs beside the comparison rather than on a settings screen
+              nobody reopens.
+            */}
+            <section className="card mt-4 p-5 sm:p-6">
+              <h2 className="text-[15px] font-bold">Is Google bidding on your values?</h2>
+              <p className="mt-1 max-w-[70ch] text-[13px] text-[var(--muted)]">
+                Sending values changes nothing on its own. A campaign set to
+                Maximize conversions bids on how many leads arrive and ignores
+                what they are worth, and Google flags that nowhere.
+              </p>
+              <div className="mt-3.5">
+                {ads.kind === "loading" && <div className="skeleton h-16 rounded-xl" />}
+                {ads.kind === "audit" && (
+                  <StrategyPanel audit={ads.audit} currencyCode={currency} tense="running" />
+                )}
+                {ads.kind === "unavailable" && (
+                  <p className="text-[13px] text-[var(--muted)]">{ads.reason}</p>
+                )}
+              </div>
+            </section>
+
             <p className="mono mt-6 text-[12px] text-[var(--muted)]">
               Read {dealCount.toLocaleString()} deals from your CRM just now
               {switchedAt && ` · switched ${switchedAt.toISOString().slice(0, 10)}`}
+              {ads.kind === "audit" &&
+                ` · ${ads.audit.campaigns.length} running campaigns read from Google Ads`}
             </p>
           </>
         )}

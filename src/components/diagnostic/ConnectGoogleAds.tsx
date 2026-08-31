@@ -6,7 +6,7 @@ import { readWorkspaceKey, rememberWorkspaceKey } from "@/lib/workspace/clientKe
 import type { AdsAccount } from "@/lib/sync/google/accounts";
 import type { StrategyAudit } from "@/lib/sync/google/campaigns";
 import type { FeedRow } from "@/lib/feed/types";
-import { money } from "@/components/report/panels";
+import { StrategyPanel } from "@/components/report/campaignStrategy";
 
 /**
  * Sending the values by API instead of by file.
@@ -283,8 +283,6 @@ export function ConnectGoogleAds({
  * see only that nothing changed.
  */
 function Sent({ result, currencyCode }: { result: PublishResult; currencyCode: string }) {
-  const ignoring = result.strategies?.ignoring ?? [];
-
   return (
     <div className="well mt-4 p-5">
       <p className="flex items-center gap-2 text-[15px] font-bold">
@@ -314,39 +312,10 @@ function Sent({ result, currencyCode }: { result: PublishResult; currencyCode: s
         API route exists at all. Values landing in an account whose campaigns
         bid on lead count change nothing, and Google says so nowhere.
       */}
-      {ignoring.length > 0 && result.strategies && (
-        <div className="alert alert-warn mt-4">
-          <p className="text-[13.5px] font-bold text-[var(--warn)]">
-            {ignoring.length === 1 ? "One campaign" : `${ignoring.length} campaigns`} will
-            ignore these values
-          </p>
-          <p className="mt-1 max-w-[70ch] text-[13px] text-[var(--muted-strong)]">
-            They are on a bid strategy that optimises for how many leads you get, not
-            what they are worth. That is{" "}
-            <span className="mono">
-              {money(result.strategies.spendIgnoringValue, currencyCode)}
-            </span>{" "}
-            of your last 30 days, or{" "}
-            <span className="mono">
-              {Math.round(result.strategies.shareIgnoringValue * 100)}%
-            </span>
-            . Switch them to Maximize conversion value in Google Ads.
-          </p>
-          <ul className="mt-2 grid gap-1">
-            {ignoring.slice(0, 6).map((c) => (
-              <li key={c.id} className="mono text-[12px] text-[var(--muted)]">
-                {c.name} · {c.strategyLabel} · {money(c.cost, currencyCode)}
-              </li>
-            ))}
-          </ul>
+      {result.strategies && (
+        <div className="mt-4">
+          <StrategyPanel audit={result.strategies} currencyCode={currencyCode} />
         </div>
-      )}
-
-      {result.strategies && ignoring.length === 0 && (
-        <p className="mt-3 text-[13px] text-[var(--accent)]">
-          Every running campaign is already on a bid strategy that uses conversion
-          value.
-        </p>
       )}
     </div>
   );
