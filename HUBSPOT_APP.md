@@ -207,10 +207,19 @@ scopes and the signed state, then refused at the last step because the
 **developer account** had never accepted HubSpot's developer terms. This
 applies to every OAuth app, listed or not.
 
-In the developer account's left sidebar, look under **Technology Partner**
-first (the Technology Partner Program Agreement lives there), then
-**Marketplace Listings**. It is well hidden. If neither offers it, HubSpot
-developer support can enable it.
+Where it actually is, confirmed by HubSpot support on 31 Aug after the
+sidebar hunt above found nothing:
+
+    Development -> your project -> the app -> Distribution -> Begin publishing
+
+The first item in that panel is **Agree to HubSpot's Acceptable Use Policy**.
+Accept it and close the panel. The four steps under it - OAuth with three
+active installs, a marketplace listing, HubSpot's review - are for listing on
+the Marketplace and none of them gate installation.
+
+The panel is titled "Begin publishing your HubSpot app", which is why nobody
+opens it when all they want is to let one customer connect. Publishing is not
+what it does; it is where the signature lives.
 
 This is a signature, not a review. It costs a click, not weeks. But nothing
 installs until it is done, so do it before booking a call with a design
