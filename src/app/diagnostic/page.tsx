@@ -171,12 +171,23 @@ export default function IntakePage() {
             what you claim about your buyers into things we test against your own
             closed deals. It never decides what a lead is worth - your data does that.
           </p>
+          {/*
+            Naming the two things that pay off, because "describe your business"
+            invites a paragraph of brand adjectives that cannot help. Length is
+            not what makes this useful: a column nobody could guess the meaning
+            of, and a belief worth checking, are.
+          */}
+          <p className="mt-2 max-w-[64ch] text-[13.5px] text-[var(--muted)]">
+            Two things earn their place here: what any oddly named column in your
+            file means, and anything you believe about your buyers that you would
+            like checked. Length does nothing on its own.
+          </p>
           <textarea
             id="ctx"
             rows={7}
             value={businessContext}
             onChange={(e) => setBusinessContext(e.target.value)}
-            placeholder="e.g. We sell workflow software to manufacturers. Our buyers are ops directors and plant managers - the ones with a budget line for downtime. Our best customers run more than one site…"
+            placeholder="e.g. We sell workflow software to manufacturers. Our buyers are ops directors and plant managers - the ones with a budget line for downtime. I think enterprise closes best. The seg column is company size band, and partner_ref means the lead came from a reseller."
             className="input mt-3.5 min-h-[150px] resize-y bg-[var(--surface-sunken)] p-3.5 text-[15px] leading-relaxed"
           />
           <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
