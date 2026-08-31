@@ -490,15 +490,53 @@ export default function ConnectPage() {
           This is the step that changes that.
         </p>
 
-        {/* ---- the product: a URL Google fetches by itself ---- */}
+        {/*
+          The recommended route, and the better one on every axis that matters.
+
+          We create the conversion action ourselves, which deletes the six-step
+          wizard where four of the steps have a wrong answer that fails in
+          silence. Google answers per row, so a rejected conversion is reported
+          rather than lost. And it is the only route that can ever read spend
+          back, which is what makes "did it work" answerable at all.
+
+          The feed below it is not a fallback and is not going anywhere: it
+          needs no approval from Google, works in an account we have never
+          seen, and is what the whole product rested on until today.
+        */}
         <section className="card mt-8 border-[var(--primary)]/25 p-6 sm:p-7">
           <p className="label" style={{ color: "var(--primary-deep)" }}>
             Recommended
           </p>
+          <h2 className="h2 mt-2">Connect Google Ads</h2>
+          <p className="mt-1 max-w-[68ch] text-[14px] text-[var(--muted)]">
+            One connection and we do the rest: we create the conversion action
+            with the right settings, send your values, tell you exactly which
+            rows Google took, and flag any campaign still bidding on lead count
+            rather than lead value.
+          </p>
+          <ConnectGoogleAds
+            rows={apiRows}
+            currencyCode={cur}
+            modelId={modelId}
+            disabled={apiRows.length === 0}
+          />
+        </section>
+
+        <div className="my-7 flex items-center gap-3">
+          <span className="h-px flex-1 bg-[var(--border)]" />
+          <span className="label text-[var(--muted)]">or hand Google a file to fetch</span>
+          <span className="h-px flex-1 bg-[var(--border)]" />
+        </div>
+
+        {/* ---- the product: a URL Google fetches by itself ---- */}
+        <section className="card p-6 sm:p-7">
+          <p className="label">No approval needed</p>
           <h2 className="h2 mt-2">Give Google a URL to fetch</h2>
           <p className="mt-1 max-w-[68ch] text-[14px] text-[var(--muted)]">
-            You paste one link into Google Ads, once. It collects your values on a
-            schedule from then on - no file to download, nothing to remember daily.
+            You paste one link into Google Ads, once, and it collects your values on
+            a schedule from then on. More setup on your side than connecting, and
+            Google reports nothing back - but it needs nobody&rsquo;s permission and works
+            in any account.
           </p>
 
           {!feed ? (
@@ -818,19 +856,6 @@ export default function ConnectPage() {
           </div>
           {csvNote && <p className="mono mt-2.5 text-[12px] text-[var(--muted)]">{csvNote}</p>}
         </section>
-
-        {/*
-          The other way in, and the better one once Google approves our API
-          access. It is second on the page rather than first only because it
-          is not usable yet - the feed needs nobody's permission and works
-          today. Promote it the moment the developer token clears.
-        */}
-        <ConnectGoogleAds
-          rows={apiRows}
-          currencyCode={cur}
-          modelId={modelId}
-          disabled={apiRows.length === 0}
-        />
 
         {volume && (
           <div className="mt-4">

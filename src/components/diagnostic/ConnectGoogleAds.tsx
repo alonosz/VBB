@@ -189,13 +189,10 @@ export function ConnectGoogleAds({
   if (result) return <Sent result={result} currencyCode={currencyCode} />;
 
   return (
-    <div className="well mt-4 p-5 sm:p-6">
-      <p className="text-[15px] font-bold">Send them straight to Google Ads</p>
-      <p className="mt-1.5 max-w-[64ch] text-[13.5px] text-[var(--muted)]">
-        No wizard and no file. We create the conversion action in your account
-        with the right settings, send the values, and tell you exactly which
-        rows Google took. Read-only on everything else: no campaign, budget or
-        bid is touched.
+    <div className="mt-4">
+      <p className="max-w-[66ch] text-[13px] text-[var(--muted)]">
+        Read-only on everything else: no campaign, budget, bid or keyword is
+        touched, and you can disconnect at any time.
       </p>
 
       {!accounts && (
@@ -289,7 +286,7 @@ function Sent({ result, currencyCode }: { result: PublishResult; currencyCode: s
   const ignoring = result.strategies?.ignoring ?? [];
 
   return (
-    <div className="well mt-4 p-5 sm:p-6">
+    <div className="well mt-4 p-5">
       <p className="flex items-center gap-2 text-[15px] font-bold">
         <span
           aria-hidden
