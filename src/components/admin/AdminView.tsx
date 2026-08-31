@@ -25,6 +25,20 @@ interface Workspace {
 
 const ADMIN_STORE = "vbb.adminKey.v1";
 
+/**
+ * What the route can send back, including the shapes it sends back when it
+ * cannot do what was asked. Everything is optional because a refusal carries
+ * only `ok` and `error`.
+ */
+interface AdminReply {
+  ok?: boolean;
+  error?: string;
+  workspaces?: Workspace[];
+  workspace?: { id: string; name: string; keyPrefix: string };
+  inviteUrl?: string;
+  expiresAt?: string;
+}
+
 export function AdminView() {
   const [adminKey, setAdminKey] = useState("");
   const [signedIn, setSignedIn] = useState(false);
@@ -45,7 +59,29 @@ export function AdminView() {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ ...payload, adminKey: key }),
       });
-      return { res, data: await res.json() };
+
+      /*
+       * Read as text first, because a reply that is not JSON is a real
+       * outcome and not an exception. Calling res.json() straight away threw,
+       * landed in the network catch below, and told the operator the server
+       * was unreachable when it had answered - just with an error page rather
+       * than an answer. That is the wrong thing to go and investigate.
+       */
+      const body = await res.text();
+      try {
+        return { res, data: JSON.parse(body) as AdminReply };
+      } catch {
+        return {
+          res,
+          data: {
+            ok: false,
+            error:
+              `The server answered with an error rather than an answer ` +
+              `(HTTP ${res.status}). Whoever deployed this can see why in the ` +
+              `Vercel logs for /api/admin/workspaces.`,
+          },
+        };
+      }
     },
     []
   );
@@ -62,11 +98,12 @@ export function AdminView() {
           if (remember) try { localStorage.removeItem(ADMIN_STORE); } catch {}
           return;
         }
-        setWorkspaces(data.workspaces as Workspace[]);
+        setWorkspaces(data.workspaces ?? []);
         setSignedIn(true);
         if (remember) try { localStorage.setItem(ADMIN_STORE, key); } catch {}
       } catch {
-        setError("Could not reach the server.");
+        // Genuinely no reply: offline, or the deployment is not answering.
+        setError("Could not reach the server. Check you are online, then try again.");
       } finally {
         setBusy(false);
       }
@@ -96,10 +133,15 @@ export function AdminView() {
         setError(data.error ?? "Could not create that customer.");
         return;
       }
+      if (!data.workspace || !data.inviteUrl || !data.expiresAt) {
+        setError("The customer was created but no link came back. Send them one from the list.");
+        await load(adminKey, false);
+        return;
+      }
       setIssued({
-        name: data.workspace.name as string,
-        url: data.inviteUrl as string,
-        expiresAt: data.expiresAt as string,
+        name: data.workspace.name,
+        url: data.inviteUrl,
+        expiresAt: data.expiresAt,
       });
       setNewName("");
       await load(adminKey, false);
@@ -125,11 +167,11 @@ export function AdminView() {
         setError(data.error ?? "Could not create a link.");
         return;
       }
-      setIssued({
-        name,
-        url: data.inviteUrl as string,
-        expiresAt: data.expiresAt as string,
-      });
+      if (!data.inviteUrl || !data.expiresAt) {
+        setError("No link came back. Try again.");
+        return;
+      }
+      setIssued({ name, url: data.inviteUrl, expiresAt: data.expiresAt });
     } finally {
       setBusy(false);
     }

@@ -4,6 +4,7 @@ import { generateWorkspaceKey } from "@/lib/workspace/key";
 import { generateInviteToken, INVITE_TTL_HOURS } from "@/lib/workspace/invite";
 import { adminKeyFromEnv, adminKeyMatches } from "@/lib/workspace/admin";
 import { feedOrigin } from "@/lib/feed/origin";
+import { describeDatabaseFailure } from "@/lib/db/failure";
 
 /**
  * Creating and listing customers.
@@ -46,7 +47,27 @@ function joinUrl(request: Request, token: string): string {
   return `${origin}/join?t=${encodeURIComponent(token)}`;
 }
 
+/**
+ * The wrapper exists so a database failure reaches the operator as words.
+ *
+ * Without it an exception escapes into the framework's error page, which is
+ * not JSON, so the browser cannot read it and reports the one thing that is
+ * definitely not true: that it could not reach the server. That message sent
+ * somebody to check their internet connection over a migration nobody had run.
+ */
 export async function POST(request: Request) {
+  try {
+    return await handle(request);
+  } catch (error) {
+    console.error("admin route failed:", error);
+    return NextResponse.json(
+      { ok: false, error: describeDatabaseFailure(error) },
+      { status: 500 }
+    );
+  }
+}
+
+async function handle(request: Request) {
   const expected = adminKeyFromEnv();
   const workspaces = workspaceRepositoryFromEnv();
 
