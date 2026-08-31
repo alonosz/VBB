@@ -379,12 +379,40 @@ describe("cap", () => {
     }
   });
 
-  it("applies the cap after calibration, not before", () => {
-    const uncapped = buildValueModel({ deals: DEALS, cap: null, currencyCode: "USD" });
-    const capped = buildValueModel({ deals: DEALS, cap: 900, currencyCode: "USD" });
-    // Calibration is computed from raw values, so introducing a cap must not
-    // change it - otherwise capping would silently re-inflate everything else.
-    expect(capped.calibrationFactor).toBe(uncapped.calibrationFactor);
+  /*
+   * The cap participates in fitting now - won amounts above it are counted at
+   * it - so a capped and an uncapped model are legitimately different models.
+   * The invariant that survives is the one this test always guarded: clipping
+   * at emission must not feed back into calibration. If it did, every clipped
+   * whale would re-inflate everyone else's values to compensate, and the cap
+   * would be cosmetic.
+   */
+  it("does not let emission clipping re-inflate the rest through calibration", () => {
+    /*
+     * Deliberately lopsided: a small, always-winning segment and a large,
+     * rarely-winning one. Calibration is anchored by the crowd, so the hot
+     * segment's stacked value sails past the cap and gets clipped at
+     * emission - which is the only place clipping is allowed to act. (With a
+     * balanced file the capped fit compresses values under the cap by itself
+     * and there is nothing to clip.)
+     */
+    const skewed = [
+      ...cohort("hot", 25, 25, 20_000, { email: "a@acme.com", employeeCount: 900 }),
+      ...cohort("cold", 200, 10, 2_000, { email: "b@gmail.com", employeeCount: 5 }),
+    ];
+    const model = buildValueModel({ deals: skewed, cap: 2_500, currencyCode: "USD" });
+    const valued = valueAllLeads(skewed, model);
+
+    // Calibration balances the RAW stacked values back to base...
+    const meanCalibratedRaw =
+      valued.reduce((s, v) => s + v.rawValue * model.calibrationFactor, 0) / valued.length;
+    expect(meanCalibratedRaw).toBeCloseTo(model.baseValue, 0);
+
+
+    // ...so what clipping removes stays removed. Nothing pushes back up.
+    const meanEmitted = valued.reduce((s, v) => s + v.value, 0) / valued.length;
+    expect(meanEmitted).toBeLessThanOrEqual(meanCalibratedRaw + 0.01);
+    expect(valued.some((v) => v.cappedFrom !== null)).toBe(true);
   });
 });
 
@@ -627,5 +655,69 @@ describe("user-edited multipliers", () => {
     const step = stack.steps.find((s) => s.factorKey === "domainType")!;
     expect(step.level).toBe("Free webmail");
     expect(step.multiplier).toBe(9);
+  });
+});
+
+describe("the tail counts, up to the cap", () => {
+  /**
+   * Two industries, identical close rates, identical medians - one with a
+   * real tail. `won` amounts are set per deal, which `cohort` cannot do.
+   */
+  function industryPair(tailAmount: number): MappedDeal[] {
+    const group = (name: string, amounts: number[]): MappedDeal[] => [
+      ...amounts.map((amount, i) =>
+        deal({ id: `${name}-w${i}`, outcome: "won", amount, industry: name })
+      ),
+      ...Array.from({ length: 15 }, (_, i) =>
+        deal({ id: `${name}-l${i}`, industry: name })
+      ),
+    ];
+    return [
+      // Ten wins at 6,000 flat.
+      ...group("Flatland", Array(10).fill(6_000)),
+      // Nine at 6,000 and one big one. Same median, same close rate.
+      ...group("Tailville", [...Array(9).fill(6_000), tailAmount]),
+    ];
+  }
+
+  function industryLifts(deals: MappedDeal[], cap: number | null) {
+    const model = buildValueModel({ deals, cap, currencyCode: "USD" });
+    const industry = model.factors.find((f) => f.key === "industry")!;
+    const flat = industry.levels.find((l) => l.level === "Flatland")!;
+    const tail = industry.levels.find((l) => l.level === "Tailville")!;
+    return { flat, tail };
+  }
+
+  /*
+   * The reason the estimator changed. Under the median these two segments
+   * priced identically, and the segment that actually brings in the large
+   * deals was told it was worth no more than the one that never does.
+   */
+  it("prices a segment with a tail above one without, at equal medians", () => {
+    const { flat, tail } = industryLifts(industryPair(20_000), 50_000);
+    expect(flat.medianWonAmount).toBe(tail.medianWonAmount);
+    expect(flat.closeRate).toBe(tail.closeRate);
+    // Flatland: mean 6,000. Tailville: (9×6,000 + 20,000) / 10 = 7,400.
+    expect(flat.avgWonAmount).toBe(6_000);
+    expect(tail.avgWonAmount).toBe(7_400);
+    expect(tail.lift).toBeGreaterThan(flat.lift);
+    expect(tail.expectedValue / flat.expectedValue).toBeCloseTo(7_400 / 6_000, 2);
+  });
+
+  it("counts a whale at the cap, not at its face value", () => {
+    const { tail } = industryLifts(industryPair(200_000), 21_000);
+    // (9×6,000 + 21,000) / 10, not (9×6,000 + 200,000) / 10.
+    expect(tail.avgWonAmount).toBe(7_500);
+  });
+
+  it("runs the average uncapped when no cap is set", () => {
+    const { tail } = industryLifts(industryPair(200_000), null);
+    expect(tail.avgWonAmount).toBe(25_400);
+  });
+
+  it("keeps the median alongside as context, not arithmetic", () => {
+    const { tail } = industryLifts(industryPair(200_000), 21_000);
+    expect(tail.medianWonAmount).toBe(6_000);
+    expect(tail.expectedValue).toBe(Math.round(tail.closeRate * 7_500));
   });
 });

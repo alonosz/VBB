@@ -27,8 +27,11 @@ the original conversion**. So:
 ## 2. Empirical over invented
 
 Every dollar figure shown to a user traces to *their own* historical data:
-cohort win rate × median segment deal size. There are **no hardcoded value
-guesses anywhere in the product**. If the data can't support a number, say so
+cohort win rate × average segment deal size, with any deal above the cap
+counted at the cap so the fit prices deals exactly as the feed is willing to
+emit them (the median discards fat tails unevenly across segments, which is a
+ranking error). There are **no hardcoded value guesses anywhere in the
+product**. If the data can't support a number, say so
 instead of producing one.
 
 ## 3. Deterministic rules with visible guardrails

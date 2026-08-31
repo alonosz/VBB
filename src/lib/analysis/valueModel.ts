@@ -37,7 +37,10 @@ export interface FactorLevel {
   sampleSize: number;
   won: number;
   closeRate: number;
+  /** Context. Not the number in the arithmetic - avgWonAmount is. */
   medianWonAmount: number | null;
+  /** Average won amount with outliers counted at the cap. In the lift. */
+  avgWonAmount: number | null;
   expectedValue: number;
   /** expectedValue / baseline. 1 means no signal. */
   lift: number;
@@ -73,6 +76,7 @@ export interface RuleStackStep {
   sampleSize: number;
   closeRate: number;
   medianWonAmount: number | null;
+  avgWonAmount: number | null;
 }
 
 export interface ValueModel {
@@ -116,16 +120,42 @@ function resolved(deals: MappedDeal[]): MappedDeal[] {
   return deals.filter((d) => d.outcome === "won" || d.outcome === "lost");
 }
 
-/** Expected value of a set of deals: close rate × median won amount. */
-function expectedValueOf(deals: MappedDeal[]): { ev: number; closeRate: number; medianWon: number | null; won: number } {
+/**
+ * Expected value of a set of deals: close rate × average won amount, with any
+ * amount above the cap counted at the cap.
+ *
+ * The average, not the median, because the median discards the tail - and it
+ * discards it unevenly. A segment whose wins cluster at $6k and a segment
+ * with the same median but a real tail of $15-20k deals are not worth the
+ * same per lead, yet the median says they are. Since the lift between
+ * segments is the entire product, that is a ranking error, not a rounding
+ * one.
+ *
+ * The cap is what makes the average safe to use: the feed never emits a value
+ * above it, so a $200k deal is worth the cap to the feed and is counted at
+ * the cap here. Fit and emission price deals the same way. One cap, computed
+ * once from the whole pool's median, so a level's own whale cannot raise the
+ * bar it is measured against. With no cap set the average runs uncapped,
+ * which is the faithful reading of "I trust my amounts".
+ */
+function expectedValueOf(
+  deals: MappedDeal[],
+  cap: number | null
+): { ev: number; closeRate: number; medianWon: number | null; avgWon: number | null; won: number } {
   const won = deals.filter((d) => d.outcome === "won");
   const closeRate = deals.length > 0 ? won.length / deals.length : 0;
   const amounts = won.map((d) => d.amount).filter((a): a is number => a !== null);
   const medianWon = median(amounts);
+  const avgWon =
+    amounts.length === 0
+      ? null
+      : amounts.reduce((sum, a) => sum + (cap === null ? a : Math.min(a, cap)), 0) /
+        amounts.length;
   return {
-    ev: medianWon === null ? 0 : closeRate * medianWon,
+    ev: avgWon === null ? 0 : closeRate * avgWon,
     closeRate,
     medianWon,
+    avgWon,
     won: won.length,
   };
 }
@@ -140,6 +170,7 @@ function fitFactor(
   factor: FactorDefinition,
   pool: MappedDeal[],
   baseline: number,
+  cap: number | null,
   hypothesis: FactorHypothesis | null
 ): ModelFactor {
   const byLevel = new Map<string, MappedDeal[]>();
@@ -153,7 +184,7 @@ function fitFactor(
 
   const levels: FactorLevel[] = [];
   for (const [level, group] of byLevel) {
-    const { ev, closeRate, medianWon, won } = expectedValueOf(group);
+    const { ev, closeRate, medianWon, avgWon, won } = expectedValueOf(group, cap);
     const usable = group.length >= MIN_LEVEL_SAMPLE;
     levels.push({
       level,
@@ -161,6 +192,7 @@ function fitFactor(
       won,
       closeRate: round(closeRate, 4),
       medianWonAmount: medianWon,
+      avgWonAmount: avgWon === null ? null : round(avgWon),
       expectedValue: round(ev),
       lift: baseline > 0 ? round(ev / baseline, 3) : 1,
       usable,
@@ -216,11 +248,11 @@ export function buildValueModel(opts: BuildValueModelOptions): ValueModel {
   const { cap, currencyCode, customSignalKeys = [], hypotheses = [] } = opts;
   const pool = resolved(opts.deals);
 
-  const { ev: baseValue } = expectedValueOf(pool);
+  const { ev: baseValue } = expectedValueOf(pool, cap);
 
   const claimFor = new Map(hypotheses.map((h) => [h.factorKey, h]));
   const factors = buildFactorList(customSignalKeys).map((f) =>
-    fitFactor(f, pool, baseValue, claimFor.get(f.key) ?? null)
+    fitFactor(f, pool, baseValue, cap, claimFor.get(f.key) ?? null)
   );
 
   const includedFactors = factors.filter((f) => f.included);
@@ -393,6 +425,7 @@ export function valueLead(
       sampleSize: stats.sampleSize,
       closeRate: stats.closeRate,
       medianWonAmount: stats.medianWonAmount,
+      avgWonAmount: stats.avgWonAmount,
     });
     product *= mult;
   }
@@ -470,6 +503,7 @@ export function bestCaseStack(
       sampleSize: best.sampleSize,
       closeRate: best.closeRate,
       medianWonAmount: best.medianWonAmount,
+      avgWonAmount: best.avgWonAmount,
     });
     product *= multiplier;
   }

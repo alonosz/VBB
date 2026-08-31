@@ -11,7 +11,7 @@ function model(id: string, baseValue: number): SavedValueModel {
     window: { from: "2026-01-01", to: "2026-06-01" }, currencyCode: "USD",
     baseValue, calibrationFactor: 0.61, cap: 21150,
     factors: [{ key: "industry", label: "Industry", levels: [
-      { level: "Manufacturing", multiplier: 1.64, sampleSize: 121, closeRate: 0.32, medianWonAmount: 6800 },
+      { level: "Manufacturing", multiplier: 1.64, sampleSize: 121, closeRate: 0.32, medianWonAmount: 6800, avgWonAmount: 7400 },
     ] }],
     customSignalKeys: [], claims: [],
   };

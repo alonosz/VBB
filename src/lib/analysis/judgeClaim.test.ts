@@ -8,6 +8,7 @@ function level(over: Partial<FactorLevel> & { level: string; lift: number }): Fa
     won: 15,
     closeRate: 0.3,
     medianWonAmount: 8000,
+    avgWonAmount: 8000,
     expectedValue: 2400,
     usable: true,
     ...over,

@@ -44,6 +44,9 @@ export interface SavedFactorLevel {
   sampleSize: number;
   closeRate: number;
   medianWonAmount: number | null;
+  /** Average won with outliers at the cap - the number inside the multiplier.
+      Absent in models saved before it existed; the median stands in on screen. */
+  avgWonAmount: number | null;
 }
 
 export interface SavedFactor {
@@ -162,6 +165,7 @@ export function saveValueModel(model: ValueModel, opts: SaveOptions): SavedValue
           sampleSize: l.sampleSize,
           closeRate: l.closeRate,
           medianWonAmount: l.medianWonAmount,
+          avgWonAmount: l.avgWonAmount,
         })),
     })),
     gate: freezeGate(opts.gate),
@@ -252,6 +256,10 @@ export function loadSavedModel(raw: unknown): LoadResult {
             sampleSize: num(lv.sampleSize) ?? 0,
             closeRate: num(lv.closeRate) ?? 0,
             medianWonAmount: num(lv.medianWonAmount),
+            // Models saved before the capped average existed load as null here
+            // rather than being refused; a missing provenance stat is not a
+            // broken rule.
+            avgWonAmount: num(lv.avgWonAmount),
           });
         }
       }
@@ -347,6 +355,7 @@ export function savedModelToValueModel(saved: SavedValueModel): ValueModel {
         won: Math.round(l.sampleSize * l.closeRate),
         closeRate: l.closeRate,
         medianWonAmount: l.medianWonAmount,
+        avgWonAmount: l.avgWonAmount,
         expectedValue: round(saved.baseValue * l.multiplier),
         lift: l.multiplier,
         usable: true,

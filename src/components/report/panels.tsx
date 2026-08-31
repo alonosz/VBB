@@ -209,7 +209,7 @@ export function HookPanel({
  * One multiplier, editable.
  *
  * Marketers do not trust a number they cannot argue with, so every multiplier
- * is a field rather than a label - with the sample size, close rate and median
+ * is a field rather than a label - with the sample size, close rate and capped
  * deal behind it sitting right there, and a one-click way back to what we
  * fitted.
  */
@@ -326,7 +326,16 @@ function FactorRow({
               <span className="font-medium">{l.level}</span>
               <span className="mono text-[11.5px] text-[var(--muted)]">
                 n={l.sampleSize} · {(l.closeRate * 100).toFixed(1)}% close ·{" "}
-                {l.medianWonAmount !== null ? money(l.medianWonAmount, currency) : "-"} median
+                {l.avgWonAmount !== null ? (
+                  <>{money(l.avgWonAmount, currency)} avg won</>
+                ) : l.medianWonAmount !== null ? (
+                  // A model saved before the capped average existed. The
+                  // median is what its multipliers were fitted on, so it is
+                  // the honest stat to show beside them.
+                  <>{money(l.medianWonAmount, currency)} median</>
+                ) : (
+                  "-"
+                )}
               </span>
             </span>
             <MultiplierCell
@@ -442,7 +451,13 @@ export function ValueModelPanel({
                     </span>
                     <span className="mono block text-[11px] text-[var(--muted)]">
                       n={s.sampleSize}, {(s.closeRate * 100).toFixed(1)}% close,{" "}
-                      {s.medianWonAmount !== null ? money(s.medianWonAmount, currency) : "-"} median
+                      {s.avgWonAmount !== null ? (
+                        <>{money(s.avgWonAmount, currency)} avg won</>
+                      ) : s.medianWonAmount !== null ? (
+                        <>{money(s.medianWonAmount, currency)} median</>
+                      ) : (
+                        "-"
+                      )}
                     </span>
                   </span>
                   <span className="mono shrink-0 text-[14px] font-bold text-[var(--primary)]">
