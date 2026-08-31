@@ -141,12 +141,12 @@ export default function UploadPage() {
       <Stepper current="upload" />
       <main className="page-narrow animate-page-in flex-1 py-10">
         <PageHead
-          eyebrow="Step 2 of 5 · Upload"
-          title={parsing ? "Reading your file…" : "Upload your CRM deal export"}
+          eyebrow="Step 2 of 5 · Your deals"
+          title={parsing ? "Reading your file…" : "Bring in your deal history"}
           lede={
             parsing
               ? "Parsing rows, sampling values, and matching columns against the fields the analysis needs."
-              : "A CSV of deals or opportunities - whatever your CRM exports. We'll work out which columns are which and tell you straight away if anything will cause trouble."
+              : "Won and lost, twelve months of it. Connect HubSpot and we read it straight from your portal, or upload an export from any other CRM - we'll work out which columns are which and say straight away if anything will cause trouble."
           }
         />
 
@@ -165,6 +165,32 @@ export default function UploadPage() {
 
         {!parsing && (
           <>
+            {/*
+              The better door, first.
+
+              A CRM export is the easiest thing in this product for a person to
+              get wrong, and the three ways to ruin one all produce a file that
+              loads perfectly and analyses to nothing: won deals only, too short
+              a window, the default column set. None of them raise an error.
+              This route cannot make any of them, so it leads.
+
+              The upload keeps its place directly underneath rather than behind
+              a link. Most CRMs are not HubSpot, a connection needs permission
+              from whoever owns the CRM, and the file is the only way in that
+              touches no credential at all - which is why it stays a first-class
+              route and not a fallback.
+
+              Both land on the same rows, so nothing after this screen knows or
+              cares which was used.
+            */}
+            <ConnectHubSpot busy={parsing} onImported={handleImported} />
+
+            <div className="my-7 flex items-center gap-3">
+              <span className="h-px flex-1 bg-[var(--border)]" />
+              <span className="label text-[var(--muted)]">or upload an export</span>
+              <span className="h-px flex-1 bg-[var(--border)]" />
+            </div>
+
             <div
               role="button"
               tabIndex={0}
@@ -187,7 +213,7 @@ export default function UploadPage() {
                 if (f) handleFile(f);
               }}
               className={
-                "mt-8 cursor-pointer rounded-[var(--radius-xl)] border-2 border-dashed px-6 py-16 text-center transition-all duration-[var(--base)] ease-[var(--ease)] " +
+                "cursor-pointer rounded-[var(--radius-xl)] border-2 border-dashed px-6 py-16 text-center transition-all duration-[var(--base)] ease-[var(--ease)] " +
                 (dragging
                   ? "border-[var(--primary)] bg-[var(--primary-soft)] shadow-[var(--shadow-md)]"
                   : "border-[var(--border-strong)] bg-[var(--surface)] hover:-translate-y-0.5 hover:border-[var(--primary)] hover:bg-[var(--primary-softer)] hover:shadow-[var(--shadow-md)]")
@@ -222,18 +248,6 @@ export default function UploadPage() {
               }}
             />
 
-            {/*
-              The second door, open.
-
-              Deliberately below the dropzone rather than beside it. Most CRMs
-              are not HubSpot, so for most visitors a column here would be
-              half a screen that does not apply to them, and the CSV route is
-              the one that needs no credential and nobody's permission.
-
-              Both land on the same rows, so nothing after this screen knows
-              or cares which was used.
-            */}
-            <ConnectHubSpot busy={parsing} onImported={handleImported} />
 
             <ExportGuide />
 

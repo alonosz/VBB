@@ -5,7 +5,7 @@ import { ArrowIcon } from "@/components/ArrowIcon";
 import { readWorkspaceKey, rememberWorkspaceKey } from "@/lib/workspace/clientKey";
 
 /**
- * The second door, open.
+ * The way in that cannot be got wrong.
  *
  * A CRM export is the easiest thing in this product for a person to get wrong,
  * and the three ways to ruin one produce a file that loads perfectly and
@@ -20,9 +20,10 @@ import { readWorkspaceKey, rememberWorkspaceKey } from "@/lib/workspace/clientKe
  * first: already connected and it just works, not connected and it starts the
  * handshake, coming back here to finish the job it was asked to do.
  *
- * The CSV route beside it is untouched and stays that way. Most CRMs are not
+ * The CSV route below it is untouched and stays that way. Most CRMs are not
  * HubSpot, a connection needs permission from whoever owns the CRM, and the
- * file is the only way in that touches no credential at all.
+ * file is the only way in that touches no credential at all. It sits second
+ * because this one is more reliable, not because it is a fallback.
  */
 
 /**
@@ -257,7 +258,7 @@ export function ConnectHubSpot({
 
   return (
     <div className="well mt-4 p-5 sm:p-6">
-      <p className="text-[15px] font-bold">Connect HubSpot instead</p>
+      <p className="text-[15px] font-bold">Connect HubSpot</p>
       <p className="mt-1.5 max-w-[62ch] text-[13.5px] text-[var(--muted)]">
         No export to get right and no columns to map. We read twelve months of
         deals, won and lost, straight from your portal. Read-only: nothing in

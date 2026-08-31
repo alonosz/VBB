@@ -99,7 +99,7 @@ export default function Home() {
                     className="text-[13px]"
                     style={{ color: "var(--on-navy-muted)" }}
                   >
-                    About 5 minutes · no account needed
+                    About 5 minutes · no CRM data is stored
                   </span>
                 </div>
               </div>

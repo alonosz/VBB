@@ -7,6 +7,8 @@ import { Stepper } from "@/components/diagnostic/Stepper";
 import { Alert, PageHead } from "@/components/ui";
 import { EmailCapture } from "@/components/leads/EmailCapture";
 import { VolumeFloorPanel } from "@/components/report/volumeFloor";
+import { DidItWorkPanel } from "@/components/report/didItWork";
+import { didItWork } from "@/lib/analysis/didItWork";
 import { FlowSkeleton } from "@/components/diagnostic/FlowSkeleton";
 import { ArrowIcon } from "@/components/ArrowIcon";
 import { rowsToDeals } from "@/lib/mapping/toDeals";
@@ -240,8 +242,8 @@ export default function ConnectPage() {
     return rowsToDeals({ rows: file.rows, fields, currency, stageTiming, signalColumns: customSignalKeys });
   }, [file, fields, currency, stageTiming, customSignalKeys]);
 
-  const { gate, volume } = useMemo(() => {
-    if (!mapped) return { gate: null, volume: null };
+  const { gate, volume, cycle } = useMemo(() => {
+    if (!mapped) return { gate: null, volume: null, cycle: null };
     const result = runDiagnostic({
       deals: mapped.deals,
       excluded: mapped.excluded,
@@ -250,7 +252,7 @@ export default function ConnectPage() {
       customSignalKeys,
       hypotheses,
     });
-    return { gate: result.gate, volume: result.volume };
+    return { gate: result.gate, volume: result.volume, cycle: result.cycle };
   }, [mapped, businessContext, currency.reportingCurrency, customSignalKeys, hypotheses]);
 
   // Fixed for the life of the screen, so re-rendering cannot hand two halves
@@ -297,6 +299,21 @@ export default function ConnectPage() {
    * dragged through the enhanced conversions setup for an empty column.
    */
   const coverage = useMemo(() => identifiersFor(valued), [valued]);
+  /*
+   * Where the proof stands. `switchedAt` is null until the day we record an
+   * advertiser moving to a value-based bid strategy, so today every visitor
+   * sees the "nothing to compare yet" state - which is the true one.
+   */
+  const proof = useMemo(
+    () =>
+      didItWork({
+        deals: mapped?.deals ?? [],
+        switchedAt: null,
+        medianCycleDays: cycle?.medianDays ?? 30,
+      }),
+    [mapped, cycle]
+  );
+
   const identifier = coverage.identifier;
   const setup = useMemo(() => setupSteps(identifier), [identifier]);
   const schedule = useMemo(() => scheduleSteps(identifier), [identifier]);
@@ -758,6 +775,22 @@ export default function ConnectPage() {
             <VolumeFloorPanel volume={volume} currency={cur} />
           </div>
         )}
+
+        {/*
+          The measurement, sitting where somebody returns to look at it.
+
+          Until a switch date is recorded this shows the honest waiting state
+          rather than nothing at all, which is deliberate: an advertiser who
+          has just published a feed should be able to see what the product will
+          eventually prove and what it needs in order to prove it.
+
+          Nothing about it is invented. `didItWork` refuses to answer until
+          both cohorts have enough resolved deals and the sales cycle has had
+          time to play out.
+        */}
+        <div className="mt-8">
+          <DidItWorkPanel verdict={proof} currency={cur} />
+        </div>
 
         {/* ---- the next thing worth doing ---- */}
         <section className="mt-4 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5">
