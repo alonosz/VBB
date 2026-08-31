@@ -318,6 +318,50 @@ export function DidItWorkPanel({
             </p>
           </div>
 
+          {/*
+            The renewal sentence. A percentage is an argument; money across a
+            named count of the reader's own deals is a decision. Priced against
+            the counterfactual in which Google's leads only rode the control
+            trend, so nothing the market did is claimed.
+          */}
+          {verdict.control.worth && (
+            <p className="mt-3 max-w-[74ch] text-[14px]">
+              Across the{" "}
+              <span className="mono font-semibold">
+                {verdict.control.worth.resolvedSince.toLocaleString()}
+              </span>{" "}
+              Google leads resolved since the switch, that gap is worth about{" "}
+              <span className="mono font-bold">
+                {money(Math.abs(verdict.control.worth.total), currency)}
+              </span>{" "}
+              {verdict.control.worth.total >= 0 ? "more" : "less"} in closed revenue
+              than riding the market trend would have produced
+              {" "}
+              <span className="text-[13px] text-[var(--muted)]">
+                ({money(Math.abs(verdict.control.worth.perLead), currency)} per lead,
+                measured the same way as the figures below).
+              </span>
+            </p>
+          )}
+
+          {/*
+            The "or is that noise?" answer, as a count rather than a p-value.
+            The same deals, dealt into before and after at random a thousand
+            times - luck's own gap distribution on exactly this data.
+          */}
+          <p className="mt-2 max-w-[74ch] text-[13px] text-[var(--muted)]">
+            Is it luck? We dealt these same deals into before and after at random{" "}
+            <span className="mono">{verdict.control.chance.shuffles.toLocaleString()}</span>{" "}
+            times. Chance alone produced a gap this large{" "}
+            <span className="mono font-semibold text-[var(--foreground)]">
+              {verdict.control.chance.asExtreme.toLocaleString()}
+            </span>{" "}
+            {verdict.control.chance.asExtreme === 1 ? "time" : "times"}.{" "}
+            {verdict.control.chance.unlikelyChance
+              ? "That makes luck an unlikely explanation."
+              : "That is often enough that this could still be luck - check back as more deals resolve."}
+          </p>
+
           <div className="mt-3 grid gap-2">
             <ControlRow
               label="Google ads"
@@ -351,6 +395,25 @@ export function DidItWorkPanel({
           <p className="mt-3 max-w-[74ch] text-[12.5px] text-[var(--muted)]">
             {CONTROLLED_CAVEAT}
           </p>
+
+          {/*
+            A measurement without a next step is trivia. One instruction per
+            outcome, and only where the outcome calls for one - a clean win
+            that is unlikely to be luck needs no homework.
+          */}
+          {!verdict.control.improved && (
+            <div className="well mt-4 p-4">
+              <p className="text-[13.5px] font-bold">Before calling it a failure</p>
+              <p className="mt-1 max-w-[70ch] text-[13px] text-[var(--muted)]">
+                Two things explain most &ldquo;no effect&rdquo; results, and both are
+                checkable: a campaign still bidding on lead count instead of lead
+                value (the panel below answers that), and leads whose values barely
+                differ, which gives Google nothing to act on - the spread check on
+                the send step answers that. Fix whichever applies, then give it a
+                sales cycle.
+              </p>
+            </div>
+          )}
         </>
       )}
 

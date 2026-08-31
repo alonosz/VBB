@@ -318,3 +318,110 @@ describe("using the leads Google never touched as a control", () => {
     expect(verdict.control.reason).toMatch(/from a Google ad/i);
   });
 });
+
+describe("the gap in money, and whether it is luck", () => {
+  function googleCohort2(
+    prefix: string,
+    when: Date,
+    n: number,
+    won: number,
+    amount: number
+  ): MappedDeal[] {
+    return cohort(prefix, when, n, won, amount).map((d) => ({
+      ...d,
+      clickId: `gclid-${d.id}`,
+    }));
+  }
+
+  function controlled(deals: MappedDeal[]) {
+    const verdict = didItWork({ deals, switchedAt: SWITCH, medianCycleDays: 20, now: NOW });
+    if (verdict.kind !== "measured" || verdict.control.kind !== "controlled") {
+      throw new Error("expected a controlled comparison");
+    }
+    return verdict.control;
+  }
+
+  /*
+   * Hand-derived: Google went 1,000 -> 1,700 per lead while the control rose
+   * 30%, so a Google lead that merely rode the market would be worth 1,300.
+   * The 400 above that, across the 100 resolved Google leads since the
+   * switch, is 40,000.
+   */
+  it("prices the gap against the control trend, not against zero", () => {
+    const c = controlled([
+      ...googleCohort2("gb", BEFORE, 100, 20, 5000),
+      ...googleCohort2("ga", AFTER, 100, 34, 5000),
+      ...cohort("ob", BEFORE, 100, 20, 5000),
+      ...cohort("oa", AFTER, 100, 26, 5000),
+    ]);
+    expect(c.worth).not.toBeNull();
+    expect(c.worth!.counterfactualPerLead).toBeCloseTo(1300, 2);
+    expect(c.worth!.perLead).toBeCloseTo(400, 2);
+    expect(c.worth!.resolvedSince).toBe(100);
+    expect(c.worth!.total).toBeCloseTo(40_000, 0);
+  });
+
+  it("reports a decline as negative money, not as nothing", () => {
+    const c = controlled([
+      ...googleCohort2("gb", BEFORE, 100, 30, 5000),
+      ...googleCohort2("ga", AFTER, 100, 20, 5000),
+      ...cohort("ob", BEFORE, 100, 25, 5000),
+      ...cohort("oa", AFTER, 100, 25, 5000),
+    ]);
+    expect(c.worth!.perLead).toBeLessThan(0);
+    expect(c.worth!.total).toBeLessThan(0);
+  });
+
+  it("does not project from a before-cohort that closed nothing", () => {
+    const c = controlled([
+      ...googleCohort2("gb", BEFORE, 100, 0, 0),
+      ...googleCohort2("ga", AFTER, 100, 34, 5000),
+      ...cohort("ob", BEFORE, 100, 20, 5000),
+      ...cohort("oa", AFTER, 100, 26, 5000),
+    ]);
+    expect(c.worth).toBeNull();
+  });
+
+  /*
+   * A gap that huge on cohorts that big is not luck, and the shuffle test
+   * must say so: dealing the same deals into before and after at random
+   * almost never reproduces a 10% -> 40% close-rate jump against a flat
+   * control.
+   */
+  it("calls a massive gap on big cohorts unlikely to be chance", () => {
+    const c = controlled([
+      ...googleCohort2("gb", BEFORE, 400, 40, 5000),
+      ...googleCohort2("ga", AFTER, 400, 160, 5000),
+      ...cohort("ob", BEFORE, 400, 80, 5000),
+      ...cohort("oa", AFTER, 400, 80, 5000),
+    ]);
+    expect(c.chance.unlikelyChance).toBe(true);
+    expect(c.chance.pValue).toBeLessThan(0.05);
+  });
+
+  /*
+   * And when before and after are drawn from the same world, the shuffles
+   * reproduce the observed gap all the time - which is the test refusing to
+   * bless noise.
+   */
+  it("does not bless a gap that shuffling reproduces freely", () => {
+    const c = controlled([
+      ...googleCohort2("gb", BEFORE, 100, 25, 5000),
+      ...googleCohort2("ga", AFTER, 100, 27, 5000),
+      ...cohort("ob", BEFORE, 100, 25, 5000),
+      ...cohort("oa", AFTER, 100, 26, 5000),
+    ]);
+    expect(c.chance.unlikelyChance).toBe(false);
+    expect(c.chance.pValue).toBeGreaterThan(0.2);
+  });
+
+  it("gives the same answer for the same file every time", () => {
+    const deals = [
+      ...googleCohort2("gb", BEFORE, 100, 20, 5000),
+      ...googleCohort2("ga", AFTER, 100, 34, 5000),
+      ...cohort("ob", BEFORE, 100, 20, 5000),
+      ...cohort("oa", AFTER, 100, 26, 5000),
+    ];
+    expect(controlled(deals).chance.asExtreme).toBe(controlled(deals).chance.asExtreme);
+  });
+});

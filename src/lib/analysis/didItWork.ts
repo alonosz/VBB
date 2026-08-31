@@ -70,6 +70,58 @@ export interface CohortPair {
   change: number;
 }
 
+/** How many times the shuffle test re-deals the file. */
+export const CHANCE_SHUFFLES = 1_000;
+
+/**
+ * Below this share of shuffles, a gap is treated as unlikely to be luck.
+ *
+ * The conventional 5%, and shown as a raw count ("41 of 1,000 shuffles")
+ * rather than hidden behind the word significant, so the reader can apply
+ * their own standard to the same number.
+ */
+export const CHANCE_THRESHOLD = 0.05;
+
+/**
+ * How often luck alone produces a gap this large.
+ *
+ * The first question any analyst asks of a before-and-after is "or is that
+ * noise?", and answering it does not need a model: deal the same file's own
+ * deals into "before" and "after" at random, over and over, and count how
+ * often the shuffled gap matches the real one. Every shuffle uses only the
+ * customer's own rows - nothing is simulated, assumed, or drawn from a
+ * distribution somebody chose.
+ *
+ * Seeded, so the same file always reports the same count. A number that
+ * changed on refresh would read as a slot machine.
+ */
+export interface ChanceCheck {
+  shuffles: number;
+  /** Shuffles whose gap was at least as large as the real one, either way. */
+  asExtreme: number;
+  /** asExtreme / shuffles. */
+  pValue: number;
+  unlikelyChance: boolean;
+}
+
+/**
+ * The gap, in money, across the Google leads it was measured on.
+ *
+ * A percentage does not survive a renewal meeting; "about $46,000 more closed
+ * revenue than the market trend accounts for" does. Counted only over
+ * *resolved* Google leads since the switch - open leads have not said what
+ * they are worth yet - and against a counterfactual in which Google's leads
+ * had only followed the control group's trend.
+ */
+export interface AttributableWorth {
+  /** What a Google lead would be worth had it merely followed the control. */
+  counterfactualPerLead: number;
+  /** Per resolved Google lead, beyond that. Negative when it fell behind. */
+  perLead: number;
+  resolvedSince: number;
+  total: number;
+}
+
 /**
  * The comparison that survives an objection.
  *
@@ -91,6 +143,9 @@ export type ControlVerdict =
       /** google.change - other.change. What the switch plausibly did. */
       attributable: number;
       improved: boolean;
+      /** Null when the before-cohort closed nothing, leaving nothing to project. */
+      worth: AttributableWorth | null;
+      chance: ChanceCheck;
     }
   | { kind: "no-control"; reason: string };
 
@@ -220,7 +275,107 @@ export function controlFor(dated: MappedDeal[], switchTime: number): ControlVerd
   }
 
   const attributable = google.change - other.change;
-  return { kind: "controlled", google, other, attributable, improved: attributable > 0 };
+
+  /*
+   * Money before percentages. The counterfactual Google lead is one that only
+   * rode the same trend the control did; everything above that, across the
+   * resolved Google leads since the switch, is the part the switch can claim.
+   */
+  let worth: AttributableWorth | null = null;
+  if (google.before.valuePerLead > 0) {
+    const counterfactualPerLead = round2(google.before.valuePerLead * (1 + other.change));
+    const perLead = round2(google.after.valuePerLead - counterfactualPerLead);
+    worth = {
+      counterfactualPerLead,
+      perLead,
+      resolvedSince: google.after.resolved,
+      total: round2(perLead * google.after.resolved),
+    };
+  }
+
+  return {
+    kind: "controlled",
+    google,
+    other,
+    attributable,
+    improved: attributable > 0,
+    worth,
+    chance: chanceCheck(googleDeals, otherDeals, switchTime, attributable),
+  };
+}
+
+function round2(n: number): number {
+  return Math.round(n * 100) / 100;
+}
+
+/** Same generator the demo dataset uses; small, fast, and reproducible. */
+function mulberry32(seed: number): () => number {
+  let a = seed;
+  return function () {
+    a |= 0;
+    a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function shuffleInPlace<T>(arr: T[], rand: () => number): void {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(rand() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+}
+
+/** The change a random before/after split of this pool produces. */
+function shuffledChange(pool: MappedDeal[], beforeCount: number): number {
+  const before = cohortOutcome(pool.slice(0, beforeCount));
+  const after = cohortOutcome(pool.slice(beforeCount));
+  return before.valuePerLead > 0
+    ? (after.valuePerLead - before.valuePerLead) / before.valuePerLead
+    : 0;
+}
+
+/**
+ * Deal the file's own deals into before and after at random, CHANCE_SHUFFLES
+ * times, and count how often luck alone produces a gap at least this large.
+ *
+ * Only resolved deals take part, because only resolved deals carry an
+ * outcome - the same rule every other number on the screen follows. Shuffling
+ * both groups erases any real timing effect, so the shuffled gaps show what
+ * pure luck looks like on exactly this data, at exactly these sample sizes.
+ */
+export function chanceCheck(
+  googleDeals: MappedDeal[],
+  otherDeals: MappedDeal[],
+  switchTime: number,
+  observedGap: number
+): ChanceCheck {
+  const rand = mulberry32(20_260_831);
+
+  const resolvedOf = (deals: MappedDeal[]) =>
+    deals.filter((d) => d.outcome === "won" || d.outcome === "lost");
+  const googlePool = resolvedOf(googleDeals);
+  const otherPool = resolvedOf(otherDeals);
+  const googleBefore = googlePool.filter((d) => d.createdAt!.getTime() < switchTime).length;
+  const otherBefore = otherPool.filter((d) => d.createdAt!.getTime() < switchTime).length;
+
+  let asExtreme = 0;
+  const bar = Math.abs(observedGap);
+  for (let i = 0; i < CHANCE_SHUFFLES; i++) {
+    shuffleInPlace(googlePool, rand);
+    shuffleInPlace(otherPool, rand);
+    const gap = shuffledChange(googlePool, googleBefore) - shuffledChange(otherPool, otherBefore);
+    if (Math.abs(gap) >= bar) asExtreme++;
+  }
+
+  const pValue = asExtreme / CHANCE_SHUFFLES;
+  return {
+    shuffles: CHANCE_SHUFFLES,
+    asExtreme,
+    pValue,
+    unlikelyChance: pValue < CHANCE_THRESHOLD,
+  };
 }
 
 /**
