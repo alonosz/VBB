@@ -8,6 +8,8 @@ import { Alert, PageHead } from "@/components/ui";
 import { EmailCapture } from "@/components/leads/EmailCapture";
 import { VolumeFloorPanel } from "@/components/report/volumeFloor";
 import { DidItWorkPanel } from "@/components/report/didItWork";
+import { ConnectGoogleAds } from "@/components/diagnostic/ConnectGoogleAds";
+import type { FeedRow } from "@/lib/feed/types";
 import { didItWork } from "@/lib/analysis/didItWork";
 import { FlowSkeleton } from "@/components/diagnostic/FlowSkeleton";
 import { ArrowIcon } from "@/components/ArrowIcon";
@@ -304,6 +306,30 @@ export default function ConnectPage() {
    * advertiser moving to a value-based bid strategy, so today every visitor
    * sees the "nothing to compare yet" state - which is the true one.
    */
+  /*
+   * The same rows the CSV feed publishes, kept ready for the API route.
+   * Built here rather than inside the send handler so the button can say how
+   * many conversions it is about to send, and so both routes are provably
+   * sending the identical thing.
+   */
+  const [apiRows, setApiRows] = useState<FeedRow[]>([]);
+  useEffect(() => {
+    if (valued.length === 0) return;
+    let live = true;
+    void buildFeedRows({
+      leads: valued,
+      modelId: saved?.modelId ?? freshModelId,
+      currencyCode: currency.reportingCurrency,
+      identifier: coverage.identifier,
+      gate,
+    }).then((built) => {
+      if (live) setApiRows(built.rows);
+    });
+    return () => {
+      live = false;
+    };
+  }, [valued, saved, freshModelId, currency.reportingCurrency, coverage.identifier, gate]);
+
   const [switchedAt, setSwitchedAt] = useState<Date | null>(null);
   const proof = useMemo(
     () =>
@@ -792,6 +818,19 @@ export default function ConnectPage() {
           </div>
           {csvNote && <p className="mono mt-2.5 text-[12px] text-[var(--muted)]">{csvNote}</p>}
         </section>
+
+        {/*
+          The other way in, and the better one once Google approves our API
+          access. It is second on the page rather than first only because it
+          is not usable yet - the feed needs nobody's permission and works
+          today. Promote it the moment the developer token clears.
+        */}
+        <ConnectGoogleAds
+          rows={apiRows}
+          currencyCode={cur}
+          modelId={modelId}
+          disabled={apiRows.length === 0}
+        />
 
         {volume && (
           <div className="mt-4">
