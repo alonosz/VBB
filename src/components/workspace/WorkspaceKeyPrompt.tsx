@@ -10,8 +10,18 @@ import { rememberWorkspaceKey } from "@/lib/workspace/clientKey";
  * diagnostic before their workspace page has none stored. Telling them the key
  * is required and leaving them there is a dead end; this lets them paste it
  * without losing the work they have just done.
+ *
+ * The heading is overridable because the same key gates more than publishing:
+ * on the evaluation screen it is what reads the CRM, and telling somebody they
+ * need a key "to publish" on a screen that publishes nothing is a small lie.
  */
-export function WorkspaceKeyPrompt({ onSaved }: { onSaved: () => void }) {
+export function WorkspaceKeyPrompt({
+  onSaved,
+  title = "Paste your workspace key to publish",
+}: {
+  onSaved: () => void;
+  title?: string;
+}) {
   const [key, setKey] = useState("");
 
   function save() {
@@ -23,7 +33,7 @@ export function WorkspaceKeyPrompt({ onSaved }: { onSaved: () => void }) {
 
   return (
     <div className="mt-3 rounded-xl border border-[var(--warn)]/40 bg-[var(--warn-soft)] px-4 py-3.5">
-      <p className="text-[13.5px] font-semibold">Paste your workspace key to publish</p>
+      <p className="text-[13.5px] font-semibold">{title}</p>
       <p className="mt-0.5 max-w-[66ch] text-[13px] text-[var(--muted)]">
         It starts <span className="mono">vbb_ws_</span> and was sent to you when
         your workspace was set up. This browser remembers it, so you only do

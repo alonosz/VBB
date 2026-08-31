@@ -877,6 +877,20 @@ export default function ConnectPage() {
         */}
         <div className="mt-8">
           <DidItWorkPanel verdict={proof} currency={cur} onRecorded={setSwitchedAt} />
+          {/*
+            The panel is here because somebody who has just published wants to
+            know what is coming. But this screen is a setup flow walked once,
+            and the evaluation is what you return to in six weeks - so the
+            link, not the panel, is the real answer.
+          */}
+          <p className="mt-3 text-[13px] text-[var(--muted)]">
+            Come back to this any time at{" "}
+            <a href="/evaluation" className="font-semibold text-[var(--primary)] underline underline-offset-2">
+              /evaluation
+            </a>
+            . With your CRM connected it reads your deals live, so there is nothing
+            to re-upload.
+          </p>
         </div>
 
         {/* ---- the next thing worth doing ---- */}

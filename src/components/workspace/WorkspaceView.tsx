@@ -435,6 +435,24 @@ export function WorkspaceView() {
         </Section>
       </div>
 
+      {/* ---- the one screen worth coming back for ---- */}
+      {connection.connected && (
+        <div className="mt-4">
+          <Section
+            title="Did it work?"
+            hint="Compares what closed before you switched to value bidding against what has closed since. Read from your CRM live, not from anything we sent Google."
+          >
+            <p className="text-[13.5px] text-[var(--muted)]">
+              Nothing to re-upload. It needs the date you switched, and enough
+              deals since then to have finished a sales cycle.
+            </p>
+            <Link href="/evaluation" className="btn btn-secondary btn-sm mt-3">
+              Open the evaluation <ArrowIcon />
+            </Link>
+          </Section>
+        </div>
+      )}
+
       {/* ---- activity: a section here, not a screen of its own ---- */}
       <div className="mt-4">
         <Section
