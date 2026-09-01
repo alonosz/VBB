@@ -170,10 +170,23 @@ export function ConnectGoogleAds({
     queueMicrotask(() => void loadAccounts());
   }, [returned.connected, loadAccounts]);
 
-  async function send(validateOnly = false) {
+  /**
+   * @param clickIdOnly Drop the email half of the feed and send click IDs
+   *   alone. The escape hatch from a refusal nothing on our side can clear -
+   *   see `emailBlocked` below.
+   */
+  async function send(validateOnly = false, clickIdOnly = false) {
     if (!chosen) return;
     setError(null);
     setPhase("sending");
+    /*
+     * Filtered here rather than server-side, for the same reason the values
+     * are computed here: the server sends what the browser hands it and
+     * decides nothing about which leads are worth sending.
+     */
+    const sending = clickIdOnly
+      ? rows.filter((r) => r.clickId).map((r) => ({ ...r, hashedEmail: null }))
+      : rows;
     try {
       const res = await fetch("/api/ads/google/publish", {
         method: "POST",
@@ -184,7 +197,7 @@ export function ConnectGoogleAds({
           currencyCode,
           modelId,
           validateOnly,
-          rows: rows.map((r) => ({ ...r, conversionTime: r.conversionTime.toISOString() })),
+          rows: sending.map((r) => ({ ...r, conversionTime: r.conversionTime.toISOString() })),
         }),
       });
       const data = await res.json();
@@ -221,6 +234,14 @@ export function ConnectGoogleAds({
    * exactly the kind of unexplained gap that reads as a bug.
    */
   const unmatchable = Math.max(0, pricedLeads - rows.length);
+
+  /*
+   * Google refused the account for enhanced conversions for leads. Matched on
+   * its words because that is what the API returns, and the alternative -
+   * plumbing a code through the route - would carry no more meaning.
+   */
+  const emailBlocked = /enhanced conversions for leads/i.test(error ?? "");
+  const clickIdRows = rows.filter((r) => r.clickId).length;
 
   if (result) return <Sent result={result} currencyCode={currencyCode} />;
 
@@ -357,6 +378,44 @@ export function ConnectGoogleAds({
         >
           {error}
         </p>
+      )}
+
+      {/*
+        The way out of the one refusal a correct setting does not always
+        clear.
+
+        Enhanced conversions for leads can be ticked on in Google Ads and
+        Google's API can still refuse the account for it, and there is nothing
+        on our side to fix and no way to tell how long it takes. Under
+        fast-fail that leaves every row stuck behind the email half of the
+        feed, including the great majority that never needed it: a click ID
+        matches on its own and always has.
+
+        So it is offered, not taken. Sending fewer leads than the button above
+        promises is the advertiser's call, it is stated in leads rather than
+        implied, and the ones left out are named as waiting rather than lost.
+      */}
+      {emailBlocked && clickIdRows > 0 && (
+        <div className="mt-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3.5">
+          <p className="max-w-[64ch] text-[13px]">
+            You do not have to wait for that. Of your{" "}
+            <span className="mono">{rows.length.toLocaleString()}</span> leads,{" "}
+            <span className="mono">{clickIdRows.toLocaleString()}</span> carry an ad
+            click ID, which Google matches on its own without the setting. Sending
+            those now leaves out the{" "}
+            <span className="mono">{(rows.length - clickIdRows).toLocaleString()}</span>{" "}
+            matched only by email, and they go in the next send once Google accepts
+            the account.
+          </p>
+          <button
+            type="button"
+            onClick={() => void send(false, true)}
+            disabled={working || disabled}
+            className="btn btn-secondary mt-3 text-[13px]"
+          >
+            Send the {clickIdRows.toLocaleString()} click ID leads instead
+          </button>
+        </div>
       )}
 
       <EvaluationHandoff unlocked={false} />
