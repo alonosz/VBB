@@ -192,6 +192,50 @@ interface ErrorBody {
  * the whole batch, and "events.events[0].user_data.user_identifiers: Email is
  * not hex encoded" is a fix rather than a mystery.
  */
+/**
+ * The fix, for the refusals that have one.
+ *
+ * Google's own wording is accurate and useless to the person who has to act on
+ * it: "the destination account is not enabled for enhanced conversions for
+ * leads" is a setting four clicks away, and nothing on the screen said where.
+ * The advertiser reads a rejection they did not cause and cannot place, which
+ * is the moment they conclude the product is broken.
+ *
+ * Matched on Google's text rather than on a reason code because the same
+ * refusal arrives under different codes, and an unmatched one simply adds
+ * nothing - the raw violation still shows either way.
+ */
+export function remedyFor(text: string): string | null {
+  const t = text.toLowerCase();
+
+  if (t.includes("enhanced conversion") && t.includes("lead")) {
+    return (
+      "Your rows carry email addresses, and Google only accepts an email once " +
+      "this account has enhanced conversions for leads switched on. In Google " +
+      "Ads: Goals → Conversions → Settings → Enhanced conversions for leads. " +
+      "Turn it on, accept the customer data terms, and choose the Google Ads " +
+      "API as the upload method. Then send again."
+    );
+  }
+
+  if (t.includes("hex")) {
+    return (
+      "The email hashes went out in the wrong case. Nothing for you to do here " +
+      "- this is ours to fix."
+    );
+  }
+
+  if (t.includes("allowlist")) {
+    return (
+      "This account is not on Google's list for offline conversion imports. " +
+      "That is granted by Google, not by us, and it is the one blocker no " +
+      "setting on your side clears."
+    );
+  }
+
+  return null;
+}
+
 export function readIngestError(status: number, body: unknown): string {
   const violation = (body as ErrorBody)?.error?.details
     ?.flatMap((d) => d.fieldViolations ?? [])
@@ -200,15 +244,21 @@ export function readIngestError(status: number, body: unknown): string {
   if (violation) {
     const where = violation.field ? ` at ${violation.field}` : "";
     const why = violation.description ?? violation.reason ?? "";
+    const remedy = remedyFor(`${why} ${violation.reason ?? ""}`);
     return (
       `Google rejected the whole batch${where}: ${why} ` +
       "The Data Manager API fails the entire request when any one row is wrong, " +
-      "so nothing was recorded."
+      "so nothing was recorded." +
+      (remedy ? `\n\n${remedy}` : "")
     );
   }
 
   const message = (body as ErrorBody)?.error?.message?.trim();
-  return message || `Google Ads refused the request (HTTP ${status}).`;
+  if (message) {
+    const remedy = remedyFor(message);
+    return remedy ? `${message}\n\n${remedy}` : message;
+  }
+  return `Google Ads refused the request (HTTP ${status}).`;
 }
 
 /**

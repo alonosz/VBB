@@ -345,7 +345,16 @@ export function ConnectGoogleAds({
       )}
 
       {error && (
-        <p role="alert" className="mt-2.5 max-w-[64ch] text-[13px] text-[var(--danger)]">
+        /*
+          whitespace-pre-line because a refusal we recognise carries its fix on
+          a second paragraph, and Google's own sentence plus "here is where the
+          setting is" run together is exactly the wall of text somebody stops
+          reading at.
+        */
+        <p
+          role="alert"
+          className="mt-2.5 max-w-[64ch] whitespace-pre-line text-[13px] text-[var(--danger)]"
+        >
           {error}
         </p>
       )}

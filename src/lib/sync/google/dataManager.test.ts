@@ -5,6 +5,7 @@ import {
   conversionActionId,
   ingestEvents,
   readIngestError,
+  remedyFor,
   destination,
   eventFor,
   eventTimestamp,
@@ -201,6 +202,64 @@ describe("sending, and being refused", () => {
   it("falls back to Google's message when it names no field", () => {
     expect(readIngestError(403, { error: { message: "Permission denied." } })).toBe(
       "Permission denied."
+    );
+  });
+
+  /*
+   * The refusal a real account hit on its first send. Google's sentence is
+   * accurate and unactionable, and the setting it wants is four clicks deep,
+   * so the fix has to travel with the error or the advertiser reads it as us
+   * being broken.
+   */
+  it("tells them where the enhanced-conversions setting is", () => {
+    const said = readIngestError(400, {
+      error: {
+        message: "There was a problem with the request.",
+        details: [
+          {
+            fieldViolations: [
+              {
+                field: "events.events[0].destination_references[0]",
+                description:
+                  "The destination account is not enabled for enhanced conversions for leads.",
+              },
+            ],
+          },
+        ],
+      },
+    });
+    expect(said).toContain("not enabled for enhanced conversions for leads");
+    expect(said).toContain("Goals → Conversions → Settings");
+  });
+
+  it("carries the fix on a message with no field violation too", () => {
+    const said = readIngestError(400, {
+      error: { message: "Enhanced conversions for leads is not enabled for this lead." },
+    });
+    expect(said).toContain("Goals → Conversions → Settings");
+  });
+
+  it("says an allowlist refusal is not theirs to clear", () => {
+    expect(remedyFor("CUSTOMER_NOT_ALLOWLISTED_FOR_THIS_FEATURE")).toMatch(
+      /granted by Google/i
+    );
+  });
+
+  /*
+   * Hex casing is our bug, not a setting. Telling somebody to go and change
+   * something in Google Ads for it would send them looking for a switch that
+   * does not exist.
+   */
+  it("owns the hex-encoding failure rather than sending them to Google Ads", () => {
+    const said = remedyFor("Email is not hex encoded.");
+    expect(said).toMatch(/ours to fix/i);
+    expect(said).not.toMatch(/Goals/);
+  });
+
+  it("adds nothing to a refusal it does not recognise", () => {
+    expect(remedyFor("Something entirely new went wrong.")).toBeNull();
+    expect(readIngestError(403, { error: { message: "Permission denied." } })).not.toMatch(
+      /\n/
     );
   });
 
