@@ -1,12 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  AdsClient,
-  AdsApiError,
-  API_VERSION,
-  formatCustomerId,
-  normalizeCustomerId,
-  readError,
-} from "./client";
+import { AdsClient, AdsApiError, API_VERSION, formatCustomerId, normalizeCustomerId, readError } from "./client";
 import { fakeAds } from "./fakeAds";
 
 function client(over: Partial<Parameters<typeof fakeAds>[0]> = {}) {
@@ -164,5 +157,30 @@ describe("when Google refuses", () => {
     const err = readError(502, null);
     expect(err.message).toMatch(/HTTP 502/);
     expect(err.errorCode).toBeNull();
+  });
+});
+
+describe("a sunset API version", () => {
+  /*
+   * The failure that cost an evening. Google answers 404 with no body when the
+   * version in the URL has been retired, so "refused the request (HTTP 404)"
+   * was the only clue, and it reads like a missing account.
+   */
+  it("names the sunset version and how to find the live one", () => {
+    const error = readError(404, null);
+    expect(error.message).toContain(API_VERSION);
+    expect(error.message).toMatch(/sunset/i);
+    expect(error.message).toContain("GOOGLE_ADS_API_VERSION");
+    expect(error.message).toMatch(/401/);
+  });
+
+  it("still prefers Google's own words when it sends any", () => {
+    const error = readError(404, { error: { message: "Customer not found" } });
+    expect(error.message).toBe("Customer not found");
+  });
+
+  it("leaves other statuses alone", () => {
+    expect(readError(500, null).message).toMatch(/HTTP 500/);
+    expect(readError(500, null).message).not.toMatch(/sunset/i);
   });
 });

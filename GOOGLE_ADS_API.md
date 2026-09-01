@@ -15,6 +15,36 @@ State as of 30 August 2026.
 
 ---
 
+## The API version is a live dependency, not a constant
+
+Found on 31 Aug 2026, on the first call this code ever made to real Google.
+Every request returned:
+
+    Google Ads refused the request (HTTP 404).
+
+Nothing was wrong with the connection. The OAuth handshake, the stored
+credentials and the developer token were all fine. `v21` had been sunset, and
+Google answers a retired version with a bare 404 and no body explaining it -
+which reads exactly like a missing account.
+
+**How to find the live version.** Request any endpoint with no credentials.
+A version that exists answers 401; a retired one answers 404:
+
+    for v in v20 v21 v22 v23; do
+      curl -s -o /dev/null -w "$v -> %{http_code}\n" \
+        "https://googleads.googleapis.com/$v/customers:listAccessibleCustomers"
+    done
+
+On that date v16 through v21 were all 404 and v22 answered 401.
+
+**When it happens again**, and it will roughly quarterly: set
+`GOOGLE_ADS_API_VERSION` in Vercel to the current version and redeploy. No
+code change. The default in `client.ts` should be moved along at the same
+time so a fresh deployment is not born broken.
+
+The 404 message now says all of this on screen rather than leaving the next
+person to work it out.
+
 ## What exists
 
 | Thing | Value |

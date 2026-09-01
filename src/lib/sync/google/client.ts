@@ -20,8 +20,13 @@
  * published schedule, so a version hardcoded today becomes an outage on a date
  * nobody has in a calendar. It is one constant, overridable without a deploy,
  * and the sunset is the thing to watch rather than the release.
+ *
+ * Confirmed live on 31 Aug 2026 by probing the endpoint unauthenticated: a
+ * version that exists answers 401, a retired one answers 404. v22 answered
+ * 401; v16 through v21 were all gone. That probe is the check to repeat when
+ * this starts 404ing, and readError below says so on the screen.
  */
-export const API_VERSION = process.env.GOOGLE_ADS_API_VERSION?.trim() || "v21";
+export const API_VERSION = process.env.GOOGLE_ADS_API_VERSION?.trim() || "v22";
 
 export const API_ORIGIN = "https://googleads.googleapis.com";
 
@@ -117,10 +122,22 @@ export function readError(status: number, body: unknown): AdsApiError {
   const detail = parsed.error?.details?.[0];
   const first = detail?.errors?.[0];
   const code = first?.errorCode ? Object.values(first.errorCode)[0] ?? null : null;
+  /*
+   * A 404 from this API is almost never a missing record - the endpoints are
+   * fixed and the ids are checked before we call. It is the version in the URL
+   * having been sunset, which cost an evening to work out from "Google Ads
+   * refused the request (HTTP 404)". Google returns no body explaining it, so
+   * the message has to come from us.
+   */
   const message =
     first?.message?.trim() ||
     parsed.error?.message?.trim() ||
-    `Google Ads refused the request (HTTP ${status}).`;
+    (status === 404
+      ? `Google Ads has no ${API_VERSION} of its API any more - that version has been ` +
+        "sunset. Set GOOGLE_ADS_API_VERSION to the current one and redeploy. " +
+        "To find it, request any endpoint unauthenticated: the live version " +
+        "answers 401, a retired one answers 404."
+      : `Google Ads refused the request (HTTP ${status}).`);
   return new AdsApiError(message, status, code, detail?.requestId ?? null);
 }
 
