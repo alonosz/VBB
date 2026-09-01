@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { ArrowIcon } from "@/components/ArrowIcon";
 import { readWorkspaceKey, rememberWorkspaceKey } from "@/lib/workspace/clientKey";
 import type { AdsAccount } from "@/lib/sync/google/accounts";
@@ -317,6 +318,34 @@ function Sent({ result, currencyCode }: { result: PublishResult; currencyCode: s
           <StrategyPanel audit={result.strategies} currencyCode={currencyCode} />
         </div>
       )}
+
+      {/*
+        The handover, and it belongs only here.
+        
+        Setup is walked once; the evaluation is the screen somebody returns to
+        for the life of the account, so it needs the weight of a destination
+        rather than a link in a paragraph. It also cannot appear before this
+        moment: the campaign audit reads the account this publish just
+        recorded, so an evaluation opened before a successful send would have
+        nothing to say about Google and would teach somebody the screen is
+        empty.
+      */}
+      <div className="mt-5 border-t border-[var(--border)] pt-5">
+        <p className="label">From here on</p>
+        <h3 className="mt-1.5 text-[15px] font-bold">Check whether it worked</h3>
+        <p className="mt-1 max-w-[64ch] text-[13.5px] text-[var(--muted)]">
+          Reads your CRM live and compares the leads Google buys now against the
+          ones it bought before, with the leads that never came from Google as a
+          control. Nothing to re-upload, ever.
+        </p>
+        <Link href="/evaluation" className="btn btn-primary mt-3.5 text-[13.5px]">
+          Open the evaluation
+          <ArrowIcon />
+        </Link>
+        <p className="mono mt-2.5 text-[12px] text-[var(--muted)]">
+          Worth bookmarking: /evaluation
+        </p>
+      </div>
     </div>
   );
 }
