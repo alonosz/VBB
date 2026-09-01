@@ -21,6 +21,7 @@ import { AppHeader } from "@/components/shell/AppHeader";
 
 const NAV = [
   { href: "/workspace", label: "Overview" },
+  { href: "/evaluation", label: "Evaluation" },
   { href: "/feed-status", label: "Feed" },
   { href: "/diagnostic/report", label: "Model" },
 ] as const;

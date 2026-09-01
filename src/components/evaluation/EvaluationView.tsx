@@ -194,106 +194,110 @@ export function EvaluationView() {
     queueMicrotask(() => void load());
   }, [load]);
 
+  /*
+   * No frame of its own. This is a live-mode screen and it was the only one
+   * rendering bare: no logo, no navigation, no way back except the browser
+   * button, which on the one page somebody bookmarks and returns to reads as
+   * having left the product. The shell belongs to the page, so it goes there.
+   */
   return (
-    <div className="animate-page-in flex min-h-screen flex-col">
-      <main className="page flex-1 py-10">
-        <PageHead
-          eyebrow="Evaluation"
-          title="Did value-based bidding work?"
-          lede="Measured against what actually closed in your CRM, read live each time you open this. Nothing here comes from what we told Google."
+    <>
+      <PageHead
+      eyebrow="Evaluation"
+      title="Did value-based bidding work?"
+      lede="Measured against what actually closed in your CRM, read live each time you open this. Nothing here comes from what we told Google."
+    />
+
+    {phase === "loading" && (
+      <div className="mt-8 grid gap-3">
+        <div className="skeleton h-24 rounded-2xl" />
+        <div className="skeleton h-32 rounded-2xl" />
+      </div>
+    )}
+
+    {phase === "needs-key" && (
+      <div className="mt-6">
+        <WorkspaceKeyPrompt
+          title="Paste your workspace key to see this"
+          onSaved={() => void load()}
         />
+      </div>
+    )}
 
-        {phase === "loading" && (
-          <div className="mt-8 grid gap-3">
-            <div className="skeleton h-24 rounded-2xl" />
-            <div className="skeleton h-32 rounded-2xl" />
+    {phase === "no-connection" && (
+      <div className="well mt-8 p-6">
+        <p className="text-[15px] font-bold">Connect your CRM to see this</p>
+        <p className="mt-1.5 max-w-[68ch] text-[13.5px] text-[var(--muted)]">
+          This compares deals that actually closed, so it has to read your CRM
+          each time. We store none of it, which is why there is nothing to show
+          until a connection exists.
+        </p>
+        <a href="/diagnostic/upload" className="btn btn-primary mt-3.5 text-[13.5px]">
+          Connect HubSpot
+          <ArrowIcon />
+        </a>
+      </div>
+    )}
+
+    {phase === "error" && (
+      <div className="alert alert-bad mt-8">
+        <p className="text-[13.5px]">{error}</p>
+        <button type="button" onClick={() => void load()} className="btn btn-secondary mt-3 text-[13px]">
+          Try again
+        </button>
+      </div>
+    )}
+
+    {phase === "ready" && verdict && (
+      <>
+        <div className="mt-8">
+          <DidItWorkPanel
+            verdict={verdict}
+            currency={currency}
+            onRecorded={(at) => {
+              setSwitchedAt(at);
+              void load();
+            }}
+          />
+        </div>
+        {mix && (
+          <div className="mt-4">
+            <MixShiftPanel verdict={mix} currency={currency} />
           </div>
         )}
 
-        {phase === "needs-key" && (
-          <div className="mt-6">
-            <WorkspaceKeyPrompt
-              title="Paste your workspace key to see this"
-              onSaved={() => void load()}
-            />
-          </div>
-        )}
-
-        {phase === "no-connection" && (
-          <div className="well mt-8 p-6">
-            <p className="text-[15px] font-bold">Connect your CRM to see this</p>
-            <p className="mt-1.5 max-w-[68ch] text-[13.5px] text-[var(--muted)]">
-              This compares deals that actually closed, so it has to read your CRM
-              each time. We store none of it, which is why there is nothing to show
-              until a connection exists.
-            </p>
-            <a href="/diagnostic/upload" className="btn btn-primary mt-3.5 text-[13.5px]">
-              Connect HubSpot
-              <ArrowIcon />
-            </a>
-          </div>
-        )}
-
-        {phase === "error" && (
-          <div className="alert alert-bad mt-8">
-            <p className="text-[13.5px]">{error}</p>
-            <button type="button" onClick={() => void load()} className="btn btn-secondary mt-3 text-[13px]">
-              Try again
-            </button>
-          </div>
-        )}
-
-        {phase === "ready" && verdict && (
-          <>
-            <div className="mt-8">
-              <DidItWorkPanel
-                verdict={verdict}
-                currency={currency}
-                onRecorded={(at) => {
-                  setSwitchedAt(at);
-                  void load();
-                }}
-              />
-            </div>
-            {mix && (
-              <div className="mt-4">
-                <MixShiftPanel verdict={mix} currency={currency} />
-              </div>
+        {/*
+          The other half of the answer. Leads getting no better is the
+          expected result when Google is bidding on lead count, so this
+          belongs beside the comparison rather than on a settings screen
+          nobody reopens.
+        */}
+        <section className="card mt-4 p-5 sm:p-6">
+          <h2 className="text-[15px] font-bold">Is Google bidding on your values?</h2>
+          <p className="mt-1 max-w-[70ch] text-[13px] text-[var(--muted)]">
+            Sending values changes nothing on its own. A campaign set to
+            Maximize conversions bids on how many leads arrive and ignores
+            what they are worth, and Google flags that nowhere.
+          </p>
+          <div className="mt-3.5">
+            {ads.kind === "loading" && <div className="skeleton h-16 rounded-xl" />}
+            {ads.kind === "audit" && (
+              <StrategyPanel audit={ads.audit} currencyCode={currency} tense="running" />
             )}
+            {ads.kind === "unavailable" && (
+              <p className="text-[13px] text-[var(--muted)]">{ads.reason}</p>
+            )}
+          </div>
+        </section>
 
-            {/*
-              The other half of the answer. Leads getting no better is the
-              expected result when Google is bidding on lead count, so this
-              belongs beside the comparison rather than on a settings screen
-              nobody reopens.
-            */}
-            <section className="card mt-4 p-5 sm:p-6">
-              <h2 className="text-[15px] font-bold">Is Google bidding on your values?</h2>
-              <p className="mt-1 max-w-[70ch] text-[13px] text-[var(--muted)]">
-                Sending values changes nothing on its own. A campaign set to
-                Maximize conversions bids on how many leads arrive and ignores
-                what they are worth, and Google flags that nowhere.
-              </p>
-              <div className="mt-3.5">
-                {ads.kind === "loading" && <div className="skeleton h-16 rounded-xl" />}
-                {ads.kind === "audit" && (
-                  <StrategyPanel audit={ads.audit} currencyCode={currency} tense="running" />
-                )}
-                {ads.kind === "unavailable" && (
-                  <p className="text-[13px] text-[var(--muted)]">{ads.reason}</p>
-                )}
-              </div>
-            </section>
-
-            <p className="mono mt-6 text-[12px] text-[var(--muted)]">
-              Read {dealCount.toLocaleString()} deals from your CRM just now
-              {switchedAt && ` · switched ${switchedAt.toISOString().slice(0, 10)}`}
-              {ads.kind === "audit" &&
-                ` · ${ads.audit.campaigns.length} running campaigns read from Google Ads`}
-            </p>
-          </>
-        )}
-      </main>
-    </div>
+        <p className="mono mt-6 text-[12px] text-[var(--muted)]">
+          Read {dealCount.toLocaleString()} deals from your CRM just now
+          {switchedAt && ` · switched ${switchedAt.toISOString().slice(0, 10)}`}
+          {ads.kind === "audit" &&
+            ` · ${ads.audit.campaigns.length} running campaigns read from Google Ads`}
+        </p>
+    </>
+      )}
+    </>
   );
 }
