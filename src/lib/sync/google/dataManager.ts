@@ -213,8 +213,10 @@ export function remedyFor(text: string): string | null {
       "Your rows carry email addresses, and Google only accepts an email once " +
       "this account has enhanced conversions for leads switched on. In Google " +
       "Ads: Goals → Conversions → Settings → Enhanced conversions for leads. " +
-      "Turn it on, accept the customer data terms, and choose the Google Ads " +
-      "API as the upload method. Then send again."
+      "Tick it on, accept the customer data terms, and pick Google tag as the " +
+      "method unless your site is tagged through Tag Manager. That question is " +
+      "about how your site collects the email, not about how we send it. Save, " +
+      "then send again."
     );
   }
 
