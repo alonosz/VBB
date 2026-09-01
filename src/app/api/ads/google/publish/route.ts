@@ -4,10 +4,10 @@ import { describeAccount, checkAccount } from "@/lib/sync/google/accounts";
 import { ensureConversionAction } from "@/lib/sync/google/conversionAction";
 import { auditStrategies, readCampaigns } from "@/lib/sync/google/campaigns";
 import {
-  describeOutcome,
-  uploadAdjustments,
-  uploadConversions,
-} from "@/lib/sync/google/upload";
+  conversionActionId,
+  describeIngest,
+  ingestEvents,
+} from "@/lib/sync/google/dataManager";
 import { AdsApiError, normalizeCustomerId } from "@/lib/sync/google/client";
 import { supabaseFromEnv } from "@/lib/feed/supabaseRepository";
 import { keyFromEnv } from "@/lib/sync/secrets";
@@ -39,6 +39,7 @@ export async function POST(request: Request) {
     currencyCode?: unknown;
     modelId?: unknown;
     rows?: unknown;
+    validateOnly?: unknown;
   };
   try {
     body = (await request.json()) as typeof body;
@@ -54,6 +55,13 @@ export async function POST(request: Request) {
   if (!/^[A-Z]{3}$/.test(currencyCode)) return bad("These values need an ISO currency code.");
   const modelId = typeof body.modelId === "string" ? body.modelId.trim() : "";
   if (!modelId) return bad("A publish has to say which model priced it.");
+
+  /*
+   * A dry run. Google checks every row and records nothing, which under
+   * fast-fail is the difference between finding a format problem and losing a
+   * batch to one.
+   */
+  const validateOnly = body.validateOnly === true;
 
   const session = await adsSession(request, body.workspaceKey);
   if (!session.ok) return refuse(session);
@@ -82,17 +90,42 @@ export async function POST(request: Request) {
 
     const action = await ensureConversionAction(session.client, customerId);
 
-    const conversions = await uploadConversions({
-      client: session.client,
-      customerId,
-      conversionActionResourceName: action.resourceName,
+    /*
+     * The Data Manager API, because Google closed the Ads API upload to new
+     * adopters in June 2026. Same values, same identifiers, different door.
+     *
+     * It wants the bare numeric id where the Ads API took a resource name, and
+     * under fast-fail sending the wrong one loses the whole batch rather than
+     * one row - so it is checked here rather than discovered by Google.
+     */
+    const actionId = conversionActionId(action.resourceName);
+    if (!actionId) {
+      return bad(
+        `Google returned a conversion action we could not read an id from ` +
+          `(${action.resourceName}). Nothing was sent.`,
+        502
+      );
+    }
+
+    /*
+     * Every row in one request, adjustments included. An adjustment carries
+     * the same transactionId as the conversion it restates, and Google
+     * deduplicates on that id - so a restatement is the same event sent again
+     * with a new value rather than a separate kind of call. The rules about
+     * *when* a value may be restated already ran before this route was
+     * reached, so anything here is something Google will still act on.
+     *
+     * Worth flagging as inference rather than fact: the field mappings cover
+     * new conversions, and the update-on-matching-transactionId behaviour is
+     * documented for tag events. Whether it applies identically to offline
+     * conversions is the open question in GOOGLE_ADS_API.md.
+     */
+    const ingest = await ingestEvents({
+      accessToken: session.accessToken,
+      operatingAccountId: customerId,
+      conversionActionId: actionId,
       rows,
-    });
-    const adjustments = await uploadAdjustments({
-      client: session.client,
-      customerId,
-      conversionActionResourceName: action.resourceName,
-      rows,
+      validateOnly,
     });
 
     // Remember which account this workspace sends to, so a later reconnection
@@ -126,10 +159,15 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       ok: true,
+      validateOnly,
       account: { customerId: account.customerId, name: account.name, displayId: account.displayId },
       conversionAction: { name: action.name, existed: action.existed },
-      conversions: { ...conversions, summary: describeOutcome(conversions, "conversion") },
-      adjustments: { ...adjustments, summary: describeOutcome(adjustments, "adjustment") },
+      submitted: rows.length,
+      requestId: ingest.requestId,
+      fieldWarnings: ingest.fieldWarnings,
+      summary: validateOnly
+        ? `Google checked all ${rows.length.toLocaleString()} rows and found no problem. Nothing was recorded - this was a test.`
+        : describeIngest({ submitted: rows.length, requestId: ingest.requestId }),
       strategies,
     });
   } catch (error) {

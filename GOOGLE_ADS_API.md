@@ -43,9 +43,13 @@ working. Existing connections carry only `adwords` and must reconnect.
    user credentials do not, and ours are user credentials.
 3. The signing-in Google Account must be a user on the Google Ads account.
 
-**The wiring.** `publish/route.ts` still calls `uploadConversions`. Swapping
-it for `ingestEvents` also means retiring `readPartialFailures` and the
-per-row counts the screen reports, because neither exists any more.
+**The wiring is done.** `publish/route.ts` calls `ingestEvents`. The screen no
+longer claims per-row counts, and a dry run sits beside the send button
+because under fast-fail checking first costs one click and losing a batch to
+one malformed row does not.
+
+`upload.ts` is now unreferenced by the route and kept only so the old
+behaviour is readable while this is proven. Delete it once a real send lands.
 
 ### What the migration changes beyond the transport
 

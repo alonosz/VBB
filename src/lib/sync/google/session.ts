@@ -20,7 +20,18 @@ import { freshAccessToken } from "./accessToken";
  */
 
 export type AdsSession =
-  | { ok: true; client: AdsClient; workspaceId: string; connectedAccountId: string | null }
+  | {
+      ok: true;
+      client: AdsClient;
+      /**
+       * The bare token, because the Data Manager API is a different host with
+       * different headers and no developer token - it cannot ride the Ads
+       * client. Same credential, two destinations.
+       */
+      accessToken: string;
+      workspaceId: string;
+      connectedAccountId: string | null;
+    }
   | { ok: false; status: number; error: string };
 
 export async function adsSession(request: Request, workspaceKey: unknown): Promise<AdsSession> {
@@ -90,6 +101,7 @@ export async function adsSession(request: Request, workspaceKey: unknown): Promi
   return {
     ok: true,
     client: new AdsClient({ credentials }),
+    accessToken: fresh.token,
     workspaceId: auth.workspace.id,
     connectedAccountId: loaded.connection.externalAccountId,
   };

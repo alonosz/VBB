@@ -19,15 +19,26 @@ import { StrategyPanel } from "@/components/report/campaignStrategy";
  * of the steps have a wrong answer that fails in silence.
  *
  * This route removes all of that. We create the conversion action ourselves,
- * upload against it, and read back per-row errors and which campaigns are on
- * a bid strategy that will ignore everything we just sent.
+ * send against it, and read back which campaigns are on a bid strategy that
+ * will ignore everything we just sent.
+ *
+ * Values go through the Data Manager API, which Google requires of every
+ * integration built after June 2026. It answers for the batch rather than the
+ * row and records asynchronously, so there is no "462 of 466 accepted" to
+ * report any more - which is why the dry run exists. One malformed row
+ * rejects everything, and one click is a cheap way to find that out.
  */
 
 interface PublishResult {
+  /** True when Google checked the batch and deliberately recorded nothing. */
+  validateOnly: boolean;
   account: { customerId: string; name: string; displayId: string };
   conversionAction: { name: string; existed: boolean };
-  conversions: { accepted: number; failures: unknown[]; summary: string };
-  adjustments: { accepted: number; failures: unknown[]; summary: string };
+  /** Rows in the request. Not a count of what Google kept - see below. */
+  submitted: number;
+  requestId: string | null;
+  fieldWarnings: unknown[];
+  summary: string;
   strategies: StrategyAudit | null;
 }
 
@@ -156,7 +167,7 @@ export function ConnectGoogleAds({
     queueMicrotask(() => void loadAccounts());
   }, [returned.connected, loadAccounts]);
 
-  async function send() {
+  async function send(validateOnly = false) {
     if (!chosen) return;
     setError(null);
     setPhase("sending");
@@ -169,6 +180,7 @@ export function ConnectGoogleAds({
           customerId: chosen,
           currencyCode,
           modelId,
+          validateOnly,
           rows: rows.map((r) => ({ ...r, conversionTime: r.conversionTime.toISOString() })),
         }),
       });
@@ -252,17 +264,33 @@ export function ConnectGoogleAds({
           )}
 
           {chosen && (
-            <button
-              type="button"
-              onClick={() => void send()}
-              disabled={working || disabled}
-              className="btn btn-primary mt-3.5 text-[13.5px]"
-            >
-              {phase === "sending"
-                ? "Sending…"
-                : `Set up and send ${rows.length.toLocaleString()} conversions`}
-              {!working && <ArrowIcon />}
-            </button>
+            <div className="mt-3.5 flex flex-wrap items-center gap-2.5">
+              <button
+                type="button"
+                onClick={() => void send()}
+                disabled={working || disabled}
+                className="btn btn-primary text-[13.5px]"
+              >
+                {phase === "sending"
+                  ? "Sending…"
+                  : `Set up and send ${rows.length.toLocaleString()} conversions`}
+                {!working && <ArrowIcon />}
+              </button>
+              {/*
+                Worth its own button rather than a hidden default. Google
+                rejects the entire batch if one row is malformed, so checking
+                first costs one click and saves finding out with real
+                conversions.
+              */}
+              <button
+                type="button"
+                onClick={() => void send(true)}
+                disabled={working || disabled}
+                className="btn btn-secondary text-[13px]"
+              >
+                Test it first, send nothing
+              </button>
+            </div>
           )}
         </div>
       )}
@@ -292,15 +320,11 @@ function Sent({ result, currencyCode }: { result: PublishResult; currencyCode: s
    * failure this product exists to avoid, so the heading is derived from what
    * Google accepted and from nothing else.
    */
-  const accepted = result.conversions.accepted;
-  const refused = result.conversions.failures.length;
-  const landed = accepted > 0;
+  const landed = !result.validateOnly;
 
-  const mark = !landed
-    ? { glyph: "×", bg: "var(--danger)", title: `Nothing reached ${result.account.name}` }
-    : refused > 0
-      ? { glyph: "!", bg: "var(--warn)", title: `Partly sent to ${result.account.name}` }
-      : { glyph: "✓", bg: "var(--accent)", title: `Sent to ${result.account.name}` };
+  const mark = result.validateOnly
+    ? { glyph: "✓", bg: "var(--primary)", title: "Checked, and nothing was sent" }
+    : { glyph: "✓", bg: "var(--accent)", title: `Sent to ${result.account.name}` };
 
   return (
     <div className="well mt-4 p-5">
@@ -316,8 +340,12 @@ function Sent({ result, currencyCode }: { result: PublishResult; currencyCode: s
       </p>
 
       <ul className="mt-3 grid gap-1.5 text-[13.5px]">
-        <li>{result.conversions.summary}</li>
-        {result.adjustments.accepted > 0 && <li>{result.adjustments.summary}</li>}
+        <li>{result.summary}</li>
+        {result.requestId && (
+          <li className="mono text-[12px] text-[var(--muted)]">
+            Request {result.requestId}
+          </li>
+        )}
         <li className="text-[var(--muted)]">
           Conversion action{" "}
           <span className="mono">&ldquo;{result.conversionAction.name}&rdquo;</span>{" "}
@@ -350,16 +378,15 @@ function Sent({ result, currencyCode }: { result: PublishResult; currencyCode: s
         empty.
       */}
       {/*
-        Nothing landed, so the API route is not the way in today. The feed
-        below needs no API access at all and is unaffected by whatever Google
-        refused here - saying so is more use than leaving somebody staring at
-        an error with no second door.
+        A dry run is a pass, not a delivery, and the difference has to survive
+        somebody skim-reading a green tick. The evaluation button below stays
+        hidden until values have actually gone.
       */}
-      {!landed && (
+      {result.validateOnly && (
         <p className="mt-3 max-w-[68ch] text-[13px] text-[var(--muted-strong)]">
-          Your values have not reached Google. The file route below needs no API
-          access and is unaffected, so it is the way through while this is sorted
-          out.
+          Nothing was recorded. Google accepted the format of every row, which is
+          the part worth knowing before a real send - it rejects an entire batch
+          over one bad row. Send them for real when you are ready.
         </p>
       )}
 

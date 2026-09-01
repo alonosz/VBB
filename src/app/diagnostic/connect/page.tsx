@@ -525,9 +525,9 @@ export default function ConnectPage() {
           <h2 className="h2 mt-2">Connect Google Ads</h2>
           <p className="mt-1 max-w-[68ch] text-[14px] text-[var(--muted)]">
             One connection and we do the rest: we create the conversion action
-            with the right settings, send your values, tell you exactly which
-            rows Google took, and flag any campaign still bidding on lead count
-            rather than lead value.
+            with the right settings, send your values, and flag any campaign
+            still bidding on lead count rather than lead value. You can have
+            Google check the whole batch first without recording anything.
           </p>
           <ConnectGoogleAds
             rows={apiRows}
