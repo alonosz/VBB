@@ -295,7 +295,14 @@ export function ConnectGoogleAds({
                 about - and it is described in the paragraph above. And
                 "conversions" is exactly what the old, broken way sends: 466
                 identical events. The whole product is the values attached to
-                them, so the button says so, and names where they are going.
+                them, so the button names them, and names where they go.
+
+                "466 lead values" alone was not true either: a row is the lead
+                itself - its click ID or hashed email and its arrival date -
+                carrying a value, and on a first send Google is receiving
+                conversions it never had rather than repricing ones it holds.
+                "Leads with their values" is true of both that send and the
+                later ones, where some rows really are only a new value.
               */}
               <button
                 type="button"
@@ -305,7 +312,7 @@ export function ConnectGoogleAds({
               >
                 {phase === "sending"
                   ? "Sending…"
-                  : `Send ${rows.length.toLocaleString()} lead values to ${chosenName}`}
+                  : `Send ${rows.length.toLocaleString()} leads with their values to ${chosenName}`}
                 {!working && <ArrowIcon />}
               </button>
               {/*
