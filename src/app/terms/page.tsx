@@ -167,11 +167,18 @@ export default function TermsPage() {
         </p>
       </Clause>
 
+      {/*
+        Delaware because it is what a US buyer expects from a SaaS vendor and
+        is the least remarkable answer available. A governing-law clause should
+        match wherever the operating entity is actually registered - this is
+        the line for a lawyer to confirm rather than one to leave to a default.
+      */}
       <Clause title="12. Governing law">
         <p>
-          These terms are governed by the laws of Israel, and the courts of Tel Aviv
-          have exclusive jurisdiction, unless we have agreed otherwise with you in
-          writing.
+          These terms are governed by the laws of the State of Delaware, USA,
+          without regard to its conflict of laws rules, and the state and federal
+          courts located in Delaware have exclusive jurisdiction, unless we have
+          agreed otherwise with you in writing.
         </p>
       </Clause>
     </LegalPage>
