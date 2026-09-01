@@ -211,6 +211,25 @@ export function readIngestError(status: number, body: unknown): string {
   return message || `Google Ads refused the request (HTTP ${status}).`;
 }
 
+/**
+ * A refusal we understood well enough to repeat.
+ *
+ * Typed so a route can surface its message and nothing else: an unexpected
+ * TypeError should stay in the log, but a sentence built from Google's own
+ * field violation is the most useful thing on the screen, and the fallback
+ * that ate it made a real cause look like a shrug.
+ */
+export class IngestError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+    readonly body: unknown
+  ) {
+    super(message);
+    this.name = "IngestError";
+  }
+}
+
 export interface IngestCall extends IngestOptions {
   accessToken: string;
   fetchImpl?: typeof fetch;
@@ -246,7 +265,7 @@ export async function ingestEvents(call: IngestCall): Promise<IngestResponse> {
     }
   }
 
-  if (!res.ok) throw new Error(readIngestError(res.status, body));
+  if (!res.ok) throw new IngestError(readIngestError(res.status, body), res.status, body);
 
   const ok = (body ?? {}) as { requestId?: string; fieldWarnings?: unknown[] };
   return { requestId: ok.requestId ?? null, fieldWarnings: ok.fieldWarnings ?? [] };

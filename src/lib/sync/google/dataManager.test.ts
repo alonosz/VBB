@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   DATA_MANAGER_SCOPE,
+  IngestError,
   conversionActionId,
   ingestEvents,
   readIngestError,
@@ -213,5 +214,44 @@ describe("sending, and being refused", () => {
       )) as unknown as typeof fetch;
 
     await expect(ingestEvents({ ...opts, fetchImpl })).rejects.toThrow(/INVALID_SHA256_FORMAT/);
+  });
+});
+
+describe("a refusal survives the trip to the screen", () => {
+  /*
+   * Three times in one day a real cause was replaced by a shrug: the admin
+   * page, the OAuth callback, and this route. The message is typed so a route
+   * can surface it deliberately, rather than every route inventing its own
+   * decision about which errors are safe to repeat.
+   */
+  it("throws a typed error carrying Google's own words and status", async () => {
+    const fetchImpl = (async () =>
+      new Response(
+        JSON.stringify({
+          error: {
+            details: [
+              {
+                fieldViolations: [
+                  { field: "events.events[0]", description: "Email is not hex encoded." },
+                ],
+              },
+            ],
+          },
+        }),
+        { status: 400 }
+      )) as unknown as typeof fetch;
+
+    const failure = await ingestEvents({
+      operatingAccountId: "1",
+      conversionActionId: "2",
+      rows: [row()],
+      accessToken: "t",
+      fetchImpl,
+    }).catch((e: unknown) => e);
+
+    expect(failure).toBeInstanceOf(IngestError);
+    const err = failure as InstanceType<typeof IngestError>;
+    expect(err.status).toBe(400);
+    expect(err.message).toContain("Email is not hex encoded.");
   });
 });

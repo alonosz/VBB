@@ -4,6 +4,7 @@ import { describeAccount, checkAccount } from "@/lib/sync/google/accounts";
 import { ensureConversionAction } from "@/lib/sync/google/conversionAction";
 import { auditStrategies, readCampaigns } from "@/lib/sync/google/campaigns";
 import {
+  IngestError,
   conversionActionId,
   describeIngest,
   ingestEvents,
@@ -176,6 +177,19 @@ export async function POST(request: Request) {
       return NextResponse.json(
         { ok: false, error: error.message, errorCode: error.errorCode },
         { status: error.needsReconnect ? 401 : 502 }
+      );
+    }
+    /*
+     * Say what Google said. A generic "failed" here sent an evening chasing a
+     * conversion action that was fine, while the actual field violation sat
+     * unread in a server log - the same swallow that cost hours on the admin
+     * page and again on the callback.
+     */
+    if (error instanceof IngestError) {
+      console.error("Data Manager ingest failed:", error.status, error.body);
+      return NextResponse.json(
+        { ok: false, error: error.message },
+        { status: error.status === 401 || error.status === 403 ? 401 : 502 }
       );
     }
     console.error("Google Ads publish failed:", error);
