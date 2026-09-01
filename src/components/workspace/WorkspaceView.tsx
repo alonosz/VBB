@@ -52,6 +52,8 @@ interface Overview {
     id: number; startedAt: string; status: string; dealsPulled: number;
     rowsPublished: number; newConversions: number; adjustments: number;
     recalibrationOnly: number; skipped: number; message: string | null;
+    /** Null on runs recorded before coverage was measured. */
+    coverage: { clicks: number; emails: number; neither: number; total: number } | null;
   }[];
   actions: ActionItem[];
   working: boolean;
@@ -457,7 +459,7 @@ export function WorkspaceView() {
       <div className="mt-4">
         <Section
           title="Recent nightly runs"
-          hint="Too late means the lead's value moved after Google's 7-day window, so nothing was sent - that outcome feeds the next refit instead."
+          hint="Matched is the share of that night's leads carrying a click ID or an email, which is what Google needs to attach a value to an ad click. A steady figure is fine at any level; a fall is the site's capture breaking. Too late means the lead's value moved after Google's 7-day window, so nothing was sent - that outcome feeds the next refit instead."
         >
           {runs.length === 0 ? (
             <Empty
@@ -476,6 +478,7 @@ export function WorkspaceView() {
                     <th className="num">Adjusted</th>
                     <th className="num">Too late</th>
                     <th className="num">Skipped</th>
+                    <th className="num">Matched</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -493,6 +496,16 @@ export function WorkspaceView() {
                       <td className="num">{r.adjustments.toLocaleString()}</td>
                       <td className="num">{r.recalibrationOnly.toLocaleString()}</td>
                       <td className="num">{r.skipped.toLocaleString()}</td>
+                      {/*
+                        Blank rather than 0% where a run never measured it.
+                        A zero here would read as a night when Google could
+                        match nobody, which is a number we would have invented.
+                      */}
+                      <td className="num">
+                        {r.coverage && r.coverage.total > 0
+                          ? `${Math.round(((r.coverage.total - r.coverage.neither) / r.coverage.total) * 100)}%`
+                          : "-"}
+                      </td>
                     </tr>
                   ))}
                 </tbody>

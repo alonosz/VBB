@@ -10,7 +10,7 @@ function run(over: Partial<SyncRun> = {}): SyncRun {
     startedAt: hoursAgo(6), finishedAt: hoursAgo(6),
     status: "ok", dealsPulled: 120, rowsPublished: 84, newConversions: 84,
     adjustments: 0, recalibrationOnly: 0, unchanged: 0, skipped: 36,
-    message: null, modelId: "model-1",
+    message: null, modelId: "model-1", coverage: null,
     ...over,
   };
 }
@@ -85,7 +85,8 @@ describe("InMemorySyncRunStore", () => {
         newConversions: 60, adjustments: 0, recalibrationOnly: 3, unchanged: 2,
         gateAdjustments: 0, gateTooLate: 0,
         skipped: [{ reason: "no click ID", count: 30 }, { reason: "no value", count: 5 }],
-        refusedBecause: null,
+        coverage: null,
+    refusedBecause: null,
       },
     });
     const [recorded] = await store.recentForWorkspace("ws-1", 10);

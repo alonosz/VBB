@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { SyncReport } from "./run";
+import type { RunCoverage, SyncReport } from "./run";
 
 /**
  * The record of what the scheduled job did.
@@ -33,6 +33,12 @@ export interface SyncRun {
   skipped: number;
   message: string | null;
   modelId: string | null;
+  /**
+   * Null on a run recorded before coverage was measured, and on a refusal.
+   * Not zero: zero would say every lead that night was unmatchable, which is
+   * a number we would have made up.
+   */
+  coverage: RunCoverage | null;
 }
 
 export interface RecordRun {
@@ -65,10 +71,13 @@ interface RunDto {
   skipped: number;
   message: string | null;
   model_id: string | null;
+  leads_with_click_id: number | null;
+  leads_with_email: number | null;
+  leads_with_neither: number | null;
 }
 
 const COLUMNS =
-  "id, feed_id, client_id, started_at, finished_at, status, deals_pulled, rows_published, new_conversions, adjustments, recalibration_only, unchanged, skipped, message, model_id";
+  "id, feed_id, client_id, started_at, finished_at, status, deals_pulled, rows_published, new_conversions, adjustments, recalibration_only, unchanged, skipped, message, model_id, leads_with_click_id, leads_with_email, leads_with_neither";
 
 function toRun(dto: RunDto): SyncRun {
   return {
@@ -87,6 +96,22 @@ function toRun(dto: RunDto): SyncRun {
     skipped: dto.skipped,
     message: dto.message,
     modelId: dto.model_id,
+    /*
+     * All three or none. A row with a click count and no total is a partial
+     * write we should not try to interpret, and reading it as coverage would
+     * put a fabricated percentage on the screen.
+     */
+    coverage:
+      dto.leads_with_click_id === null ||
+      dto.leads_with_email === null ||
+      dto.leads_with_neither === null
+        ? null
+        : {
+            clicks: dto.leads_with_click_id,
+            emails: dto.leads_with_email,
+            neither: dto.leads_with_neither,
+            total: dto.deals_pulled,
+          },
   };
 }
 
@@ -117,6 +142,9 @@ export class SupabaseSyncRunStore implements SyncRunStore {
       skipped,
       message: run.message ? run.message.slice(0, MAX_MESSAGE) : null,
       model_id: run.modelId ?? report?.modelId ?? null,
+      leads_with_click_id: report?.coverage?.clicks ?? null,
+      leads_with_email: report?.coverage?.emails ?? null,
+      leads_with_neither: report?.coverage?.neither ?? null,
     });
 
     // Losing the record of a good run must not turn it into a bad one, but a
@@ -164,6 +192,7 @@ export class InMemorySyncRunStore implements SyncRunStore {
       skipped: report?.skipped.reduce((sum, s) => sum + s.count, 0) ?? 0,
       message: run.message ? run.message.slice(0, MAX_MESSAGE) : null,
       modelId: run.modelId ?? report?.modelId ?? null,
+      coverage: report?.coverage ?? null,
     });
   }
 

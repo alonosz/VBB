@@ -2,6 +2,7 @@ import type { FeedRecord, FeedIdentifier } from "@/lib/feed/types";
 import type { FeedRepository } from "@/lib/feed/repository";
 import type { CrmConnectionStore } from "@/lib/sync/connections";
 import { runHealth, type RunHealth, type SyncRun, type SyncRunStore } from "@/lib/sync/runs";
+import { describeTracking, trackingHealth, type TrackingVerdict } from "@/lib/sync/tracking";
 import type { SavedValueModel } from "@/lib/model/savedModel";
 import type { Workspace } from "./repository";
 
@@ -74,6 +75,7 @@ export interface WorkspaceOverview {
   connection: ConnectionSummary;
   runs: SyncRun[];
   health: RunHealth;
+  tracking: TrackingVerdict;
   actions: ActionItem[];
   /** True when nothing is wrong and values are reaching Google. */
   working: boolean;
@@ -112,7 +114,8 @@ export async function buildOverview(
   ]);
 
   const health = runHealth(runs, now);
-  const actions = decideActions({ feed: feedSummary, model, connection, health, now });
+  const tracking = trackingHealth(runs);
+  const actions = decideActions({ feed: feedSummary, model, connection, health, tracking, now });
 
   return {
     workspace: {
@@ -126,6 +129,7 @@ export async function buildOverview(
     connection,
     runs,
     health,
+    tracking,
     actions,
     working: actions.every((a) => a.severity === "info"),
   };
@@ -218,6 +222,8 @@ interface Decidable {
   model: ModelSummary | null;
   connection: ConnectionSummary;
   health: RunHealth;
+  /** Whether Google can still match the leads going out. */
+  tracking: TrackingVerdict;
   now: Date;
 }
 
@@ -229,7 +235,7 @@ interface Decidable {
  * wastes a developer; escalating nothing strands the operator.
  */
 export function decideActions(state: Decidable): ActionItem[] {
-  const { feed, model, connection, health, now } = state;
+  const { feed, model, connection, health, tracking, now } = state;
   const items: ActionItem[] = [];
 
   if (!feed) {
@@ -304,6 +310,18 @@ export function decideActions(state: Decidable): ActionItem[] {
       title: "The last nightly run did not complete.",
       action: health.message,
     });
+  }
+
+  /*
+   * The failure nothing else here can see. Every check above passes while the
+   * site's click ID capture is broken: leads arrive, get priced, get
+   * published, the run is green, and Google receives leads it cannot match to
+   * anything. It is attention rather than blocked because values are still
+   * going out and the fix is on the customer's site, not in this product.
+   */
+  const trackingProblem = describeTracking(tracking);
+  if (trackingProblem) {
+    items.push({ severity: "attention", ...trackingProblem });
   }
 
   // Google fetching is the only proof values are arriving. Everything upstream

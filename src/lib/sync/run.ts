@@ -48,8 +48,27 @@ export interface SyncReport {
   gateAdjustments: number;
   gateTooLate: number;
   skipped: { reason: string; count: number }[];
+  /**
+   * How many of this run's leads Google can match on, as counts.
+   *
+   * Nothing else in this report moves when a site's click-ID capture breaks:
+   * pricing still works, publishing still works, the run is still green, and
+   * every lead goes out unmatchable. This is the only number that falls.
+   *
+   * Null on a refusal, because a run that priced nothing measured nothing, and
+   * a zero there would read as a night when no lead could be matched.
+   */
+  coverage: RunCoverage | null;
   /** Set when the run refused to do anything. Nothing is written when present. */
   refusedBecause: string | null;
+}
+
+/** Counts, never rows: how many, never which. */
+export interface RunCoverage {
+  clicks: number;
+  emails: number;
+  neither: number;
+  total: number;
 }
 
 function refusal(feed: FeedRecord, modelId: string, dealsPulled: number, why: string): SyncReport {
@@ -65,6 +84,7 @@ function refusal(feed: FeedRecord, modelId: string, dealsPulled: number, why: st
     gateAdjustments: 0,
     gateTooLate: 0,
     skipped: [],
+    coverage: null,
     refusedBecause: why,
   };
 }
@@ -137,8 +157,14 @@ export async function runSync(opts: SyncOptions): Promise<SyncReport> {
     gateAdjustments,
     gateTooLate,
     skipped,
+    coverage: coverageOf(leads),
     refusedBecause: null,
   };
+}
+
+function coverageOf(leads: Parameters<typeof identifiersFor>[0]): RunCoverage {
+  const { clicks, emails, neither, total } = identifiersFor(leads);
+  return { clicks, emails, neither, total };
 }
 
 export { identifiersFor };

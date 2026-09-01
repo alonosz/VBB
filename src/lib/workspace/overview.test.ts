@@ -32,12 +32,34 @@ const healthy: RunHealth = {
 
 function actions(over: Partial<Parameters<typeof decideActions>[0]> = {}) {
   return decideActions({
-    feed: feed(), model: model(), connection: connected(), health: healthy, now: NOW,
+    feed: feed(), model: model(), connection: connected(), health: healthy,
+    tracking: { kind: "steady", matched: 0.9, baseline: 0.9, unmatchable: 20, leads: 200 },
+    now: NOW,
     ...over,
   });
 }
 
 describe("what the operator is told to do", () => {
+  /*
+   * The one failure every other check on this page reports as healthy: the
+   * run pulls, prices and publishes, and Google receives leads it has nothing
+   * to match to. Attention rather than blocked, because values are still
+   * going out and the fix is on the customer's site.
+   */
+  it("raises a tracking drop that every other check calls healthy", () => {
+    const list = actions({
+      tracking: { kind: "dropped", matched: 0.3, baseline: 0.9, unmatchable: 140, leads: 200 },
+    });
+    const found = list.find((a) => /can match/.test(a.title));
+    expect(found).toBeDefined();
+    expect(found!.severity).toBe("attention");
+    expect(found!.action).toContain("140");
+  });
+
+  it("says nothing about tracking while it holds steady", () => {
+    expect(actions().some((a) => /can match/.test(a.title))).toBe(false);
+  });
+
   it("says everything is working, and names the one thing left", () => {
     const [first] = actions();
     expect(first.severity).toBe("info");

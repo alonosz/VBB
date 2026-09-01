@@ -409,6 +409,25 @@ select pg_temp.must_fail($$
   values ('99999999-9999-9999-9999-999999999999', 'failed', repeat('x', 501))$$,
   'a run message long enough to hold a stack trace is rejected');
 
+-- Tracking coverage: counts, never rows, and null where it was not measured.
+select pg_temp.must_fail($$
+  insert into public.sync_runs (client_id, status, leads_with_neither)
+  values ('99999999-9999-9999-9999-999999999999', 'ok', -1)$$,
+  'a negative unmatchable count is rejected');
+
+select pg_temp.must_pass($$
+  insert into public.sync_runs (client_id, status, deals_pulled,
+    leads_with_click_id, leads_with_email, leads_with_neither)
+  values ('99999999-9999-9999-9999-999999999999', 'ok', 200, 150, 40, 30)$$,
+  'a run records how many of its leads Google could match');
+
+-- A run from before coverage was measured stays honest as unknown. Writing 0
+-- would claim every lead that night was unmatchable.
+select pg_temp.must_pass($$
+  insert into public.sync_runs (client_id, status, deals_pulled)
+  values ('99999999-9999-9999-9999-999999999999', 'ok', 200)$$,
+  'a run that never measured coverage leaves it null rather than zero');
+
 do $$
 declare kept integer;
 begin
