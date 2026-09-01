@@ -6,7 +6,7 @@ import { authorizeWorkspace } from "@/lib/workspace/authorize";
 import { keyFromEnv } from "@/lib/sync/secrets";
 import { CrmConnectionStore } from "@/lib/sync/connections";
 import { AdsClient, credentialsFromEnv } from "./client";
-import { oauthConfigFromEnv } from "./oauth";
+import { missingScopes, oauthConfigFromEnv } from "./oauth";
 import { freshAccessToken } from "./accessToken";
 
 /**
@@ -72,6 +72,27 @@ export async function adsSession(request: Request, workspaceKey: unknown): Promi
     // 409 rather than 401: the caller is who they say they are, they simply
     // have not connected Google yet. The browser starts the handshake on this.
     return { ok: false, status: 409, error: loaded.error ?? "No Google Ads account connected." };
+  }
+
+  /*
+   * A connection authorised before we needed a scope carries a token that
+   * cannot use it, and Google answers "insufficient authentication scopes"
+   * from deep inside a send rather than at the door. Worse, the connect
+   * button could not fix it: it lists accounts whenever a connection exists,
+   * so it never re-asked and the customer had no way forward.
+   *
+   * Refusing here with a 409 puts it back on the path that already works -
+   * the browser starts the handshake on a 409, exactly as it does for a
+   * workspace that has never connected at all.
+   */
+  if (missingScopes(loaded.connection.scopes).length > 0) {
+    return {
+      ok: false,
+      status: 409,
+      error:
+        "This Google connection was authorised before we needed one of the " +
+        "permissions it now uses. Reconnecting grants it - nothing else changes.",
+    };
   }
 
   const fresh = await freshAccessToken({

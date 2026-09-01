@@ -39,6 +39,19 @@ export const SCOPES = [
   "https://www.googleapis.com/auth/datamanager",
 ];
 
+/**
+ * Scopes we now require that a stored connection was never granted.
+ *
+ * Adding a scope silently strands every connection made before it: the token
+ * still refreshes, still authenticates, and fails only once a request needs
+ * the new permission - by which point the error arrives from deep inside a
+ * send rather than at the door.
+ */
+export function missingScopes(granted: string | null | undefined, required = SCOPES): string[] {
+  const held = new Set((granted ?? "").split(/\s+/).filter(Boolean));
+  return required.filter((scope) => !held.has(scope));
+}
+
 export function oauthConfigFromEnv(redirectUri: string): OAuthConfig | null {
   const clientId = process.env.GOOGLE_ADS_CLIENT_ID;
   const clientSecret = process.env.GOOGLE_ADS_CLIENT_SECRET;

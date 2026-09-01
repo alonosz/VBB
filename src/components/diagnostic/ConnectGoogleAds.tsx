@@ -185,6 +185,16 @@ export function ConnectGoogleAds({
         }),
       });
       const data = await res.json();
+      /*
+       * The same recovery the listing has. A connection can go stale between
+       * picking an account and sending - a revoked token, or a permission we
+       * have started needing since - and a dead end here would leave somebody
+       * one click from working with no way to take it.
+       */
+      if (res.status === 409) {
+        await beginOAuth();
+        return;
+      }
       if (!res.ok || !data.ok) {
         setError(data.error ?? "Sending the values failed.");
         return;

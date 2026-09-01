@@ -1,15 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  authorizeUrl,
-  exchangeCode,
-  refreshAccessToken,
-  refreshedTokenSet,
-  signState,
-  verifyState,
-  needsRefresh,
-  SCOPES,
-  STATE_TTL_MS,
-} from "./oauth";
+import { authorizeUrl, exchangeCode, refreshAccessToken, refreshedTokenSet, signState, verifyState, needsRefresh, SCOPES, STATE_TTL_MS, missingScopes } from "./oauth";
 
 const CONFIG = {
   clientId: "1234.apps.googleusercontent.com",
@@ -146,5 +136,39 @@ describe("refreshing", () => {
     expect(needsRefresh(new Date(NOW.getTime() + 60_000), NOW)).toBe(false);
     // No expiry given is not the same as expired.
     expect(needsRefresh(null, NOW)).toBe(false);
+  });
+});
+
+describe("a connection authorised before we needed a scope", () => {
+  /*
+   * The failure this exists to catch: a token granted only `adwords` keeps
+   * refreshing and keeps authenticating, then fails with "insufficient
+   * authentication scopes" from inside a send. Caught at the door instead, on
+   * the 409 path the browser already knows how to recover from.
+   */
+  it("names the scope a stored connection never received", () => {
+    expect(missingScopes("https://www.googleapis.com/auth/adwords")).toEqual([
+      "https://www.googleapis.com/auth/datamanager",
+    ]);
+  });
+
+  it("is satisfied by a connection holding everything, in any order", () => {
+    expect(
+      missingScopes(
+        "https://www.googleapis.com/auth/datamanager https://www.googleapis.com/auth/adwords"
+      )
+    ).toEqual([]);
+  });
+
+  it("treats an empty or absent scope record as holding nothing", () => {
+    expect(missingScopes("")).toEqual(SCOPES);
+    expect(missingScopes(null)).toEqual(SCOPES);
+    expect(missingScopes(undefined)).toEqual(SCOPES);
+  });
+
+  it("ignores extra scopes we do not ask for", () => {
+    expect(missingScopes(`${SCOPES.join(" ")} https://www.googleapis.com/auth/cloud-platform`)).toEqual(
+      []
+    );
   });
 });
