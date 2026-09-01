@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { describeDatabaseFailure } from "@/lib/db/failure";
 import { feedRepositoryFromEnv, supabaseFromEnv } from "@/lib/feed/supabaseRepository";
 import { hashToken, tokenFromInput } from "@/lib/feed/token";
 import { workspaceRepositoryFromEnv } from "@/lib/workspace/env";
@@ -121,7 +122,7 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error("storing a private app token failed:", error);
     return NextResponse.json(
-      { ok: false, error: "The connection could not be saved. Nothing was stored." },
+      { ok: false, error: describeDatabaseFailure(error) },
       { status: 500 }
     );
   }

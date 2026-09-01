@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { describeDatabaseFailure } from "@/lib/db/failure";
 import { feedOriginFromEnv } from "@/lib/feed/origin";
 import { supabaseFromEnv } from "@/lib/feed/supabaseRepository";
 import { workspaceRepositoryFromEnv } from "@/lib/workspace/env";
@@ -80,7 +81,7 @@ export async function GET(request: Request) {
     });
   } catch (error) {
     console.error("storing a CRM connection failed:", error);
-    return back(origin, { status: "error", reason: "The connection could not be saved. Nothing was stored." });
+    return back(origin, { status: "error", reason: describeDatabaseFailure(error) });
   }
 
   return back(origin, { status: "connected" });

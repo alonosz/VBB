@@ -5,6 +5,7 @@ import { workspaceRepositoryFromEnv } from "@/lib/workspace/env";
 import { keyFromEnv } from "@/lib/sync/secrets";
 import { CrmConnectionStore } from "@/lib/sync/connections";
 import { exchangeCode, oauthConfigFromEnv, SCOPES, verifyState } from "@/lib/sync/google/oauth";
+import { describeDatabaseFailure } from "@/lib/db/failure";
 
 /**
  * Coming back from Google.
@@ -97,8 +98,14 @@ export async function GET(request: Request) {
       scopes: SCOPES.join(" "),
     });
   } catch (error) {
+    /*
+     * Say what the database refused. "Could not be saved" sent somebody
+     * hunting through OAuth config for a migration that had never been run on
+     * this deployment - the sign-in had worked perfectly, and the screen
+     * pointed at the one part that was fine.
+     */
     console.error("storing a Google Ads connection failed:", error);
-    return failed(origin, "The connection could not be saved. Nothing was stored.");
+    return failed(origin, describeDatabaseFailure(error));
   }
 
   return back(origin, { google: "connected" });
