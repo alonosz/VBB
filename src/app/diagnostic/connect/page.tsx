@@ -531,6 +531,7 @@ export default function ConnectPage() {
           </p>
           <ConnectGoogleAds
             rows={apiRows}
+            pricedLeads={priced.length}
             currencyCode={cur}
             modelId={modelId}
             disabled={apiRows.length === 0}

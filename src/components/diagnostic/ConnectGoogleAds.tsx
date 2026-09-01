@@ -46,12 +46,15 @@ type Phase = "idle" | "connecting" | "listing" | "sending";
 
 export function ConnectGoogleAds({
   rows,
+  pricedLeads,
   currencyCode,
   modelId,
   disabled,
 }: {
   /** Finished rows, priced in the browser. The server prices nothing. */
   rows: FeedRow[];
+  /** Every lead the model priced, so the gap to `rows` can be explained. */
+  pricedLeads: number;
   currencyCode: string;
   modelId: string;
   disabled?: boolean;
@@ -208,6 +211,16 @@ export function ConnectGoogleAds({
   }
 
   const working = phase !== "idle";
+  const chosenName =
+    accounts?.find((a) => a.customerId === chosen)?.name ?? "Google Ads";
+
+  /*
+   * Leads carrying neither a click ID nor an email. Google has nothing to
+   * match them to, so they are left out rather than sent with a placeholder -
+   * and the button count differs from the lead count above it, which is
+   * exactly the kind of unexplained gap that reads as a bug.
+   */
+  const unmatchable = Math.max(0, pricedLeads - rows.length);
 
   if (result) return <Sent result={result} currencyCode={currencyCode} />;
 
@@ -275,6 +288,15 @@ export function ConnectGoogleAds({
 
           {chosen && (
             <div className="mt-3.5 flex flex-wrap items-center gap-2.5">
+              {/*
+                "Set up and send 466 conversions" said the wrong thing twice.
+                "Set up" reads as more work for somebody who has already done
+                four steps, when it is a side effect they never have to think
+                about - and it is described in the paragraph above. And
+                "conversions" is exactly what the old, broken way sends: 466
+                identical events. The whole product is the values attached to
+                them, so the button says so, and names where they are going.
+              */}
               <button
                 type="button"
                 onClick={() => void send()}
@@ -283,7 +305,7 @@ export function ConnectGoogleAds({
               >
                 {phase === "sending"
                   ? "Sending…"
-                  : `Set up and send ${rows.length.toLocaleString()} conversions`}
+                  : `Send ${rows.length.toLocaleString()} lead values to ${chosenName}`}
                 {!working && <ArrowIcon />}
               </button>
               {/*
@@ -301,6 +323,16 @@ export function ConnectGoogleAds({
                 Test it first, send nothing
               </button>
             </div>
+          )}
+
+          {chosen && unmatchable > 0 && (
+            <p className="mt-2.5 max-w-[64ch] text-[12.5px] text-[var(--muted)]">
+              <span className="mono">{unmatchable.toLocaleString()}</span> of your{" "}
+              <span className="mono">{pricedLeads.toLocaleString()}</span> priced leads
+              carry neither a click ID nor an email address, so Google has nothing to
+              match them to. They are left out rather than sent with a placeholder,
+              and they still count in your model.
+            </p>
           )}
         </div>
       )}
