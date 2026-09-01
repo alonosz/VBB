@@ -25,6 +25,28 @@ as specified, read the campaigns, and then refused all 466 rows:
 > existing users. Please see
 > https://developers.google.com/data-manager/api/devguides/events/google-ads/offline
 
+Verified against the trade press on 1 Sept 2026, because the refusal was
+surprising enough to be worth checking rather than believing:
+
+- The cutoff was **15 June 2026**. After it, the Google Ads API accepts no new
+  adopters of offline conversion import, enhanced conversions for leads
+  included.
+- The allowlist is developers who **actively used the service between December
+  2025 and May 2026**. It is grandfathering, not an application.
+- Non-allowlisted callers get `CUSTOMER_NOT_ALLOWLISTED_FOR_THIS_FEATURE`, or
+  the friendlier wording we saw.
+
+This developer token was approved for Basic Access on 31 August 2026 and made
+its first call that night. There was never a qualifying window to be inside.
+No configuration change reaches this; it is not ours to fix.
+
+Worth naming the commercial shape of it: every competitor who shipped before
+June is grandfathered in, and every new entrant now starts on the Data
+Manager API. That is a barrier we are on the wrong side of and they are not.
+It is also temporary - the Data Manager API is open to everyone - and it is
+exactly why the file route was kept as a first-class way in rather than a
+fallback.
+
 So the upload path in `src/lib/sync/google/upload.ts` is written against a
 service this project is not allowed to call. Everything either side of it
 works: OAuth, the stored connection, the developer token, v22, the conversion
