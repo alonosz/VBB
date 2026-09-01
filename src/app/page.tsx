@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrowIcon } from "@/components/ArrowIcon";
 import { Logo } from "@/components/brand/Logo";
+import { SiteFooter } from "@/components/legal/SiteFooter";
 
 /**
  * What this is, before anyone is asked to do anything.
@@ -227,6 +228,8 @@ export default function Home() {
           </p>
         </section>
       </main>
+
+      <SiteFooter />
     </div>
   );
 }

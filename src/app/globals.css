@@ -660,3 +660,42 @@ body {
     scroll-behavior: auto !important;
   }
 }
+
+/* ---------------------------------------------------------------------------
+   Legal pages
+
+   Prose, not product chrome. Lists get real spacing and a marker in the muted
+   ink so a clause reads as a clause rather than as a settings panel.
+   --------------------------------------------------------------------------- */
+.legal ul {
+  display: grid;
+  gap: 0.55rem;
+  padding-left: 1.15rem;
+  list-style: disc;
+}
+.legal ul li::marker {
+  color: var(--muted);
+}
+.legal strong {
+  color: var(--foreground);
+  font-weight: 700;
+}
+.legal table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13.5px;
+}
+.legal table th,
+.legal table td {
+  border-bottom: 1px solid var(--border);
+  padding: 0.6rem 0.75rem 0.6rem 0;
+  text-align: left;
+  vertical-align: top;
+}
+.legal table th {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
