@@ -18,16 +18,34 @@ State as of 30 August 2026.
 ## The Data Manager migration: what is built and what is still missing
 
 `src/lib/sync/google/dataManager.ts` maps a FeedRow to an
-`IngestEventsRequest`, from the field-mappings table. Tested, not yet wired,
-because two constants are not knowable from that page:
+`IngestEventsRequest` and posts it. Both unknowns are now closed:
 
-- **The HTTP host and endpoint path** for ingesting events.
-- **The OAuth scope.** Explicitly not the Ads API's `adwords` scope - the docs
-  say new credentials are needed - so `SCOPES` in `google/oauth.ts` gains one
-  and every existing connection has to re-consent.
+    POST https://datamanager.googleapis.com/v1/events:ingest
+    scope: https://www.googleapis.com/auth/datamanager
 
-Both live on **Set up API access** and **Send events**. Neither is guessable
-and both are one line each.
+The endpoint was confirmed by the same probe that found the API version:
+unauthenticated, `v1/events:ingest` answers 401 while `v1/eventsIngest` and
+`v1/events:ingestEvents` answer 404.
+
+`SCOPES` now asks for `adwords` and `datamanager` together, so a customer
+consents once rather than meeting a second screen the day the upload starts
+working. Existing connections carry only `adwords` and must reconnect.
+
+### What is left before it can send
+
+**The sensitive-scope paperwork, which is operational and not code.**
+`datamanager` is a sensitive scope, so:
+
+1. The Cloud project must declare it: Cloud Console -> Data Access -> Add or
+   remove scopes -> tick Data Manager API -> Update -> Save.
+2. The OAuth app needs Google's verification. Without it every customer meets
+   an "unverified app" warning on the way in. Service accounts skip this;
+   user credentials do not, and ours are user credentials.
+3. The signing-in Google Account must be a user on the Google Ads account.
+
+**The wiring.** `publish/route.ts` still calls `uploadConversions`. Swapping
+it for `ingestEvents` also means retiring `readPartialFailures` and the
+per-row counts the screen reports, because neither exists any more.
 
 ### What the migration changes beyond the transport
 
@@ -41,6 +59,14 @@ and both are one line each.
 - **operating_account must own the conversion action**, where the Ads API
   accepted any parent or descendant.
 - **RFC 3339 timestamps**, not `2026-04-01 13:05:00+00:00`.
+
+### One risk worth naming
+
+Google's examples show hashed identifiers in **uppercase** hex; we emit
+lowercase. Hex is hex and the Ads API took lowercase happily, so this is
+probably nothing - but `INVALID_HEX_ENCODING` is a real error code in their
+docs, and under fast-fail being wrong costs the entire batch rather than one
+row. Worth a `validateOnly: true` request as the very first live call.
 
 ### The copy this makes false
 

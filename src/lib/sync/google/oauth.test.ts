@@ -50,9 +50,21 @@ describe("the authorize URL", () => {
     expect(url.searchParams.get("response_type")).toBe("code");
   });
 
-  it("asks for the ads scope and nothing else", () => {
+  /*
+   * One consent, both scopes. Reading the account and creating the conversion
+   * action is `adwords`; sending a value is `datamanager` and nothing else,
+   * since Google closed the Ads API upload to new adopters. Asking separately
+   * would put a second consent screen in front of every customer on the day
+   * the upload starts working.
+   */
+  it("asks for both the ads and the data manager scopes, in one consent", () => {
     expect(url.searchParams.get("scope")).toBe(SCOPES.join(" "));
-    expect(SCOPES).toHaveLength(1);
+    expect(SCOPES).toContain("https://www.googleapis.com/auth/adwords");
+    expect(SCOPES).toContain("https://www.googleapis.com/auth/datamanager");
+  });
+
+  it("asks for nothing beyond those two", () => {
+    expect(SCOPES).toHaveLength(2);
   });
 });
 

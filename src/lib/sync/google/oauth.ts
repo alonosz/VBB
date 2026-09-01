@@ -21,7 +21,23 @@ const TOKEN = "https://oauth2.googleapis.com/token";
  * screen: create one conversion action, upload conversions to it, and read
  * campaign settings. Nothing touches budgets, bids, creatives or targeting.
  */
-export const SCOPES = ["https://www.googleapis.com/auth/adwords"];
+/*
+ * Two scopes, one consent.
+ *
+ * `adwords` reads accounts and campaigns and creates the conversion action.
+ * `datamanager` is the only way a conversion value can now be sent: Google
+ * closed the Ads API upload to new adopters in June 2026. Asking for both at
+ * once means a customer authorises once rather than meeting a second consent
+ * screen the day the upload starts working.
+ *
+ * `datamanager` is a sensitive scope, so the Cloud project must declare it
+ * under Data Access and the OAuth app needs Google's verification - otherwise
+ * every customer sees an "unverified app" warning. See GOOGLE_ADS_API.md.
+ */
+export const SCOPES = [
+  "https://www.googleapis.com/auth/adwords",
+  "https://www.googleapis.com/auth/datamanager",
+];
 
 export function oauthConfigFromEnv(redirectUri: string): OAuthConfig | null {
   const clientId = process.env.GOOGLE_ADS_CLIENT_ID;

@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  DATA_MANAGER_SCOPE,
   conversionActionId,
+  ingestEvents,
+  readIngestError,
   destination,
   eventFor,
   eventTimestamp,
@@ -125,5 +128,90 @@ describe("the whole request", () => {
       rows: [row()],
     });
     expect(body).not.toHaveProperty("validateOnly");
+  });
+});
+
+describe("the fields Google requires and the old API never had", () => {
+  /*
+   * eventSource is listed as "no equivalent" in the field mappings, so nothing
+   * in the previous implementation could have hinted at it - and it is
+   * required for offline conversions. Under fast-fail, forgetting it is not
+   * one lost row, it is every row.
+   */
+  it("declares the event source, without which the batch is rejected", () => {
+    expect(eventFor(row()).eventSource).toBe("WEB");
+  });
+
+  it("uses the Data Manager scope, not the Ads API one", () => {
+    expect(DATA_MANAGER_SCOPE).toBe("https://www.googleapis.com/auth/datamanager");
+    expect(DATA_MANAGER_SCOPE).not.toContain("adwords");
+  });
+});
+
+describe("sending, and being refused", () => {
+  const opts = {
+    operatingAccountId: "5932227642",
+    conversionActionId: "7742720579",
+    rows: [row()],
+    accessToken: "token-1",
+  };
+
+  it("posts to the ingest endpoint with no developer token", async () => {
+    let seen: { url: string; init: RequestInit } | null = null;
+    const fetchImpl = (async (url: string, init: RequestInit) => {
+      seen = { url, init };
+      return new Response(JSON.stringify({ requestId: "abc-123" }), { status: 200 });
+    }) as unknown as typeof fetch;
+
+    const out = await ingestEvents({ ...opts, fetchImpl });
+    expect(out.requestId).toBe("abc-123");
+    expect(seen!.url).toBe("https://datamanager.googleapis.com/v1/events:ingest");
+    const headers = seen!.init.headers as Record<string, string>;
+    expect(headers.authorization).toBe("Bearer token-1");
+    expect(headers).not.toHaveProperty("developer-token");
+  });
+
+  /*
+   * The whole batch dies on one field, so the field is the only useful thing
+   * to report. This is Google's own example error.
+   */
+  it("names the field and row Google refused on", () => {
+    const said = readIngestError(400, {
+      error: {
+        message: "There was a problem with the request.",
+        details: [
+          {
+            fieldViolations: [
+              {
+                field: "events.events[0].user_data.user_identifiers",
+                description: "Email is not hex encoded.",
+                reason: "INVALID_HEX_ENCODING",
+              },
+            ],
+          },
+        ],
+      },
+    });
+    expect(said).toContain("events.events[0].user_data.user_identifiers");
+    expect(said).toContain("Email is not hex encoded.");
+    expect(said).toMatch(/entire request|whole batch/i);
+  });
+
+  it("falls back to Google's message when it names no field", () => {
+    expect(readIngestError(403, { error: { message: "Permission denied." } })).toBe(
+      "Permission denied."
+    );
+  });
+
+  it("throws that message rather than a bare status", async () => {
+    const fetchImpl = (async () =>
+      new Response(
+        JSON.stringify({
+          error: { details: [{ fieldViolations: [{ field: "events.events[0]", reason: "INVALID_SHA256_FORMAT" }] }] },
+        }),
+        { status: 400 }
+      )) as unknown as typeof fetch;
+
+    await expect(ingestEvents({ ...opts, fetchImpl })).rejects.toThrow(/INVALID_SHA256_FORMAT/);
   });
 });

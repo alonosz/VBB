@@ -1,5 +1,19 @@
 import type { FeedRow } from "@/lib/feed/types";
 
+/** Confirmed by probe on 1 Sept 2026: 401 here, 404 on every other spelling. */
+export const DATA_MANAGER_ORIGIN = "https://datamanager.googleapis.com";
+export const INGEST_PATH = "v1/events:ingest";
+
+/**
+ * Required for every Data Manager service, and deliberately not the Ads API's
+ * `adwords` scope - Google's upgrade guide says in bold that new credentials
+ * are needed. It is also a *sensitive* scope, which is an operational cost
+ * rather than a line of code: the Cloud project has to declare it under Data
+ * Access, and the OAuth app needs Google's verification or every customer
+ * meets an "unverified app" warning on the way in.
+ */
+export const DATA_MANAGER_SCOPE = "https://www.googleapis.com/auth/datamanager";
+
 /**
  * The Data Manager API request, which is where offline conversions live now.
  *
@@ -85,6 +99,14 @@ export function eventFor(row: FeedRow): Record<string, unknown> {
     conversionValue: row.value,
     currency: row.currencyCode,
     transactionId: row.rowKey,
+    /*
+     * Required for Google Ads offline conversions, and the field mappings
+     * table lists it as "no equivalent" in the old API - so it is the one
+     * field nothing in the previous implementation could have suggested.
+     * WEB because that is where the lead was captured: a form on their site.
+     * Omitting it fails validation, and under fast-fail that is every row.
+     */
+    eventSource: "WEB",
   };
 
   if (row.clickId) {
@@ -148,4 +170,84 @@ export function describeIngest(outcome: IngestOutcome): string {
     `sight rather than row by row, so the count that lands is confirmed in ` +
     `your Google Ads conversion reporting rather than here.`
   );
+}
+
+export interface IngestResponse {
+  requestId: string | null;
+  /** Optional fields Google accepted but was unhappy with. */
+  fieldWarnings: unknown[];
+}
+
+/** The specific field Google objected to, when it names one. */
+interface ErrorBody {
+  error?: {
+    message?: string;
+    details?: { fieldViolations?: { field?: string; description?: string; reason?: string }[] }[];
+  };
+}
+
+/**
+ * Google names the exact field and row it refused on. Passing that through
+ * beats a generic failure, because under fast-fail one field in one row is
+ * the whole batch, and "events.events[0].user_data.user_identifiers: Email is
+ * not hex encoded" is a fix rather than a mystery.
+ */
+export function readIngestError(status: number, body: unknown): string {
+  const violation = (body as ErrorBody)?.error?.details
+    ?.flatMap((d) => d.fieldViolations ?? [])
+    .find((v) => v.field || v.reason);
+
+  if (violation) {
+    const where = violation.field ? ` at ${violation.field}` : "";
+    const why = violation.description ?? violation.reason ?? "";
+    return (
+      `Google rejected the whole batch${where}: ${why} ` +
+      "The Data Manager API fails the entire request when any one row is wrong, " +
+      "so nothing was recorded."
+    );
+  }
+
+  const message = (body as ErrorBody)?.error?.message?.trim();
+  return message || `Google Ads refused the request (HTTP ${status}).`;
+}
+
+export interface IngestCall extends IngestOptions {
+  accessToken: string;
+  fetchImpl?: typeof fetch;
+  origin?: string;
+}
+
+/**
+ * One request, all rows.
+ *
+ * No developer token: the Data Manager API does not take one, and the account
+ * information it used to carry travels in the destination instead.
+ */
+export async function ingestEvents(call: IngestCall): Promise<IngestResponse> {
+  const fetchImpl = call.fetchImpl ?? fetch;
+  const origin = call.origin ?? DATA_MANAGER_ORIGIN;
+
+  const res = await fetchImpl(`${origin}/${INGEST_PATH}`, {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${call.accessToken}`,
+      "content-type": "application/json",
+    },
+    body: JSON.stringify(ingestEventsRequest(call)),
+  });
+
+  const text = await res.text();
+  let body: unknown = null;
+  if (text) {
+    try {
+      body = JSON.parse(text);
+    } catch {
+      body = null;
+    }
+  }
+
+  if (!res.ok) throw new Error(readIngestError(res.status, body));
+
+  const ok = (body ?? {}) as { requestId?: string; fieldWarnings?: unknown[] };
+  return { requestId: ok.requestId ?? null, fieldWarnings: ok.fieldWarnings ?? [] };
 }
