@@ -349,6 +349,8 @@ export function ConnectGoogleAds({
           {error}
         </p>
       )}
+
+      <EvaluationHandoff unlocked={false} />
     </div>
   );
 }
@@ -416,20 +418,8 @@ function Sent({ result, currencyCode }: { result: PublishResult; currencyCode: s
       )}
 
       {/*
-        The handover, and it belongs only here.
-        
-        Setup is walked once; the evaluation is the screen somebody returns to
-        for the life of the account, so it needs the weight of a destination
-        rather than a link in a paragraph. It also cannot appear before this
-        moment: the campaign audit reads the account this publish just
-        recorded, so an evaluation opened before a successful send would have
-        nothing to say about Google and would teach somebody the screen is
-        empty.
-      */}
-      {/*
         A dry run is a pass, not a delivery, and the difference has to survive
-        somebody skim-reading a green tick. The evaluation button below stays
-        hidden until values have actually gone.
+        somebody skim-reading a green tick.
       */}
       {result.validateOnly && (
         <p className="mt-3 max-w-[68ch] text-[13px] text-[var(--muted-strong)]">
@@ -439,23 +429,69 @@ function Sent({ result, currencyCode }: { result: PublishResult; currencyCode: s
         </p>
       )}
 
-      {landed && (
-      <div className="mt-5 border-t border-[var(--border)] pt-5">
-        <p className="label">From here on</p>
-        <h3 className="mt-1.5 text-[15px] font-bold">Check whether it worked</h3>
-        <p className="mt-1 max-w-[64ch] text-[13.5px] text-[var(--muted)]">
-          Reads your CRM live and compares the leads Google buys now against the
-          ones it bought before, with the leads that never came from Google as a
-          control. Nothing to re-upload, ever.
-        </p>
-        <Link href="/evaluation" className="btn btn-primary mt-3.5 text-[13.5px]">
-          Open the evaluation
-          <ArrowIcon />
-        </Link>
-        <p className="mono mt-2.5 text-[12px] text-[var(--muted)]">
-          Worth bookmarking: /evaluation
-        </p>
-      </div>
+      <EvaluationHandoff unlocked={landed} />
+    </div>
+  );
+}
+
+/**
+ * The handover, shown from the first moment somebody lands on this step.
+ *
+ * It was hidden until a successful send, on the reasoning that the evaluation
+ * reads the account a publish records and would otherwise open empty. That
+ * reasoning still holds for opening it - it does not hold for showing it. The
+ * measurement is the reason to connect at all, and hiding it until after the
+ * work means the one screen worth returning to is invisible to everybody still
+ * deciding whether to do the work. So it is always here, and locked until
+ * there is something in it, which says the same thing without teaching anybody
+ * that the screen is empty.
+ */
+function EvaluationHandoff({ unlocked }: { unlocked: boolean }) {
+  return (
+    <div className="mt-5 border-t border-[var(--border)] pt-5">
+      <p className="label">{unlocked ? "From here on" : "After you send"}</p>
+      <h3 className="mt-1.5 text-[15px] font-bold">Check whether it worked</h3>
+      <p className="mt-1 max-w-[64ch] text-[13.5px] text-[var(--muted)]">
+        Reads your CRM live and compares the leads Google buys now against the
+        ones it bought before, with the leads that never came from Google as a
+        control. Nothing to re-upload, ever.
+      </p>
+
+      {unlocked ? (
+        <>
+          <Link href="/evaluation" className="btn btn-primary mt-3.5 text-[13.5px]">
+            Open the evaluation
+            <ArrowIcon />
+          </Link>
+          <p className="mono mt-2.5 text-[12px] text-[var(--muted)]">
+            Worth bookmarking: /evaluation
+          </p>
+        </>
+      ) : (
+        <>
+          {/*
+            Deliberately a real, disabled button rather than a greyed link: it
+            has to read as a thing that exists and is not ready, not as a thing
+            that failed to load.
+          */}
+          <button
+            type="button"
+            disabled
+            aria-describedby="evaluation-locked"
+            className="btn btn-secondary mt-3.5 cursor-not-allowed text-[13.5px] opacity-60"
+          >
+            <span aria-hidden>🔒</span>
+            Open the evaluation
+          </button>
+          <p
+            id="evaluation-locked"
+            className="mt-2.5 max-w-[64ch] text-[12.5px] text-[var(--muted)]"
+          >
+            Opens once your values have actually landed in Google. It compares
+            two cohorts of your own leads, so before the first send there is
+            nothing on either side of the comparison.
+          </p>
+        </>
       )}
     </div>
   );
