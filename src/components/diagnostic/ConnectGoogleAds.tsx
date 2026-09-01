@@ -26,8 +26,8 @@ import { StrategyPanel } from "@/components/report/campaignStrategy";
 interface PublishResult {
   account: { customerId: string; name: string; displayId: string };
   conversionAction: { name: string; existed: boolean };
-  conversions: { accepted: number; summary: string };
-  adjustments: { accepted: number; summary: string };
+  conversions: { accepted: number; failures: unknown[]; summary: string };
+  adjustments: { accepted: number; failures: unknown[]; summary: string };
   strategies: StrategyAudit | null;
 }
 
@@ -284,16 +284,35 @@ export function ConnectGoogleAds({
  * see only that nothing changed.
  */
 function Sent({ result, currencyCode }: { result: PublishResult; currencyCode: string }) {
+  /*
+   * A publish that reached Google and was refused by it is not a success, and
+   * for one afternoon this said "Sent" with a green tick above the sentence
+   * "Google refused all 466 conversions". The call had returned 200; nothing
+   * had landed. Reporting the request rather than the outcome is precisely the
+   * failure this product exists to avoid, so the heading is derived from what
+   * Google accepted and from nothing else.
+   */
+  const accepted = result.conversions.accepted;
+  const refused = result.conversions.failures.length;
+  const landed = accepted > 0;
+
+  const mark = !landed
+    ? { glyph: "×", bg: "var(--danger)", title: `Nothing reached ${result.account.name}` }
+    : refused > 0
+      ? { glyph: "!", bg: "var(--warn)", title: `Partly sent to ${result.account.name}` }
+      : { glyph: "✓", bg: "var(--accent)", title: `Sent to ${result.account.name}` };
+
   return (
     <div className="well mt-4 p-5">
       <p className="flex items-center gap-2 text-[15px] font-bold">
         <span
           aria-hidden
-          className="flex size-5 items-center justify-center rounded-full bg-[var(--accent)] text-[11px] font-bold text-white"
+          className="flex size-5 items-center justify-center rounded-full text-[11px] font-bold text-white"
+          style={{ background: mark.bg }}
         >
-          ✓
+          {mark.glyph}
         </span>
-        Sent to {result.account.name}
+        {mark.title}
       </p>
 
       <ul className="mt-3 grid gap-1.5 text-[13.5px]">
@@ -330,6 +349,21 @@ function Sent({ result, currencyCode }: { result: PublishResult; currencyCode: s
         nothing to say about Google and would teach somebody the screen is
         empty.
       */}
+      {/*
+        Nothing landed, so the API route is not the way in today. The feed
+        below needs no API access at all and is unaffected by whatever Google
+        refused here - saying so is more use than leaving somebody staring at
+        an error with no second door.
+      */}
+      {!landed && (
+        <p className="mt-3 max-w-[68ch] text-[13px] text-[var(--muted-strong)]">
+          Your values have not reached Google. The file route below needs no API
+          access and is unaffected, so it is the way through while this is sorted
+          out.
+        </p>
+      )}
+
+      {landed && (
       <div className="mt-5 border-t border-[var(--border)] pt-5">
         <p className="label">From here on</p>
         <h3 className="mt-1.5 text-[15px] font-bold">Check whether it worked</h3>
@@ -346,6 +380,7 @@ function Sent({ result, currencyCode }: { result: PublishResult; currencyCode: s
           Worth bookmarking: /evaluation
         </p>
       </div>
+      )}
     </div>
   );
 }

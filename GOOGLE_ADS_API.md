@@ -15,6 +15,36 @@ State as of 30 August 2026.
 
 ---
 
+## Blocked: UploadClickConversions is closed to new integrations
+
+1 Sept 2026, first real upload. Google created the conversion action exactly
+as specified, read the campaigns, and then refused all 466 rows:
+
+> New integrations for uploading click conversions should use the Data Manager
+> API. Usage of ConversionUploadService.UploadClickConversions is limited to
+> existing users. Please see
+> https://developers.google.com/data-manager/api/devguides/events/google-ads/offline
+
+So the upload path in `src/lib/sync/google/upload.ts` is written against a
+service this project is not allowed to call. Everything either side of it
+works: OAuth, the stored connection, the developer token, v22, the conversion
+action, the campaign audit.
+
+**Not urgent, because nothing depends on it.** The CSV feed reaches Google with
+no API access at all and is untouched by this. The API route was always the
+nicer half - per-row errors, no setup wizard - not the only way in.
+
+**What the migration needs, before any of it is written:** the Data Manager
+API's host, version, endpoint, auth (whether the Google Ads developer token
+header still applies), and the event payload shape - destination account,
+conversion action, value, currency, timestamp, and the user identifiers
+(gclid, hashed email). The doc URL above is the source. It was not readable
+from the build sandbox, so nobody should infer the shape from the old service:
+guessing an API shape is how a day disappears.
+
+The identifier and value logic is already provider-neutral and does not move.
+What changes is the transport in `upload.ts` and its fake.
+
 ## The API version is a live dependency, not a constant
 
 Found on 31 Aug 2026, on the first call this code ever made to real Google.
