@@ -36,12 +36,12 @@ export function MixShiftPanel({
 
   return (
     <section className="card p-5 sm:p-6">
-      <h2 className="text-[15px] font-bold">Is Google buying better leads?</h2>
+      <h2 className="text-[15px] font-bold">The pipeline Google is building you</h2>
       <p className="mt-1 max-w-[72ch] text-[13px] text-[var(--muted)]">
         Value bidding does one thing: it changes the mix of leads the platform
-        buys. That is visible the day a lead arrives, so this answers in weeks
-        what closed deals take a year to prove. It is not proof you made money -
-        that is the comparison above.
+        buys. A lead carries its expected value the day it arrives, so this
+        answers in weeks what closed deals take a year to prove. It is pipeline,
+        not banked revenue - the comparison above is the money.
       </p>
 
       {verdict.kind === "flat-model" && (
@@ -71,33 +71,47 @@ export function MixShiftPanel({
                 : "border-[var(--warn)]/40 bg-[var(--warn-soft)]")
             }
           >
-            <p className="text-[14px] font-bold">
+            {/*
+              The number that goes in the board pack, and the one they will
+              screenshot. A rate belongs underneath it, not instead of it.
+            */}
+            <p className="label">Expected pipeline from Google</p>
+            <p className="mono mt-1 text-[1.9rem] leading-none font-bold tracking-tight">
+              {money(verdict.pipeline.perMonthAfter, currency)}
+              <span className="text-[0.95rem] font-semibold text-[var(--muted)]">
+                /mo
+              </span>
+            </p>
+            <p className="mono mt-1.5 text-[12.5px] text-[var(--muted)]">
+              up from {money(verdict.pipeline.perMonthBefore, currency)}/mo ·{" "}
+              {money(verdict.pipeline.createdSince, currency)} created since the
+              switch, across {verdict.googleAfter.toLocaleString()} leads
+            </p>
+
+            <p className="mt-3 max-w-[70ch] text-[13.5px] font-bold">
               The leads Google buys now are worth{" "}
               <span className="mono">{pct(Math.abs(verdict.change))}</span>{" "}
-              {verdict.change > 0 ? "more" : "less"} on your own model than before
-              the switch.
+              {verdict.change > 0 ? "more" : "less"} each than before the switch.
             </p>
-            <p className="mono mt-1.5 text-[13px] text-[var(--muted-strong)]">
+            <p className="mono mt-1 text-[13px] text-[var(--muted-strong)]">
               {money(verdict.scoreBefore, currency)}
               <span className="px-1.5 text-[var(--muted)]">&rarr;</span>
               <span className="font-semibold text-[var(--foreground)]">
                 {money(verdict.scoreAfter, currency)}
               </span>{" "}
-              <span className="text-[12px] text-[var(--muted)]">
-                average per lead, across{" "}
-                {(verdict.googleBefore + verdict.googleAfter).toLocaleString()} leads
-              </span>
+              <span className="text-[12px] text-[var(--muted)]">per lead</span>
             </p>
-            {verdict.attributable !== null && (
-              <p className="mt-2 max-w-[70ch] text-[13px] text-[var(--muted-strong)]">
+
+            {verdict.attributable !== null && verdict.pipeline.attributable !== null && (
+              <p className="mt-2.5 max-w-[70ch] text-[13px] text-[var(--muted-strong)]">
                 Leads from everywhere else moved{" "}
                 <span className="mono">{pct(verdict.controlChange ?? 0)}</span> over the
                 same period, so{" "}
-                <span className="mono font-semibold">
-                  {pct(Math.abs(verdict.attributable))}
+                <span className="mono font-bold">
+                  {money(Math.abs(verdict.pipeline.attributable), currency)}
                 </span>{" "}
-                of this is the bid change rather than a shift in who was going to
-                find you anyway.
+                of that pipeline is the bid change rather than a shift in who was
+                going to find you anyway.
               </p>
             )}
           </div>
@@ -113,6 +127,18 @@ export function MixShiftPanel({
             {verdict.chance.unlikelyChance
               ? "Luck is an unlikely explanation."
               : "That is often enough that the mix may not have really moved."}
+          </p>
+
+          {/*
+            Said plainly, every time. Their CRM will report a bigger pipeline
+            number because it counts every open deal at sticker price, and a
+            figure that cannot survive being placed beside HubSpot is worse
+            than no figure.
+          */}
+          <p className="mt-2.5 max-w-[74ch] text-[12.5px] text-[var(--muted)]">
+            Expected means each lead is already multiplied by how often its kind
+            actually closes for you, so this is smaller than the pipeline figure
+            in your CRM - and a good deal likelier to arrive.
           </p>
 
           {/*

@@ -1,5 +1,5 @@
 import type { MappedDeal } from "./types";
-import { mulberry32, round, shuffleInPlace } from "./helpers";
+import { monthsSpanned, mulberry32, round, shuffleInPlace } from "./helpers";
 import { isGoogleSourced } from "./didItWork";
 import { valueLead, type ValueModel } from "./valueModel";
 import { CHANCE_SHUFFLES, CHANCE_THRESHOLD, type ChanceCheck } from "./didItWork";
@@ -72,7 +72,38 @@ export type MixVerdict =
       /** The levels that moved most, largest absolute shift first. */
       movers: LevelShift[];
       chance: ChanceCheck;
+      pipeline: Pipeline;
     };
+
+/**
+ * Pipeline, which is the number a marketer is actually judged on.
+ *
+ * Everything else here is a rate - what one lead is worth. A rate does not go
+ * in a board pack. "We added $180,000 of expected pipeline this quarter" does,
+ * and unlike closed revenue it is knowable now, because a lead carries its
+ * expected value the day it arrives rather than the day it closes.
+ *
+ * Expected is doing real work in that phrase. This is not the CRM's pipeline
+ * figure, which sums every open deal at full sticker price and quietly assumes
+ * they all close. Each lead here is already multiplied by how often its kind
+ * actually closes for this advertiser, so the number is smaller than their CRM
+ * says and very much likelier to arrive. Saying which one we mean, every time,
+ * is the difference between a credible figure and one that gets torn apart the
+ * first time somebody opens HubSpot beside it.
+ *
+ * Attribution holds volume constant on purpose. Pipeline also rises when
+ * somebody raises the budget, and that was not us. Only the change in what a
+ * lead is worth is claimed, multiplied by however many leads arrived.
+ */
+export interface Pipeline {
+  /** Expected value of every Google lead since the switch. */
+  createdSince: number;
+  /** Per month, so windows of different lengths can be compared. */
+  perMonthBefore: number;
+  perMonthAfter: number;
+  /** Above what the control trend would have produced. Null without a control. */
+  attributable: number | null;
+}
 
 export interface MixShiftInput {
   deals: MappedDeal[];
@@ -144,10 +175,31 @@ export function mixShift(input: MixShiftInput): MixVerdict {
     ? relativeChange(meanScore(o.before, input.model), meanScore(o.after, input.model))
     : null;
 
+  const totalBefore = scoreBefore * g.before.length;
+  const totalAfter = scoreAfter * g.after.length;
+  const monthsOf = (deals: MappedDeal[]) => monthsSpanned(deals.map((d) => d.createdAt!));
+
+  /*
+   * The counterfactual lead: one that only rode whatever the control did. The
+   * gap between that and reality, across every lead that actually arrived, is
+   * the pipeline the bid change can claim - and no more.
+   */
+  const counterfactualPerLead = scoreBefore * (1 + (controlChange ?? 0));
+  const attributablePipeline =
+    controlChange === null
+      ? null
+      : round((scoreAfter - counterfactualPerLead) * g.after.length);
+
   return {
     kind: "measured",
     googleBefore: g.before.length,
     googleAfter: g.after.length,
+    pipeline: {
+      createdSince: round(totalAfter),
+      perMonthBefore: round(totalBefore / monthsOf(g.before)),
+      perMonthAfter: round(totalAfter / monthsOf(g.after)),
+      attributable: attributablePipeline,
+    },
     scoreBefore: round(scoreBefore),
     scoreAfter: round(scoreAfter),
     change,

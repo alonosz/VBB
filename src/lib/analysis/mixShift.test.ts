@@ -166,3 +166,55 @@ describe("has the mix of leads Google buys actually changed", () => {
     expect(a.chance.asExtreme).toBe(b.chance.asExtreme);
   });
 });
+
+describe("pipeline, the number that goes in the board pack", () => {
+  it("totals the expected value of every Google lead since the switch", () => {
+    const v = run(arrivals(3, 7)).verdict;
+    if (v.kind !== "measured") throw new Error("expected a measurement");
+    // 400 leads since, each worth the post-switch average. Compared
+    // relatively: the average is rounded to the cent before it is multiplied
+    // out, so a few hundredths drift across a seven-figure total.
+    expect(v.pipeline.createdSince / (v.scoreAfter * 400)).toBeCloseTo(1, 5);
+    expect(v.pipeline.createdSince).toBeGreaterThan(0);
+  });
+
+  /*
+   * Windows of different lengths must not be compared raw, or a longer
+   * "before" period looks like a decline all by itself.
+   */
+  it("reports a monthly rate so unequal windows still compare", () => {
+    const v = run(arrivals(3, 7)).verdict;
+    if (v.kind !== "measured") throw new Error("expected a measurement");
+    expect(v.pipeline.perMonthAfter).toBeGreaterThan(v.pipeline.perMonthBefore);
+  });
+
+  /*
+   * Attribution holds volume constant. A rise that happened off Google too is
+   * the market, so nothing is claimed for it.
+   */
+  it("claims nothing when the rise happened everywhere", () => {
+    const v = run([...arrivals(3, 7), ...arrivals(3, 7, false)]).verdict;
+    if (v.kind !== "measured") throw new Error("expected a measurement");
+    expect(v.pipeline.attributable).not.toBeNull();
+    expect(Math.abs(v.pipeline.attributable!)).toBeLessThan(v.pipeline.createdSince * 0.1);
+  });
+
+  it("claims the gap when the control stayed put", () => {
+    const v = run([...arrivals(3, 7), ...arrivals(3, 3, false)]).verdict;
+    if (v.kind !== "measured") throw new Error("expected a measurement");
+    // Control flat, so the whole per-lead rise is ours, times 400 leads.
+    expect(v.pipeline.attributable! / ((v.scoreAfter - v.scoreBefore) * 400)).toBeCloseTo(
+      1,
+      5
+    );
+    expect(v.pipeline.attributable!).toBeGreaterThan(0);
+  });
+
+  it("does not claim pipeline without a control to compare against", () => {
+    const v = run(arrivals(3, 7)).verdict;
+    if (v.kind !== "measured") throw new Error("expected a measurement");
+    expect(v.pipeline.attributable).toBeNull();
+    // The honest total still stands on its own.
+    expect(v.pipeline.createdSince).toBeGreaterThan(0);
+  });
+});
