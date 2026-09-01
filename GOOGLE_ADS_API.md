@@ -15,6 +15,45 @@ State as of 30 August 2026.
 
 ---
 
+## The Data Manager migration: what is built and what is still missing
+
+`src/lib/sync/google/dataManager.ts` maps a FeedRow to an
+`IngestEventsRequest`, from the field-mappings table. Tested, not yet wired,
+because two constants are not knowable from that page:
+
+- **The HTTP host and endpoint path** for ingesting events.
+- **The OAuth scope.** Explicitly not the Ads API's `adwords` scope - the docs
+  say new credentials are needed - so `SCOPES` in `google/oauth.ts` gains one
+  and every existing connection has to re-consent.
+
+Both live on **Set up API access** and **Send events**. Neither is guessable
+and both are one line each.
+
+### What the migration changes beyond the transport
+
+- **No developer token.** The header goes; the account information it carried
+  moves inside the destination.
+- **Fast-fail, not partial failure.** One bad row rejects the whole request.
+  `readPartialFailures()` and its map-back-by-index have no equivalent.
+- **Asynchronous.** The response is a request id, not an accepted count.
+  Results arrive via diagnostics.
+- **Numeric conversion action id**, not a resource name.
+- **operating_account must own the conversion action**, where the Ads API
+  accepted any parent or descendant.
+- **RFC 3339 timestamps**, not `2026-04-01 13:05:00+00:00`.
+
+### The copy this makes false
+
+The connect screen promises to "tell you exactly which rows Google took".
+Under fast-fail and asynchronous processing that is no longer true, and it
+has to change with the transport rather than after somebody notices.
+
+### Adjustments
+
+The field mappings cover `UploadClickConversionRequest` only. Whether
+`ConversionAdjustmentUploadService` has a Data Manager equivalent, and what a
+restatement looks like there, is not answered by that page and is still open.
+
 ## Blocked: UploadClickConversions is closed to new integrations
 
 1 Sept 2026, first real upload. Google created the conversion action exactly
