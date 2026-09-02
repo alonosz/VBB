@@ -36,6 +36,9 @@ export function buildFeedCsv(
       formatConversionTime(r.conversionTime),
       r.value.toFixed(2),
       r.currencyCode,
+      // Already the API's transaction id for the same lead, which is what lets
+      // Google reconcile a file fetch and an API send instead of counting both.
+      r.rowKey,
     ]);
   }
 

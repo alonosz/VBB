@@ -22,12 +22,27 @@ import type { ValuedLead } from "@/lib/analysis/valueModel";
  */
 export type IdentifierSet = "clickId" | "email" | "both";
 
+/**
+ * The column that stops one lead being counted twice.
+ *
+ * An advertiser can have both routes into the same account at once: a
+ * scheduled fetch of this file, and the API sending the same leads directly.
+ * Google reconciles the two on this value and nothing else, and it must match
+ * the API's transaction id exactly - a prefix, a suffix or a stray space and
+ * the same lead is counted twice at twice its worth, which looks like the
+ * product working unusually well.
+ *
+ * Both sides therefore derive it the same way, from `conversionOrderId`.
+ */
+export const ORDER_ID_COLUMN = "Order ID";
+
 export const GOOGLE_ADS_COLUMNS = [
   "Google Click ID",
   "Conversion Name",
   "Conversion Time",
   "Conversion Value",
   "Conversion Currency",
+  ORDER_ID_COLUMN,
 ] as const;
 
 export const GOOGLE_ADS_EMAIL_COLUMNS = [
@@ -36,6 +51,7 @@ export const GOOGLE_ADS_EMAIL_COLUMNS = [
   "Conversion Time",
   "Conversion Value",
   "Conversion Currency",
+  ORDER_ID_COLUMN,
 ] as const;
 
 /**
@@ -52,6 +68,7 @@ export const GOOGLE_ADS_BOTH_COLUMNS = [
   "Conversion Time",
   "Conversion Value",
   "Conversion Currency",
+  ORDER_ID_COLUMN,
 ] as const;
 
 /** What this feed matches on, for a person reading a screen. */
@@ -107,6 +124,24 @@ export async function sha256Hex(input: string): Promise<string> {
   return Array.from(new Uint8Array(digest))
     .map((b) => b.toString(16).padStart(2, "0"))
     .join("");
+}
+
+/**
+ * One conversion's identity, the same on every route it can travel.
+ *
+ * Keyed on the click ID where there is one and the hashed email otherwise -
+ * the order Google matches in - and on the arrival time, so a lead that
+ * arrives twice on the same identifier is still two conversions.
+ *
+ * Lives here rather than in the feed because both the file and the API need
+ * it, and a second implementation of "the same lead" is how the two stop
+ * agreeing.
+ */
+export async function conversionOrderId(
+  identifierValue: string,
+  conversionTime: Date
+): Promise<string> {
+  return sha256Hex(`${identifierValue}|${conversionTime.toISOString()}`);
 }
 
 export interface ModelExportOptions {
@@ -173,6 +208,7 @@ export async function buildValueModelCsv(
       formatConversionTime(deal.createdAt),
       value.toFixed(2),
       opts.currencyCode,
+      await conversionOrderId(deal.clickId?.trim() || hashedEmail!, deal.createdAt),
     ]);
   }
 

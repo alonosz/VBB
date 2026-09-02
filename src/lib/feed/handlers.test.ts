@@ -196,7 +196,7 @@ describe("publishFeed", () => {
     });
     const lines = served.body.trim().split(/\r?\n/);
     expect(lines[0]).toBe(
-      "Google Click ID,Email,Conversion Name,Conversion Time,Conversion Value,Conversion Currency"
+      "Google Click ID,Email,Conversion Name,Conversion Time,Conversion Value,Conversion Currency,Order ID"
     );
     // Both rows served, including the one with no click ID.
     expect(lines).toHaveLength(3);
@@ -262,7 +262,7 @@ describe("serveFeed", () => {
     expect(res.headers["content-type"]).toMatch(/text\/csv/);
     expect(res.headers["cache-control"]).toBe("no-store");
     expect(res.body.split(/\r?\n/)[0]).toBe(
-      "Google Click ID,Conversion Name,Conversion Time,Conversion Value,Conversion Currency"
+      "Google Click ID,Conversion Name,Conversion Time,Conversion Value,Conversion Currency,Order ID"
     );
     expect(res.body).toContain(CONVERSION_NAME);
     expect(res.body.trim().split(/\r?\n/)).toHaveLength(3);

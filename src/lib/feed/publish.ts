@@ -1,5 +1,5 @@
 import type { ValuedLead } from "@/lib/analysis/valueModel";
-import { normalizeEmail, sha256Hex } from "@/lib/export/googleAds";
+import { conversionOrderId, normalizeEmail, sha256Hex } from "@/lib/export/googleAds";
 import type { GateValue } from "@/lib/analysis/gateValue";
 import { gateStatusFor } from "@/lib/analysis/gateValue";
 import type { FeedIdentifier, FeedRow } from "./types";
@@ -69,7 +69,10 @@ export interface PublishResult {
  * a feed cannot send Google the same conversion twice.
  */
 export async function feedRowKey(identifierValue: string, conversionTime: Date): Promise<string> {
-  return sha256Hex(`${identifierValue}|${conversionTime.toISOString()}`);
+  // The file writes this into its Order ID column and the API sends it as the
+  // transaction id, so the two routes name the same lead identically. Kept as
+  // one function for that reason: two implementations is how they drift.
+  return conversionOrderId(identifierValue, conversionTime);
 }
 
 export async function buildFeedRows(opts: PublishOptions): Promise<PublishResult> {

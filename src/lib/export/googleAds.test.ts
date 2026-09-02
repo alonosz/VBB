@@ -174,7 +174,7 @@ describe("buildValueModelCsv", () => {
     // Every row has six cells even where one identifier is blank: a short row
     // shifts the value into the wrong column, which Google reads rather than
     // rejects.
-    for (const line of lines.slice(1)) expect(line.split(",")).toHaveLength(6);
+    for (const line of lines.slice(1)) expect(line.split(",")).toHaveLength(7);
     expect(lines[1].startsWith("Cj0abc,ff8d9819fc0e12bf")).toBe(true);
     expect(lines[2].startsWith(",")).toBe(true);
     expect(lines[3]).toMatch(/^Cj0ccc,,/);

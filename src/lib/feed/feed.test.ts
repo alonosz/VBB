@@ -11,6 +11,7 @@ import { InMemoryFeedRepository } from "./repository";
 import { assertStorableRow, type FeedRow } from "./types";
 import { generateFeedToken, hashToken, hashIp, TOKEN_PREFIX } from "./token";
 import type { ValuedLead } from "@/lib/analysis/valueModel";
+import { conversionOrderId } from "@/lib/export/googleAds";
 import type { MappedDeal } from "@/lib/analysis/types";
 
 const NOW = new Date("2026-06-15T12:00:00Z");
@@ -241,11 +242,40 @@ describe("republishing", () => {
 // ---------------------------------------------------------------------------
 
 describe("buildFeedCsv", () => {
+  /*
+   * The failure this column exists to stop.
+   *
+   * An advertiser can have both routes into one account at once: Google
+   * fetching this file on a schedule, and the API sending the same leads
+   * directly. Google reconciles them on the Order ID and nothing else, so if
+   * the file's value and the API's transaction id disagree by so much as a
+   * space, every lead is counted twice at twice its worth - and double revenue
+   * from a tool that promises better revenue is the one bug nobody reports.
+   */
+  it("names a lead in the file exactly as the API names it", async () => {
+    const clickId = "Cj0deduplicate";
+    const createdAt = new Date("2026-05-01T09:00:00Z");
+    const { rows } = await publish([
+      lead({ id: "1", value: 900, clickId, createdAt }),
+    ]);
+
+    const orderId = buildFeedCsv(rows, "clickId", "VBB Lead Value")
+      .trim()
+      .split(/\r?\n/)[1]
+      .split(",")
+      .at(-1);
+
+    // What the API puts in transactionId, derived independently here.
+    expect(orderId).toBe(await conversionOrderId(clickId, createdAt));
+    expect(orderId).toBe(rows[0].rowKey);
+    expect(orderId).not.toBe("");
+  });
+
   it("uses Google's exact click-ID columns in order", async () => {
     const { rows } = await publish([lead({ id: "1", value: 1200, clickId: "Cj0aaaaaaaaa" })]);
     const csv = buildFeedCsv(rows, "clickId", "VBB Lead Value");
     expect(csv.split(/\r?\n/)[0]).toBe(
-      "Google Click ID,Conversion Name,Conversion Time,Conversion Value,Conversion Currency"
+      "Google Click ID,Conversion Name,Conversion Time,Conversion Value,Conversion Currency,Order ID"
     );
   });
 
@@ -457,13 +487,13 @@ describe("a feed carrying both identifiers", () => {
     ]);
     const lines = buildFeedCsv(rows, "both", "VBB Lead Value").split(/\r?\n/);
     expect(lines[0]).toBe(
-      "Google Click ID,Email,Conversion Name,Conversion Time,Conversion Value,Conversion Currency"
+      "Google Click ID,Email,Conversion Name,Conversion Time,Conversion Value,Conversion Currency,Order ID"
     );
     expect(lines[1].startsWith("Cj0aaaaaaaaa,")).toBe(true);
     // The click ID cell is empty, not missing: a short row shifts every value
     // after it into the wrong column, which Google reads rather than rejects.
     expect(lines[2].startsWith(",")).toBe(true);
-    expect(lines[2].split(",")).toHaveLength(6);
+    expect(lines[2].split(",")).toHaveLength(7);
     expect(lines.join("\n")).not.toMatch(/@/);
   });
 });
