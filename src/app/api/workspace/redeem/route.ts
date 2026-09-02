@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { feedRepositoryFromEnv } from "@/lib/feed/supabaseRepository";
 import { inviteStoreFromEnv, workspaceRepositoryFromEnv } from "@/lib/workspace/env";
 import { hashInviteToken, looksLikeInviteToken } from "@/lib/workspace/invite";
 import { generateWorkspaceKey } from "@/lib/workspace/key";
@@ -81,9 +82,34 @@ export async function POST(request: Request) {
   const generated = await generateWorkspaceKey();
   await workspaces.rotateKey(workspace.id, generated.keyHash, generated.keyPrefix);
 
+  /*
+   * Whether they have been here before, so the landing page can point at the
+   * right screen rather than at the same one for everybody.
+   *
+   * A new partner's overview is empty by definition, and sending them there
+   * first says "nothing here" at the exact moment they are deciding whether
+   * this is worth their afternoon. Someone who lost their key wants the
+   * opposite - their overview, not a fresh analysis over the top of the model
+   * they already have.
+   *
+   * Best-effort. A link that opens is worth more than a link that knows which
+   * button to bold, so a failure here just falls back to treating them as new.
+   */
+  let returning = false;
+  try {
+    const feeds = feedRepositoryFromEnv();
+    if (feeds) {
+      const existing = await feeds.listForWorkspace(workspace.id);
+      returning = existing.length > 0;
+    }
+  } catch (error) {
+    console.error("checking whether a redeemed workspace has a feed failed:", error);
+  }
+
   return NextResponse.json({
     ok: true,
     workspaceName: workspace.name,
+    returning,
     // The one time this value exists outside the customer's browser.
     key: generated.key,
   });
