@@ -83,7 +83,15 @@ export function ConnectGoogleAds({
   const [usable, setUsable] = useState<string[]>([]);
   const [chosen, setChosen] = useState<string | null>(null);
   const [result, setResult] = useState<PublishResult | null>(null);
-  const [readiness, setReadiness] = useState<AccountReadiness | null>(null);
+  /*
+   * Keyed by the account it describes, so switching accounts cannot leave the
+   * previous one's settings on screen while the new answer is in flight -
+   * which is how somebody reads "customer data terms not accepted" about an
+   * account that accepted them.
+   */
+  const [readiness, setReadiness] = useState<
+    { customerId: string; value: AccountReadiness } | null
+  >(null);
   const resumed = useRef(false);
 
   const keepMintedKey = (data: { workspaceKey?: unknown }) => {
@@ -172,10 +180,7 @@ export function ConnectGoogleAds({
    * problem that is ours.
    */
   useEffect(() => {
-    if (!chosen) {
-      setReadiness(null);
-      return;
-    }
+    if (!chosen) return;
     let live = true;
     void (async () => {
       try {
@@ -185,7 +190,9 @@ export function ConnectGoogleAds({
           body: JSON.stringify({ workspaceKey: readWorkspaceKey(), customerId: chosen }),
         });
         const data = await res.json();
-        if (live && res.ok && data.ok) setReadiness(data.readiness as AccountReadiness);
+        if (live && res.ok && data.ok) {
+          setReadiness({ customerId: chosen, value: data.readiness as AccountReadiness });
+        }
       } catch {
         // Nothing to say. The send still reports whatever Google decides.
       }
@@ -286,7 +293,23 @@ export function ConnectGoogleAds({
    */
   const hasEmails = rows.some((r) => r.hashedEmail);
 
-  if (result) return <Sent result={result} currencyCode={currencyCode} />;
+  if (result)
+    return (
+      <Sent
+        result={result}
+        currencyCode={currencyCode}
+        /*
+         * The way on from a dry run. Without it the check was a dead end: it
+         * replaced the whole step with its own result and left no button to
+         * do the thing the check had just cleared, so the only way forward
+         * was reloading the page and picking the account again. A test that
+         * strands you is worse than no test.
+         */
+        onSendForReal={result.validateOnly ? () => void send(false) : undefined}
+        sending={phase === "sending"}
+        error={error}
+      />
+    );
 
   return (
     <div className="mt-4">
@@ -367,7 +390,9 @@ export function ConnectGoogleAds({
             </div>
           )}
 
-          {chosen && readiness && <ReadinessPanel readiness={readiness} hasEmails={hasEmails} />}
+          {chosen && readiness?.customerId === chosen && (
+            <ReadinessPanel readiness={readiness.value} hasEmails={hasEmails} />
+          )}
 
           {chosen && (
             <div className="mt-3.5 flex flex-wrap items-center gap-2.5">
@@ -550,7 +575,20 @@ function ReadinessPanel({
  * nothing to anybody, and an advertiser can publish a thousand conversions and
  * see only that nothing changed.
  */
-function Sent({ result, currencyCode }: { result: PublishResult; currencyCode: string }) {
+function Sent({
+  result,
+  currencyCode,
+  onSendForReal,
+  sending,
+  error,
+}: {
+  result: PublishResult;
+  currencyCode: string;
+  /** Set only after a dry run, which is the one result with a next step. */
+  onSendForReal?: () => void;
+  sending: boolean;
+  error: string | null;
+}) {
   /*
    * A publish that reached Google and was refused by it is not a success, and
    * for one afternoon this said "Sent" with a green tick above the sentence
@@ -610,11 +648,34 @@ function Sent({ result, currencyCode }: { result: PublishResult; currencyCode: s
         somebody skim-reading a green tick.
       */}
       {result.validateOnly && (
-        <p className="mt-3 max-w-[68ch] text-[13px] text-[var(--muted-strong)]">
-          Nothing was recorded. Google accepted the format of every row, which is
-          the part worth knowing before a real send - it rejects an entire batch
-          over one bad row. Send them for real when you are ready.
-        </p>
+        <>
+          <p className="mt-3 max-w-[68ch] text-[13px] text-[var(--muted-strong)]">
+            Nothing was recorded. Google accepted the format of every row, which
+            is the part worth knowing before a real send - it rejects an entire
+            batch over one bad row.
+          </p>
+          {onSendForReal && (
+            <button
+              type="button"
+              onClick={onSendForReal}
+              disabled={sending}
+              className="btn btn-primary mt-3.5 text-[13.5px]"
+            >
+              {sending
+                ? "Sending…"
+                : `Send the ${result.submitted.toLocaleString()} for real`}
+              {!sending && <ArrowIcon />}
+            </button>
+          )}
+          {error && (
+            <p
+              role="alert"
+              className="mt-2.5 max-w-[64ch] whitespace-pre-line text-[13px] text-[var(--danger)]"
+            >
+              {error}
+            </p>
+          )}
+        </>
       )}
 
       <EvaluationHandoff unlocked={landed} />
