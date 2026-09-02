@@ -295,6 +295,23 @@ export function ConnectGoogleAds({
         touched, and you can disconnect at any time.
       </p>
 
+      {/*
+        Said here, next to the button that causes it, and nowhere earlier.
+
+        Google shows an unverified-app screen while its review is pending, and
+        somebody meeting that cold in the middle of connecting an ad account
+        stops. It was briefly on the invite page instead, which warned people
+        about a screen they were four steps from seeing and made the product
+        sound unsure of itself before they had used any of it. A caution
+        belongs at the moment it applies.
+      */}
+      {!accounts && (
+        <p className="mt-3 max-w-[64ch] text-[12.5px] text-[var(--muted)]">
+          Google is still reviewing this app, so it will say so on the way
+          through. Choose Advanced, then continue.
+        </p>
+      )}
+
       {!accounts && (
         <button
           type="button"

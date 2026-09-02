@@ -118,40 +118,42 @@ export function JoinView() {
             </p>
 
             {/*
-              What is ahead, before they start rather than as they hit it.
+              What they get, in the order they get it.
 
-              This page used to say only how the key works, then offer two
-              buttons. Somebody arriving from an email does not yet know how
-              long this takes, what they need to hand over, or that the one
-              step that needs a developer is not required for the first
-              report - and a stranger who cannot answer "is this an afternoon
-              or a fortnight" closes the tab. Both of the surprises named
-              below are ones we watched land badly on the first real run.
+              The first version of this led with caveats: how long it would
+              take, what they would not need, and a warning that Google calls
+              the app unverified. All true, and all of it pre-apologising for a
+              product nobody had used yet. A page that warns you before it has
+              offered you anything reads as unsure of itself.
+
+              So it opens on the report, which is the thing worth their
+              afternoon, and the Google consent screen is explained where it
+              happens rather than four screens early.
             */}
             {!state.returning && (
               <div className="card mt-8 p-6">
-                <h2 className="h3">What happens next</h2>
+                <h2 className="h3">Fifteen minutes to a number you can argue with</h2>
                 <p className="mt-1.5 max-w-[62ch] text-[13.5px] text-[var(--muted)]">
-                  About fifteen minutes, and you can stop after step 1 with
-                  something worth reading.
+                  What each kind of lead is worth, worked out from the deals you
+                  already closed. You will have it at the end of step one.
                 </p>
 
                 <ol className="mt-4 grid gap-3.5">
                   {[
                     {
                       n: "1",
-                      t: "Show us your closed deals",
-                      b: "Connect HubSpot, or drop in a CSV export. We read it in your browser and work out what a lead is actually worth from your own history. You get the report at the end of this step.",
+                      t: "Your closed deals",
+                      b: "Connect HubSpot, or drop in a CSV. It is read in your browser, and no row of it leaves.",
                     },
                     {
                       n: "2",
-                      t: "Check the numbers and change any you disagree with",
-                      b: "Every multiplier is editable and every figure traces back to your rows. Nothing is sent anywhere until you say so.",
+                      t: "Your numbers",
+                      b: "Every figure traces back to your own rows, and every multiplier is yours to change. Nothing is sent anywhere until you say so.",
                     },
                     {
                       n: "3",
-                      t: "Send the values to Google Ads",
-                      b: "One connection. We create the conversion action, send your values, and tell you which campaigns are still bidding on lead count instead of lead value.",
+                      t: "Into Google Ads",
+                      b: "One connection sends the values and names the campaigns still bidding on how many leads you get rather than what they are worth.",
                     },
                   ].map((s) => (
                     <li key={s.n} className="flex gap-3">
@@ -171,45 +173,17 @@ export function JoinView() {
                   ))}
                 </ol>
 
-                <div className="mt-6 border-t border-[var(--border)] pt-5">
-                  <p className="label">Two things people expect and do not need</p>
-                  <ul className="mt-2.5 grid gap-2 text-[13.5px] text-[var(--muted-strong)]">
-                    <li className="max-w-[64ch]">
-                      <span className="font-semibold text-[var(--foreground)]">
-                        No developer, and no code on your site.
-                      </span>{" "}
-                      There is a tracking snippet later that improves how many
-                      leads Google can match, but the report and the first send
-                      work without it. Do not wait on a ticket.
-                    </li>
-                    <li className="max-w-[64ch]">
-                      <span className="font-semibold text-[var(--foreground)]">
-                        Nothing changes in your account by itself.
-                      </span>{" "}
-                      No campaign, budget, bid or keyword is touched. Switching a
-                      campaign to bid on value stays your decision, made in Google
-                      Ads.
-                    </li>
-                  </ul>
-                </div>
-
                 {/*
-                  The warning screen is coming whether or not we mention it.
-                  Meeting "Google hasn't verified this app" cold, in the middle
-                  of connecting an ad account, is where a careful person stops -
-                  and being told about it in advance by the people who sent the
-                  link is the difference between caution and alarm.
+                  One line, because both halves of it are the reason people
+                  put this off for a fortnight: waiting on a developer, and
+                  fearing something will start spending differently on its own.
                 */}
-                <div className="mt-5 rounded-xl border border-[var(--border)] bg-[var(--surface-sunken)] p-3.5">
-                  <p className="max-w-[64ch] text-[12.5px] text-[var(--muted-strong)]">
-                    <span className="font-semibold">At step 3 Google will warn you</span>{" "}
-                    that this app is not verified yet. That is Google&apos;s review
-                    queue, not a fault: click Advanced, then continue. We ask only
-                    to read your accounts and send conversions.
-                  </p>
-                </div>
+                <p className="mt-5 max-w-[64ch] border-t border-[var(--border)] pt-5 text-[13.5px] text-[var(--muted-strong)]">
+                  No code goes on your site, and nothing in your ad account
+                  changes on its own.
+                </p>
 
-                <div className="mt-6 flex flex-wrap gap-3">
+                <div className="mt-5 flex flex-wrap gap-3">
                   <Link href="/diagnostic" className="btn btn-primary">
                     Start <ArrowIcon />
                   </Link>
