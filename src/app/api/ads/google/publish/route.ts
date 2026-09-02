@@ -162,7 +162,11 @@ export async function POST(request: Request) {
       ok: true,
       validateOnly,
       account: { customerId: account.customerId, name: account.name, displayId: account.displayId },
-      conversionAction: { name: action.name, existed: action.existed },
+      conversionAction: {
+        name: action.name,
+        existed: action.existed,
+        problems: action.problems,
+      },
       submitted: rows.length,
       requestId: ingest.requestId,
       fieldWarnings: ingest.fieldWarnings,

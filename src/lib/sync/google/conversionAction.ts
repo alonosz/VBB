@@ -38,6 +38,19 @@ export interface ConversionActionRef {
   name: string;
   /** True when it already existed, so a reconnect is not reported as setup. */
   existed: boolean;
+  /**
+   * Settings on an action we found rather than made, that will stop the values
+   * doing their job. Empty when we created it, or when the existing one is
+   * right.
+   */
+  problems: SettingProblem[];
+}
+
+export interface SettingProblem {
+  /** What is wrong, in the words the Google Ads screen uses. */
+  title: string;
+  /** Where to change it. */
+  fix: string;
 }
 
 interface SearchResponse {
@@ -47,6 +60,9 @@ interface SearchResponse {
       name?: string;
       status?: string;
       type?: string;
+      countingType?: string;
+      primaryForGoal?: boolean;
+      valueSettings?: { alwaysUseDefaultValue?: boolean; defaultValue?: number };
     };
   }[];
 }
@@ -76,14 +92,75 @@ export async function findConversionAction(
   const res = await client.post<SearchResponse>(`customers/${customerId}/googleAds:search`, {
     query:
       "SELECT conversion_action.resource_name, conversion_action.name, " +
-      "conversion_action.status, conversion_action.type FROM conversion_action " +
+      "conversion_action.status, conversion_action.type, " +
+      "conversion_action.counting_type, conversion_action.primary_for_goal, " +
+      "conversion_action.value_settings.always_use_default_value " +
+      "FROM conversion_action " +
       `WHERE conversion_action.name = ${gaqlString(name)} ` +
       "AND conversion_action.status != 'REMOVED' LIMIT 1",
   });
 
   const found = res.results?.[0]?.conversionAction;
   if (!found?.resourceName) return null;
-  return { resourceName: found.resourceName, name: found.name ?? name, existed: true };
+  return {
+    resourceName: found.resourceName,
+    name: found.name ?? name,
+    existed: true,
+    problems: judgeSettings(found),
+  };
+}
+
+/**
+ * Whether an action we did not create will actually use the values.
+ *
+ * The screen said "was already set up correctly" about an action nobody had
+ * looked at. Three of its settings each break the product silently - the
+ * values arrive, are stored, are reported, and change no bid - and every one
+ * of them is a checkbox on a screen the advertiser may have visited months
+ * ago for a different reason.
+ *
+ * Reported, never rewritten. An action that exists may have been edited on
+ * purpose, and changing somebody's account behind them is a worse failure than
+ * the one being fixed. The comment on ensureConversionAction already said
+ * that; this makes it true of the settings as well as of the action.
+ */
+export function judgeSettings(action: {
+  status?: string;
+  countingType?: string;
+  primaryForGoal?: boolean;
+  valueSettings?: { alwaysUseDefaultValue?: boolean };
+}): SettingProblem[] {
+  const problems: SettingProblem[] = [];
+
+  if (action.valueSettings?.alwaysUseDefaultValue === true) {
+    problems.push({
+      title: "It is set to give every lead the same value",
+      fix: 'Google Ads: Goals → Conversions → VBB Lead Value → Edit settings → Value → "Use different values for each conversion". This is the setting the whole model depends on; with it off, every value we send is discarded and replaced by one number.',
+    });
+  }
+
+  if (action.primaryForGoal === false) {
+    problems.push({
+      title: "It is a secondary action, so no campaign bids on it",
+      fix: 'Google Ads: Goals → Conversions → VBB Lead Value → Edit settings → set it to a primary action ("Include in Conversions"). A secondary action is recorded and reported and never optimised toward, which looks exactly like everything working.',
+    });
+  }
+
+  if (action.countingType === "MANY_PER_CLICK") {
+    problems.push({
+      title: 'It counts "every" conversion rather than one per click',
+      fix: "Google Ads: Goals → Conversions → VBB Lead Value → Edit settings → Count → One. Restating a lead's value inside the seven day window would otherwise count that lead again each time.",
+    });
+  }
+
+  if (action.status && action.status !== "ENABLED") {
+    problems.push({
+      title: `It is ${action.status.toLowerCase()}, not enabled`,
+      fix: "Google Ads: Goals → Conversions → VBB Lead Value → Edit settings → set it to Enabled. Values sent to a paused action are kept and act on nothing.",
+    });
+  }
+
+  return problems;
 }
 
 /**
@@ -144,5 +221,6 @@ export async function ensureConversionAction(
     // so beats returning a reference that points at nothing.
     throw new Error("Google Ads did not return the conversion action it created.");
   }
-  return { resourceName, name, existed: false };
+  // Nothing to judge on one we just made: the payload above is the standard.
+  return { resourceName, name, existed: false, problems: [] };
 }

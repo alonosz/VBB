@@ -34,7 +34,12 @@ interface PublishResult {
   /** True when Google checked the batch and deliberately recorded nothing. */
   validateOnly: boolean;
   account: { customerId: string; name: string; displayId: string };
-  conversionAction: { name: string; existed: boolean };
+  conversionAction: {
+    name: string;
+    existed: boolean;
+    /** Settings on an action we found that will stop the values working. */
+    problems?: { title: string; fix: string }[];
+  };
   /** Rows in the request. Not a count of what Google kept - see below. */
   submitted: number;
   requestId: string | null;
@@ -598,6 +603,7 @@ function Sent({
    * Google accepted and from nothing else.
    */
   const landed = !result.validateOnly;
+  const problems = result.conversionAction.problems ?? [];
 
   const mark = result.validateOnly
     ? { glyph: "✓", bg: "var(--primary)", title: "Checked, and nothing was sent" }
@@ -626,11 +632,55 @@ function Sent({
         <li className="text-[var(--muted)]">
           Conversion action{" "}
           <span className="mono">&ldquo;{result.conversionAction.name}&rdquo;</span>{" "}
-          {result.conversionAction.existed
-            ? "was already set up correctly."
-            : "created and configured to take a different value for each lead."}
+          {!result.conversionAction.existed
+            ? "created and configured to take a different value for each lead."
+            : problems.length === 0
+              ? "was already there, and its settings were checked."
+              : "was already there, and some of its settings need changing."}
         </li>
       </ul>
+
+      {/*
+        Settings on an action somebody else made.
+
+        "Was already set up correctly" was a claim nobody checked - the lookup
+        read the action's name and status and nothing else, so an account whose
+        action had been switched to one flat value was told it was correct
+        while every value we sent was being discarded on arrival.
+
+        Reported rather than rewritten, for the same reason the action itself
+        is never overwritten: it may have been set that way on purpose, and
+        changing an advertiser's account behind them is the worse failure.
+      */}
+      {problems.length > 0 && (
+        <div className="mt-4 rounded-xl border border-[var(--warn)]/35 bg-[var(--warn)]/[0.07] p-3.5">
+          <p className="text-[13.5px] font-bold">
+            {problems.length === 1
+              ? "One setting is stopping these values working"
+              : `${problems.length} settings are stopping these values working`}
+          </p>
+          <p className="mt-1 max-w-[66ch] text-[12.5px] text-[var(--muted)]">
+            The values landed. Google will store and report them, and no campaign
+            will bid differently until this is changed.
+          </p>
+          <ul className="mt-3 grid gap-2.5">
+            {problems.map((p) => (
+              <li key={p.title} className="flex gap-2.5">
+                <span
+                  aria-hidden
+                  className="mt-[3px] flex size-4 shrink-0 items-center justify-center rounded-full bg-[var(--warn)] text-[10px] font-bold text-white"
+                >
+                  !
+                </span>
+                <span className="max-w-[62ch]">
+                  <span className="block text-[13px] font-semibold">{p.title}</span>
+                  <span className="mt-0.5 block text-[12.5px] text-[var(--muted)]">{p.fix}</span>
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {/*
         The thing that decides whether any of it mattered, and the reason the

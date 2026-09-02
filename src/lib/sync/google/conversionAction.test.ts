@@ -7,6 +7,7 @@ import {
   conversionActionPayload,
   ensureConversionAction,
   findConversionAction,
+  judgeSettings,
 } from "./conversionAction";
 import { CONVERSION_NAME } from "@/lib/feed/handlers";
 
@@ -87,6 +88,7 @@ describe("finding one that already exists", () => {
       resourceName: RESOURCE,
       name: CONVERSION_NAME,
       existed: true,
+      problems: [],
     });
   });
 
@@ -101,6 +103,46 @@ describe("finding one that already exists", () => {
     const query = String((fake.calls[0].body as { query: string }).query);
     expect(query).toContain("status != 'REMOVED'");
     expect(query).toContain(`conversion_action.name = '${CONVERSION_NAME}'`);
+  });
+
+  /*
+   * Judging a setting we never asked Google for reads every account as
+   * perfect, which is exactly the false all-clear this check was added to
+   * remove. The fields have to be in the query, not only in the judgement.
+   */
+  it("asks for every setting it judges", async () => {
+    const { fake, client } = ads({ [SEARCH]: { results: [] } });
+    await findConversionAction(client, CUSTOMER);
+    const query = String((fake.calls[0].body as { query: string }).query);
+    for (const field of [
+      "conversion_action.value_settings.always_use_default_value",
+      "conversion_action.primary_for_goal",
+      "conversion_action.counting_type",
+      "conversion_action.status",
+    ]) {
+      expect(query).toContain(field);
+    }
+  });
+
+  it("reads the settings back off an action it found", async () => {
+    const { client } = ads({
+      [SEARCH]: {
+        results: [
+          {
+            conversionAction: {
+              resourceName: RESOURCE,
+              name: CONVERSION_NAME,
+              status: "ENABLED",
+              countingType: "ONE_PER_CLICK",
+              primaryForGoal: false,
+              valueSettings: { alwaysUseDefaultValue: true },
+            },
+          },
+        ],
+      },
+    });
+    const found = await findConversionAction(client, CUSTOMER);
+    expect(found?.problems).toHaveLength(2);
   });
 
   it("escapes a quote in the name rather than breaking the query", async () => {
@@ -119,7 +161,12 @@ describe("ensuring it is there", () => {
     });
 
     const ref = await ensureConversionAction(client, CUSTOMER);
-    expect(ref).toEqual({ resourceName: RESOURCE, name: CONVERSION_NAME, existed: false });
+    expect(ref).toEqual({
+      resourceName: RESOURCE,
+      name: CONVERSION_NAME,
+      existed: false,
+      problems: [],
+    });
 
     const create = (fake.calls[1].body as { operations: { create: Record<string, unknown> }[] })
       .operations[0].create;
@@ -161,5 +208,68 @@ describe("ensuring it is there", () => {
       }
     );
     await expect(ensureConversionAction(client, CUSTOMER)).rejects.toThrow(/does not have permission/);
+  });
+});
+
+/*
+ * The claim that started this: the screen said an existing action "was already
+ * set up correctly" while the lookup had read its name and status and nothing
+ * else. Each of these breaks the product in the one way that looks like
+ * success - values arrive, are stored, are reported, and move no bid.
+ */
+describe("judging settings on an action somebody else made", () => {
+  const good = {
+    status: "ENABLED",
+    countingType: "ONE_PER_CLICK",
+    primaryForGoal: true,
+    valueSettings: { alwaysUseDefaultValue: false },
+  };
+
+  it("passes an action configured the way we would have made it", () => {
+    expect(judgeSettings(good)).toEqual([]);
+  });
+
+  it("catches one flat value for every lead, which discards the whole model", () => {
+    const [problem] = judgeSettings({
+      ...good,
+      valueSettings: { alwaysUseDefaultValue: true },
+    });
+    expect(problem.title).toMatch(/same value/i);
+    expect(problem.fix).toMatch(/different values for each conversion/i);
+  });
+
+  it("catches a secondary action, which no campaign bids on", () => {
+    const [problem] = judgeSettings({ ...good, primaryForGoal: false });
+    expect(problem.title).toMatch(/secondary/i);
+  });
+
+  it("catches counting every conversion, which double-counts a restated lead", () => {
+    const [problem] = judgeSettings({ ...good, countingType: "MANY_PER_CLICK" });
+    expect(problem.title).toMatch(/every/i);
+  });
+
+  it("catches a paused action", () => {
+    const [problem] = judgeSettings({ ...good, status: "PAUSED" });
+    expect(problem.title).toMatch(/paused/i);
+  });
+
+  it("reports every fault at once rather than the first", () => {
+    expect(
+      judgeSettings({
+        status: "PAUSED",
+        countingType: "MANY_PER_CLICK",
+        primaryForGoal: false,
+        valueSettings: { alwaysUseDefaultValue: true },
+      })
+    ).toHaveLength(4);
+  });
+
+  /*
+   * A field Google did not return is Google declining to say. Reporting it as
+   * a fault sends somebody to change a setting that is already right, which
+   * costs the trust this check exists to earn.
+   */
+  it("says nothing about a field Google did not return", () => {
+    expect(judgeSettings({})).toEqual([]);
   });
 });
