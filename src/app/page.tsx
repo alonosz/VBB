@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowIcon } from "@/components/ArrowIcon";
 import { Logo } from "@/components/brand/Logo";
 import { SiteFooter } from "@/components/legal/SiteFooter";
+import { WorkspaceReadyBar } from "@/components/workspace/WorkspaceReadyBar";
 
 /**
  * What this is, before anyone is asked to do anything.
@@ -58,6 +59,12 @@ export default function Home() {
           Start
         </Link>
       </header>
+
+      {/*
+        Only rendered for somebody who arrived on an invite. Everyone else sees
+        the page exactly as it was.
+      */}
+      <WorkspaceReadyBar />
 
       <main className="flex-1">
         {/* ---------------------------------------------------------------- */}

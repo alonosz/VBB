@@ -31,7 +31,34 @@ export function rememberWorkspaceKey(key: string): void {
 export function forgetWorkspaceKey(): void {
   try {
     localStorage.removeItem(WORKSPACE_KEY_STORE);
+    localStorage.removeItem(WORKSPACE_NAME_STORE);
   } catch {
     // Nothing to clean up if storage is unavailable.
+  }
+}
+
+/**
+ * Their company name, kept beside the key.
+ *
+ * Not a credential and not used for anything but a greeting: an invite now
+ * hands somebody to the front page rather than dead-ending on a confirmation
+ * screen, and a front page that cannot say whose workspace is ready has
+ * silently swallowed the one thing that link was for.
+ */
+export const WORKSPACE_NAME_STORE = "vbb.workspaceName.v1";
+
+export function readWorkspaceName(): string | null {
+  try {
+    return typeof window === "undefined" ? null : localStorage.getItem(WORKSPACE_NAME_STORE);
+  } catch {
+    return null;
+  }
+}
+
+export function rememberWorkspaceName(name: string): void {
+  try {
+    localStorage.setItem(WORKSPACE_NAME_STORE, name.trim());
+  } catch {
+    // The greeting is a nicety. Losing it costs nothing.
   }
 }
