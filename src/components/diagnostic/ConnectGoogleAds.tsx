@@ -6,6 +6,7 @@ import { ArrowIcon } from "@/components/ArrowIcon";
 import { readWorkspaceKey, rememberWorkspaceKey } from "@/lib/workspace/clientKey";
 import type { AdsAccount } from "@/lib/sync/google/accounts";
 import type { StrategyAudit } from "@/lib/sync/google/campaigns";
+import type { AccountReadiness } from "@/lib/sync/google/readiness";
 import type { FeedRow } from "@/lib/feed/types";
 import { StrategyPanel } from "@/components/report/campaignStrategy";
 
@@ -82,6 +83,7 @@ export function ConnectGoogleAds({
   const [usable, setUsable] = useState<string[]>([]);
   const [chosen, setChosen] = useState<string | null>(null);
   const [result, setResult] = useState<PublishResult | null>(null);
+  const [readiness, setReadiness] = useState<AccountReadiness | null>(null);
   const resumed = useRef(false);
 
   const keepMintedKey = (data: { workspaceKey?: unknown }) => {
@@ -158,6 +160,40 @@ export function ConnectGoogleAds({
       setPhase("idle");
     }
   }, [beginOAuth]);
+
+  /*
+   * Read the account's settings the moment one is picked, not when Send is
+   * pressed. Google refuses a batch over a checkbox four screens away and
+   * names a field rather than a fix, which is survivable for whoever built
+   * this and is where a design partner quietly stops.
+   *
+   * Silent on failure. This is a courtesy check before the advertiser has
+   * done anything wrong, and an error here would accuse their account of a
+   * problem that is ours.
+   */
+  useEffect(() => {
+    if (!chosen) {
+      setReadiness(null);
+      return;
+    }
+    let live = true;
+    void (async () => {
+      try {
+        const res = await fetch("/api/ads/google/readiness", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ workspaceKey: readWorkspaceKey(), customerId: chosen }),
+        });
+        const data = await res.json();
+        if (live && res.ok && data.ok) setReadiness(data.readiness as AccountReadiness);
+      } catch {
+        // Nothing to say. The send still reports whatever Google decides.
+      }
+    })();
+    return () => {
+      live = false;
+    };
+  }, [chosen]);
 
   // Coming back from Google, carry on with what they clicked. Once: a failed
   // listing must not send them round the loop again.
@@ -243,6 +279,13 @@ export function ConnectGoogleAds({
   const emailBlocked = /enhanced conversions for leads/i.test(error ?? "");
   const clickIdRows = rows.filter((r) => r.clickId).length;
 
+  /*
+   * Whether the leads setting matters to this feed at all. A click-ID-only
+   * file goes through an account that has never heard of it, and warning
+   * about it anyway would be a red mark on a screen with nothing wrong.
+   */
+  const hasEmails = rows.some((r) => r.hashedEmail);
+
   if (result) return <Sent result={result} currencyCode={currencyCode} />;
 
   return (
@@ -306,6 +349,8 @@ export function ConnectGoogleAds({
               })}
             </div>
           )}
+
+          {chosen && readiness && <ReadinessPanel readiness={readiness} hasEmails={hasEmails} />}
 
           {chosen && (
             <div className="mt-3.5 flex flex-wrap items-center gap-2.5">
@@ -419,6 +464,64 @@ export function ConnectGoogleAds({
       )}
 
       <EvaluationHandoff unlocked={false} />
+    </div>
+  );
+}
+
+/**
+ * The account's own settings, before anything is sent to it.
+ *
+ * Shown only when there is something to say. A panel of three green ticks on
+ * an account that was always fine is noise, and noise is what teaches somebody
+ * to skip the panel on the day it turns red.
+ */
+function ReadinessPanel({
+  readiness,
+  hasEmails,
+}: {
+  readiness: AccountReadiness;
+  hasEmails: boolean;
+}) {
+  /*
+   * Unknown is not shown either. Google declining to report a field is our
+   * problem to understand, not a task to hand the advertiser, and a row
+   * saying "Google did not say" is an invitation to worry about nothing.
+   */
+  const problems = readiness.checks.filter(
+    (c) =>
+      c.state === "not-ready" &&
+      (c.id !== "enhancedConversionsForLeads" || hasEmails)
+  );
+  if (problems.length === 0) return null;
+
+  return (
+    <div className="mt-3.5 rounded-xl border border-[var(--warn)]/35 bg-[var(--warn)]/[0.07] p-3.5">
+      <p className="text-[13.5px] font-bold">
+        {problems.length === 1
+          ? "One thing to switch on in Google Ads first"
+          : `${problems.length} things to switch on in Google Ads first`}
+      </p>
+      <p className="mt-1 max-w-[66ch] text-[12.5px] text-[var(--muted)]">
+        Read from the account just now. Google refuses the whole batch over any
+        of these and names a field rather than a fix, so it is worth two minutes
+        before sending rather than after.
+      </p>
+      <ul className="mt-3 grid gap-2.5">
+        {problems.map((c) => (
+          <li key={c.id} className="flex gap-2.5">
+            <span
+              aria-hidden
+              className="mt-[3px] flex size-4 shrink-0 items-center justify-center rounded-full bg-[var(--warn)] text-[10px] font-bold text-white"
+            >
+              !
+            </span>
+            <span className="max-w-[62ch]">
+              <span className="block text-[13px] font-semibold">{c.title}</span>
+              <span className="mt-0.5 block text-[12.5px] text-[var(--muted)]">{c.fix}</span>
+            </span>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
