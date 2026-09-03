@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
+import { ArrowIcon } from "@/components/ArrowIcon";
 import { Logo } from "@/components/brand/Logo";
 import { Alert } from "@/components/ui";
 import { rememberWorkspaceKey, rememberWorkspaceName } from "@/lib/workspace/clientKey";
@@ -129,6 +131,30 @@ export function JoinView() {
                   workspace is affected.
                 </p>
               </Alert>
+            </div>
+
+            {/*
+              The commonest way to reach this page is not a stale link. It is
+              one invite forwarded to several people: the first to click spends
+              it and everybody else lands here, having been told this is worth
+              a look and shown a dead end.
+ 
+              They do not need that invite. Starting from the front page mints
+              a workspace of its own, which is what each of them wanted anyway -
+              one invite is one workspace, so even the first to click was
+              taking the others' place.
+            */}
+            <div className="card mt-4 p-6">
+              <h2 className="h3">You can start without it</h2>
+              <p className="mt-1.5 max-w-[58ch] text-[13.5px] text-[var(--muted)]">
+                An invite sets up a workspace for a named account. If you just
+                want to see what this does with your own numbers, begin from the
+                front page and you get your own - no link, no password, nothing
+                to install.
+              </p>
+              <Link href="/" className="btn btn-primary mt-4">
+                See what this does <ArrowIcon />
+              </Link>
             </div>
           </>
         )}
