@@ -1,3 +1,4 @@
+import type { Audience } from "@/lib/analysis/types";
 import { sentValueSpread } from "@/lib/analysis/sentSpread";
 import { money } from "./panels";
 
@@ -16,9 +17,11 @@ import { money } from "./panels";
 export function SentSpreadPanel({
   values,
   currency,
+  audience,
 }: {
   values: number[];
   currency: string;
+  audience?: Audience;
 }) {
   const spread = sentValueSpread(values);
   if (!spread) return null;
@@ -58,9 +61,10 @@ export function SentSpreadPanel({
       {spread.verdict !== "workable" && (
         <p className="mt-3 max-w-[72ch] text-[12.5px] text-[var(--muted)]">
           This is not a reason to stop, but it is a reason to expect little. The
-          fix is more of what separates a good lead from a bad one in your CRM:
-          a filled-in industry, company size, or the form field your best buyers
-          answer differently.
+          fix is more of what separates a good lead from a bad one in your CRM:{" "}
+          {audience === "b2c"
+            ? "the product or plan they asked for, the option they picked, or the form field your best buyers answer differently."
+            : "a filled-in industry, company size, or the form field your best buyers answer differently."}
         </p>
       )}
     </section>

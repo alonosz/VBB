@@ -16,7 +16,7 @@ import { FlowSkeleton } from "@/components/diagnostic/FlowSkeleton";
 import { ArrowIcon } from "@/components/ArrowIcon";
 import { rowsToDeals } from "@/lib/mapping/toDeals";
 import { runDiagnostic, valueAllLeads, withOverrides } from "@/lib/analysis";
-import { resolveHypotheses } from "@/lib/intake/merge";
+import { useSignalColumns } from "@/lib/diagnostic/useSignals";
 import { savedModelToValueModel, saveValueModel } from "@/lib/model/savedModel";
 import { recallModel } from "@/lib/model/storage";
 import { buildValueModelCsv, downloadCsv, identifierLabel } from "@/lib/export/googleAds";
@@ -213,7 +213,7 @@ const BID_STEPS = [
 
 export default function ConnectPage() {
   const router = useRouter();
-  const { file, fields, currency, businessContext, stageTiming, intake, restored } = useDiagnostic();
+  const { file, fields, currency, businessContext, stageTiming, restored, audience } = useDiagnostic();
 
   const [feed, setFeed] = useState<Published | null>(null);
   const [publishing, setPublishing] = useState(false);
@@ -232,46 +232,44 @@ export default function ConnectPage() {
 
   const saved = useMemo(() => (typeof window === "undefined" ? null : recallModel()), []);
 
-  const { customSignalKeys, hypotheses } = useMemo(
-    () =>
-      intake?.status === "ready"
-        ? resolveHypotheses(intake.proposal, fields)
-        : { hypotheses: [], customSignalKeys: [] },
-    [intake, fields]
-  );
+  /*
+   * The same reading of the file the mapping screen and the report used.
+   * This screen merged the assistant's proposal on its own and never saw the
+   * columns discovery had put forward, so a consumer file that priced with a
+   * real spread on the report arrived here flat, and the panel below told
+   * them their values were flat - the one screen where it could still cost
+   * them, because it is the one that sends.
+   */
+  const { customSignalKeys, hypotheses } = useSignalColumns();
 
   const mapped = useMemo(() => {
     if (!file) return null;
     return rowsToDeals({ rows: file.rows, fields, currency, stageTiming, signalColumns: customSignalKeys });
   }, [file, fields, currency, stageTiming, customSignalKeys]);
 
-  const { gate, volume, cycle } = useMemo(() => {
-    if (!mapped) return { gate: null, volume: null, cycle: null };
-    const result = runDiagnostic({
+  const diagnostic = useMemo(() => {
+    if (!mapped) return null;
+    return runDiagnostic({
       deals: mapped.deals,
       excluded: mapped.excluded,
       businessContext,
       currencyCode: currency.reportingCurrency,
       customSignalKeys,
       hypotheses,
+      audience,
     });
-    return { gate: result.gate, volume: result.volume, cycle: result.cycle };
-  }, [mapped, businessContext, currency.reportingCurrency, customSignalKeys, hypotheses]);
+  }, [mapped, businessContext, currency.reportingCurrency, customSignalKeys, hypotheses, audience]);
+  const gate = diagnostic?.gate ?? null;
+  const volume = diagnostic?.volume ?? null;
+  const cycle = diagnostic?.cycle ?? null;
 
   // Fixed for the life of the screen, so re-rendering cannot hand two halves
   // of the same publish two different model ids.
   const [freshModelId] = useState(() => `fresh-${new Date().toISOString().slice(0, 10)}`);
 
   const { valued, artifact } = useMemo(() => {
-    if (!mapped) return { valued: [], artifact: null };
-    const result = runDiagnostic({
-      deals: mapped.deals,
-      excluded: mapped.excluded,
-      businessContext,
-      currencyCode: currency.reportingCurrency,
-      customSignalKeys,
-      hypotheses,
-    });
+    if (!mapped || !diagnostic) return { valued: [], artifact: null };
+    const result = diagnostic;
     const model = saved ? savedModelToValueModel(saved) : result.valueModel;
     const applied = withOverrides(model, mapped.deals, {});
     return {
@@ -284,7 +282,7 @@ export default function ConnectPage() {
         saved ??
         saveValueModel(applied, { deals: mapped.deals, modelId: freshModelId, gate: result.gate }),
     };
-  }, [mapped, businessContext, currency.reportingCurrency, customSignalKeys, hypotheses, saved, freshModelId]);
+  }, [mapped, diagnostic, saved, freshModelId]);
 
   /*
    * Which identifier columns the feed carries. Read off the file, not chosen.
@@ -501,7 +499,7 @@ export default function ConnectPage() {
         */}
         {apiRows.length > 0 && (
           <div className="mt-6">
-            <SentSpreadPanel values={apiRows.map((r) => r.value)} currency={cur} />
+            <SentSpreadPanel values={apiRows.map((r) => r.value)} currency={cur} audience={audience} />
           </div>
         )}
 
