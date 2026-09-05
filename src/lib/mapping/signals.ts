@@ -1,6 +1,7 @@
 import type { DetectedField } from "./detect";
 import { looksLikeDate, looksNumeric } from "./detect";
-import type { Audience } from "@/lib/analysis/types";
+import { readOutcome, type OutcomeOverrides } from "./outcomes";
+import type { Audience, DealOutcome } from "@/lib/analysis/types";
 
 /**
  * Finding the columns that could price a lead, without being told.
@@ -120,6 +121,49 @@ const NOT_ABOUT_THE_LEAD = [
   "timestamp", "updated", "modified",
 ];
 
+/**
+ * Columns written after the outcome is known.
+ *
+ * HubSpot ships "Closed Lost Reason" by default; Salesforce and Pipedrive
+ * have their own. Each is a short category, so discovery would suggest it,
+ * and it would show the strongest lift in the file - because it is filled
+ * in when the deal is lost, not when the lead arrives. Priced on, it enters
+ * the model with a huge multiplier, and then every new lead has it blank, so
+ * the multiplier never fires and the calibration was fitted against a
+ * column that is always empty at bid time. The report looks right and the
+ * feed bids wrong every night, and nothing on either screen says so.
+ *
+ * Two readers catch it. The header, for the names every CRM uses. And the
+ * fill pattern, for the ones nobody named: a column near-empty on open
+ * leads and near-full on resolved ones is an outcome, whatever it is called.
+ */
+const OUTCOME_DERIVED = [
+  "lost reason", "loss reason", "reason lost", "closed reason", "close reason",
+  "reason closed", "won reason", "win reason", "reason won", "churn reason",
+  "cancel reason", "cancellation reason", "disqualif", "rejection reason",
+  "decline reason", "outcome reason", "reason for loss", "reason for closing",
+];
+
+/** Below this share of open leads carrying a value, the column is written at resolution. */
+export const LEAK_MAX_OPEN_FILL = 0.1;
+/** Above this share of resolved leads carrying a value, it is written reliably then. */
+export const LEAK_MIN_RESOLVED_FILL = 0.5;
+/** Open and resolved leads each needed before the fill pattern is trusted. */
+export const LEAK_MIN_GROUP = 20;
+
+function outcomeDerivedByName(header: string): boolean {
+  const h = normalize(header);
+  return OUTCOME_DERIVED.some((hint) => h.includes(hint));
+}
+
+function leakReason(column: string, detail: string): string {
+  return (
+    `"${column}" is ${detail}, so it is written after the outcome is known. It would ` +
+    "look like the strongest signal in the file and then never be there on a new " +
+    "lead, and every multiplier would be set against a column that is blank at bid time."
+  );
+}
+
 function normalize(h: string): string {
   return h.toLowerCase().replace(/[_\-.]+/g, " ").replace(/\s+/g, " ").trim();
 }
@@ -168,7 +212,8 @@ export function discoverSignalColumns(
   headers: string[],
   rows: Record<string, string>[],
   fields: DetectedField[],
-  audience: Audience = "b2b"
+  audience: Audience = "b2b",
+  outcomeOverrides: OutcomeOverrides = {}
 ): { discovered: DiscoveredSignal[]; refused: RefusedColumn[] } {
   /*
    * A consumer file with a column that happens to be called "industry" or
@@ -188,6 +233,23 @@ export function discoverSignalColumns(
   const discovered: DiscoveredSignal[] = [];
   const refused: RefusedColumn[] = [];
 
+  /*
+   * The outcome of every row, read the same way the engine reads it, so the
+   * fill pattern below is judged against what "resolved" will actually mean
+   * once the file is priced.
+   */
+  const colOf = (key: string) => fields.find((f) => f.key === key)?.column ?? null;
+  const cOutcome = colOf("outcome");
+  const cStage = colOf("stage");
+  const outcomes: DealOutcome[] = rows.map((r) =>
+    readOutcome(cOutcome ? r[cOutcome] : undefined, cStage ? r[cStage] : undefined, outcomeOverrides)
+  );
+  const openIdx: number[] = [];
+  const resolvedIdx: number[] = [];
+  outcomes.forEach((o, i) => (o === "open" ? openIdx : resolvedIdx).push(i));
+  const fillOn = (column: string, idx: number[]) =>
+    idx.length === 0 ? 0 : idx.filter((i) => (rows[i][column] ?? "").trim() !== "").length / idx.length;
+
   for (const column of headers) {
     if (claimed.has(column)) continue;
 
@@ -199,6 +261,10 @@ export function discoverSignalColumns(
     const forbidden = protectedReason(column);
     if (forbidden) {
       refused.push({ column, reason: forbidden });
+      continue;
+    }
+    if (outcomeDerivedByName(column)) {
+      refused.push({ column, reason: leakReason(column, "a reason recorded when a deal closes") });
       continue;
     }
     if (aboutTheRecord(column)) continue;
@@ -229,6 +295,26 @@ export function discoverSignalColumns(
      * they meet the same sample-size and lift tests as everything else, and
      * get dropped with a reason if they carry nothing.
      */
+    /*
+     * The fill pattern, for outcome columns nobody named. Judged only when
+     * both groups are big enough to mean something: a file of resolved deals
+     * alone cannot show the pattern, and is not refused on a guess.
+     */
+    if (openIdx.length >= LEAK_MIN_GROUP && resolvedIdx.length >= LEAK_MIN_GROUP) {
+      const onOpen = fillOn(column, openIdx);
+      const onResolved = fillOn(column, resolvedIdx);
+      if (onOpen <= LEAK_MAX_OPEN_FILL && onResolved >= LEAK_MIN_RESOLVED_FILL) {
+        refused.push({
+          column,
+          reason: leakReason(
+            column,
+            `filled on ${Math.round(onResolved * 100)}% of resolved leads and ${Math.round(onOpen * 100)}% of open ones`
+          ),
+        });
+        continue;
+      }
+    }
+
     const suggested = fill >= MIN_FILL && levels <= MAX_LEVELS;
     const shape = `${levels} distinct values across ${Math.round(fill * 100)}% of rows`;
 
@@ -262,10 +348,19 @@ export function discoverSignalColumns(
 export function signalColumnsFor(
   intakeKeys: string[],
   discovered: DiscoveredSignal[],
-  overrides: Record<string, boolean> = {}
+  overrides: Record<string, boolean> = {},
+  /**
+   * Columns refused outright. The assistant can name one in a claim - "our
+   * best leads are the ones we lost on price" names the lost reason - and
+   * without this the claim would have put it straight into the model past
+   * both the protected-characteristics rule and the leakage guard.
+   */
+  refused: string[] = []
 ): string[] {
   const out: string[] = [];
+  const never = new Set(refused);
   const add = (c: string) => {
+    if (never.has(c)) return;
     if (overrides[c] === false) return;
     if (!out.includes(c)) out.push(c);
   };

@@ -96,6 +96,13 @@ their buyers. That is the whole remit.
   principle 3 applied to which columns get tested at all. Only identifiers and
   free text are excluded outright (`MAX_DISTINCT_SHARE`), because no level in
   them could ever reach the 25 deals the engine needs.
+- **Outcome columns are never factors.** A closed-lost reason, a churn
+  reason, or any column near-empty on open leads and near-full on resolved
+  ones is written after the outcome is known. It separates won from lost
+  perfectly, it is blank on every lead that has just arrived, and pricing on
+  it fits the whole calibration against a column that never fires at bid
+  time. Refused by header and by fill pattern (`LEAK_*` in `signals.ts`),
+  listed with the reason, and never let back in by a claim.
 - **Protected characteristics are never factors.** Age, gender, race,
   religion, disability, health, credit, marital status, national origin,
   sexual orientation, veteran status and identity numbers are refused by

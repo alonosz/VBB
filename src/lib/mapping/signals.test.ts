@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  LEAK_MIN_GROUP,
   MAX_LEVELS,
   MIN_FILL,
   discoverSignalColumns,
@@ -211,5 +212,81 @@ describe("company fields on a consumer file", () => {
   it("never release a structural field, whatever the audience", () => {
     const { discovered } = discoverSignalColumns(headers, rows, fields, "b2c");
     expect(discovered.map((d) => d.column)).not.toContain("created");
+  });
+});
+
+/*
+ * Columns written after the outcome is known. They separate won from lost
+ * perfectly and are blank on every new lead, so pricing on them fits the
+ * whole model against a column that is never there at bid time.
+ */
+describe("outcome columns in disguise", () => {
+  const field = (key: string, column: string) =>
+    ({ key, label: key, hint: "", required: false, column, confidence: 1, reason: "" }) as DetectedField;
+  const fields = [field("createdAt", "created"), field("outcome", "status")];
+
+  /** Half open, half resolved, with one column filled only once resolved. */
+  const rows = Array.from({ length: 120 }, (_, i) => {
+    const resolved = i % 2 === 0;
+    return {
+      created: "2026-01-01",
+      status: resolved ? (i % 4 === 0 ? "Won" : "Lost") : "",
+      product: ["Auto", "Home", "Life"][i % 3],
+      why: resolved ? ["Price", "Timing", "Competitor"][i % 3] : "",
+      note_when_open: resolved ? "" : ["A", "B"][i % 2],
+    };
+  });
+  const headers = Object.keys(rows[0]);
+
+  it("refuses the names every CRM uses, before looking at the values", () => {
+    for (const name of ["closed_lost_reason", "Loss Reason", "Won Reason", "churn_reason", "Disqualification Reason", "Reason for closing"]) {
+      const { refused, discovered } = discoverSignalColumns([name, "created", "status"], rows.map((r) => ({ ...r, [name]: "x" })), fields);
+      expect(refused.map((r) => r.column), name).toContain(name);
+      expect(discovered.map((d) => d.column), name).not.toContain(name);
+    }
+  });
+
+  it("refuses a column that is only ever filled once the lead is resolved, by its pattern", () => {
+    const { refused, discovered } = discoverSignalColumns(headers, rows, fields);
+    const why = refused.find((r) => r.column === "why");
+    expect(why?.reason).toMatch(/100% of resolved leads and 0% of open ones/);
+    expect(discovered.map((d) => d.column)).not.toContain("why");
+  });
+
+  it("keeps a column filled on open leads too, however well it predicts", () => {
+    const { refused, discovered } = discoverSignalColumns(headers, rows, fields);
+    expect(discovered.map((d) => d.column)).toContain("product");
+    expect(refused.map((r) => r.column)).not.toContain("product");
+  });
+
+  it("does not mistake a column filled only while open for an outcome", () => {
+    const { refused } = discoverSignalColumns(headers, rows, fields);
+    expect(refused.map((r) => r.column)).not.toContain("note_when_open");
+  });
+
+  /*
+   * A file of resolved deals alone cannot show the pattern. Refusing on a
+   * guess would throw out a real signal, so the guard stands down and says
+   * nothing; the header reader still catches the named ones.
+   */
+  it("stands down when there are too few open leads to judge", () => {
+    const resolvedOnly = rows.filter((r) => r.status !== "").slice(0, LEAK_MIN_GROUP + 5);
+    const { refused, discovered } = discoverSignalColumns(headers, resolvedOnly, fields);
+    expect(refused.map((r) => r.column)).not.toContain("why");
+    expect(discovered.map((d) => d.column)).toContain("why");
+  });
+
+  it("reads the outcome the way the advertiser corrected it", () => {
+    const own = rows.map((r) => ({ ...r, status: r.status === "Won" ? "Issued" : r.status === "Lost" ? "NTU" : "" }));
+    // Uncorrected, nothing is resolved and the guard cannot judge.
+    expect(discoverSignalColumns(headers, own, fields).refused.map((r) => r.column)).not.toContain("why");
+    // Corrected, it can.
+    const { refused } = discoverSignalColumns(headers, own, fields, "b2b", { issued: "won", ntu: "lost" });
+    expect(refused.map((r) => r.column)).toContain("why");
+  });
+
+  it("is never let back in by a claim from the assistant", () => {
+    const keys = signalColumnsFor(["why", "product"], [], {}, ["why"]);
+    expect(keys).toEqual(["product"]);
   });
 });

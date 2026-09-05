@@ -27,6 +27,9 @@
  *    signals list shows both the suggested and the offered-but-off states.
  *  - Some rows carry no identifier at all, so match rate is honest.
  *  - `age_band` has a perfect categorical shape and must be refused.
+ *  - `lost_reason` is filled only when a quote is lost, like every CRM's
+ *    closed-lost reason. It would be the strongest signal in the file and
+ *    never present on a new lead, so the leakage guard must refuse it.
  *
  * Seeded, so screenshots and tests stay identical between runs.
  */
@@ -99,6 +102,9 @@ const SOURCES = ["Paid Search", "Organic Search", "Paid Social", "Comparison Sit
 const AGE_BANDS = ["18-24", "25-34", "35-44", "45-54", "55+"];
 const FREE_DOMAINS = ["gmail.com", "yahoo.com", "hotmail.com", "outlook.com", "icloud.com"];
 
+/** Written when a quote is lost, and only then. */
+const LOST_REASONS = ["Price", "Went with competitor", "No response", "Coverage declined"];
+
 /** Thin: only the leads an affiliate sent, which is under a third of them. */
 const PARTNERS = ["Compare Hub", "QuoteWise", "PolicyFinder", "InsureMate"];
 
@@ -143,6 +149,9 @@ export function generateConsumerDemoRows(
 ): Record<string, string>[] {
   const count = opts.count ?? 700;
   const rand = mulberry32(opts.seed ?? 20260905);
+  // Its own stream, so adding it did not reshuffle every draw after it in
+  // every row and quietly change the file the tests and screenshots know.
+  const reasonRand = mulberry32((opts.seed ?? 20260905) + 1);
   const now = opts.now ?? new Date("2026-09-05T00:00:00Z");
   const rows: Record<string, string>[] = [];
 
@@ -252,6 +261,10 @@ export function generateConsumerDemoRows(
       state: state.name,
       age_band: ageBand,
       form_variant: formVariant,
+      lost_reason:
+        outcome === "lost" && reasonRand() < 0.9
+          ? LOST_REASONS[Math.floor(reasonRand() * LOST_REASONS.length)]
+          : "",
       // Thin on purpose: offered in the signals list, switched off by default.
       referral_partner:
         rand() < 0.28 ? PARTNERS[Math.floor(rand() * PARTNERS.length)] : "",
@@ -302,6 +315,7 @@ export function generateConsumerDemoRows(
     state: "TX",
     age_band: "45-54",
     form_variant: "A",
+    lost_reason: "",
     referral_partner: "",
     vehicle_make: "",
     contact_email: "fleet@harborlogistics.com",

@@ -52,9 +52,21 @@ describe("a consumer file, with no assistant", () => {
   });
 
   it("refuses the age band on purpose, and says so", () => {
-    expect(refused.map((r) => r.column)).toEqual(["age_band"]);
-    expect(refused[0].reason).toMatch(/never price a lead on it/);
+    const age = refused.find((r) => r.column === "age_band");
+    expect(age?.reason).toMatch(/never price a lead on it/);
     expect(customSignalKeys).not.toContain("age_band");
+  });
+
+  /*
+   * The column that would have poisoned the first real file. Filled only
+   * when a quote is lost, so it separates outcomes perfectly, and it is
+   * blank on every lead that has just arrived.
+   */
+  it("refuses the lost reason as an outcome in disguise", () => {
+    const leak = refused.find((r) => r.column === "lost_reason");
+    expect(leak?.reason).toMatch(/after the outcome is known/);
+    expect(customSignalKeys).not.toContain("lost_reason");
+    expect(result.valueModel.factors.map((f) => f.key)).not.toContain("lost_reason");
   });
 
   it("does not test the four business factors on a consumer file", () => {

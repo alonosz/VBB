@@ -830,10 +830,11 @@ export function RefusedColumnsSection({
     <section>
       <h3 className="h3 mb-1">Columns we will not price on</h3>
       <p className="mb-3 max-w-[74ch] text-[13.5px] text-[var(--muted)]">
-        Seen in your file and left out on purpose. Bidding differently on any
-        of these is what Google&apos;s personalised advertising rules and
-        discrimination law forbid, so they are never tested however strongly
-        they might predict.
+        Seen in your file and left out on purpose, however strongly they might
+        predict. Each one says why: either bidding differently on it is what
+        Google&apos;s personalised advertising rules and discrimination law
+        forbid, or it is written after the outcome is known and would never be
+        there on a new lead.
       </p>
       <div className="grid gap-2">
         {refused.map((r) => (
