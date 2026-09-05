@@ -69,12 +69,21 @@ describe("discoverSignalColumns", () => {
     expect(discoverSignalColumns(headers, rows, []).discovered).toEqual([]);
   });
 
-  it("skips a mostly empty column", () => {
+  /*
+   * Offered rather than skipped now, and left off. A column filled on a tenth
+   * of rows is unlikely to price well and is not ours to rule out: the
+   * advertiser may know those are the only rows that matter.
+   */
+  it("offers a mostly empty column but leaves it off", () => {
     const { headers, rows } = file({
-      promo: (i) => (i % 10 === 0 ? ["A", "B"][i % 2] : ""),
+      // Two levels, on a tenth of the rows. The earlier fixture indexed on
+      // i % 2 over multiples of ten, so every filled row read "A" and the
+      // column was excluded as a constant rather than as a thin one.
+      promo: (i) => (i % 10 === 0 ? ["A", "B"][(i / 10) % 2] : ""),
     });
     const { discovered } = discoverSignalColumns(headers, rows, []);
-    expect(discovered).toEqual([]);
+    expect(discovered.map((d) => [d.column, d.suggested])).toEqual([["promo", false]]);
+    expect(discovered[0].reason).toMatch(/off unless you say otherwise/);
     expect(MIN_FILL).toBeGreaterThan(0.1);
   });
 
@@ -87,13 +96,15 @@ describe("discoverSignalColumns", () => {
     expect(discoverSignalColumns(headers, rows, []).discovered).toEqual([]);
   });
 
-  it("stops at the level ceiling, where a column stops being a category", () => {
+  it("suggests up to the level ceiling and merely offers past it", () => {
     const { headers, rows } = file({
       city: (i) => `City ${i % (MAX_LEVELS + 5)}`,
       region: (i) => `Region ${i % 5}`,
     });
-    expect(discoverSignalColumns(headers, rows, []).discovered.map((d) => d.column)).toEqual([
-      "region",
+    const { discovered } = discoverSignalColumns(headers, rows, []);
+    expect(discovered.map((d) => [d.column, d.suggested])).toEqual([
+      ["city", false],
+      ["region", true],
     ]);
   });
 
@@ -125,14 +136,42 @@ describe("discoverSignalColumns", () => {
 });
 
 describe("signalColumnsFor", () => {
+  const sig = (column: string, suggested = true) => ({
+    column,
+    levels: 4,
+    fill: 0.9,
+    suggested,
+    reason: "",
+  });
+
   it("keeps the assistant's columns first and adds the rest once", () => {
-    const merged = signalColumnsFor(
-      ["Budget Band"],
-      [
-        { column: "Budget Band", levels: 3, fill: 1, reason: "" },
-        { column: "Timeline", levels: 4, fill: 0.9, reason: "" },
-      ]
-    );
+    const merged = signalColumnsFor(["Budget Band"], [sig("Budget Band"), sig("Timeline")]);
     expect(merged).toEqual(["Budget Band", "Timeline"]);
+  });
+
+  it("leaves out a column whose shape did not suggest it", () => {
+    expect(signalColumnsFor([], [sig("Case type", false)])).toEqual([]);
+  });
+
+  /*
+   * The thresholds are a judgement about what usually carries signal, not a
+   * fact about this file. A column filled on 45% of rows can be the most
+   * important thing in it, so the advertiser gets the last word.
+   */
+  it("tests a column the advertiser switched on despite its shape", () => {
+    expect(signalColumnsFor([], [sig("Case type", false)], { "Case type": true }))
+      .toEqual(["Case type"]);
+  });
+
+  it("drops one they switched off, whoever proposed it", () => {
+    expect(signalColumnsFor(["Budget Band"], [sig("Timeline")], {
+      "Budget Band": false,
+      Timeline: false,
+    })).toEqual([]);
+  });
+
+  it("does not list a column twice when both readers name it", () => {
+    expect(signalColumnsFor(["Timeline"], [sig("Timeline")], { Timeline: true }))
+      .toEqual(["Timeline"]);
   });
 });

@@ -33,11 +33,23 @@ export const MIN_FILL = 0.5;
 export const MIN_LEVELS = 2;
 
 /**
- * Above this it is free text, a name, or an identifier. The engine needs 25
- * resolved deals behind a level to price it, so a column with 40 levels on a
- * 500-row file would never clear that anyway.
+ * Above this a column is offered but not suggested. The engine needs 25
+ * resolved deals behind a level to price one, so a column with 40 levels on a
+ * 500-row file rarely clears that - but "rarely" is the advertiser's call to
+ * overrule, not ours to make final.
  */
 export const MAX_LEVELS = 12;
+
+/**
+ * Above this share of distinct values a column is not offered at all.
+ *
+ * A ticket number, a free-text note, or a name has close to one distinct
+ * value per row. That is an identifier, not a category, and there is nothing
+ * for anybody to overrule: no level would ever have 25 deals behind it. This
+ * is the line between "we think this is unlikely" and "this is not that kind
+ * of column".
+ */
+export const MAX_DISTINCT_SHARE = 0.5;
 
 export interface DiscoveredSignal {
   column: string;
@@ -45,7 +57,13 @@ export interface DiscoveredSignal {
   levels: number;
   /** Share of sampled rows carrying a value, 0-1. */
   fill: number;
-  /** Why it was picked, in the words the mapping screen uses. */
+  /**
+   * True when the column's shape cleared the thresholds, so it is tested
+   * unless the advertiser turns it off. False when it did not, so it is
+   * offered and left off unless they turn it on.
+   */
+  suggested: boolean;
+  /** What its shape is, in the words the mapping screen uses. */
   reason: string;
 }
 
@@ -162,24 +180,43 @@ export function discoverSignalColumns(
 
     const values = sampled(rows, column);
     const present = values.filter((v) => v !== "");
-    if (values.length === 0) continue;
+    if (values.length === 0 || present.length === 0) continue;
     const fill = present.length / values.length;
-    if (fill < MIN_FILL) continue;
 
     // Dates and amounts are structural even when unmapped. A category is
-    // words, or codes, not a measurement.
+    // words, or codes, not a measurement. This one is a hard exclusion
+    // rather than a threshold: a column of timestamps has a level per row
+    // and there is nothing for the advertiser to overrule.
     const numericShare = present.filter(looksNumeric).length / present.length;
     const dateShare = present.filter(looksLikeDate).length / present.length;
     if (numericShare > 0.8 || dateShare > 0.8) continue;
 
     const levels = new Set(present.map((v) => v.toLowerCase())).size;
-    if (levels < MIN_LEVELS || levels > MAX_LEVELS) continue;
+    if (levels < MIN_LEVELS) continue;
+    if (levels / present.length > MAX_DISTINCT_SHARE) continue;
+
+    /*
+     * Offered either way, and suggested only when the shape clears both
+     * thresholds. The thresholds are a judgement about what usually carries
+     * signal, not a fact about this file: a column filled on 45% of rows or
+     * carrying 15 case types can be the most important thing in it. Hiding
+     * those made my guess final, which principle 3 does not allow. Turned on,
+     * they meet the same sample-size and lift tests as everything else, and
+     * get dropped with a reason if they carry nothing.
+     */
+    const suggested = fill >= MIN_FILL && levels <= MAX_LEVELS;
+    const shape = `${levels} distinct values across ${Math.round(fill * 100)}% of rows`;
 
     discovered.push({
       column,
       levels,
       fill,
-      reason: `${levels} distinct values across ${Math.round(fill * 100)}% of rows, so it reads as a category worth testing`,
+      suggested,
+      reason: suggested
+        ? `${shape}, so it reads as a category worth testing`
+        : levels > MAX_LEVELS
+          ? `${shape} - more levels than usually price well, so it is off unless you say otherwise`
+          : `${shape} - thinner than we would normally test, so it is off unless you say otherwise`,
     });
   }
 
@@ -187,16 +224,31 @@ export function discoverSignalColumns(
 }
 
 /**
- * The columns the engine will test, from both readers.
+ * The columns the engine will test, from all three readers.
  *
- * The assistant's candidates come first because they carry a claim to answer;
- * the discovered ones fill in behind them. A column in both is one column.
+ * The assistant's candidates come first because they carry a claim to answer,
+ * then the columns whose shape suggested them. The advertiser's own switches
+ * win over both: they can be looking at a column they know matters that the
+ * shape test passed over, or at one that reads as a category and means
+ * nothing. A column named twice is one column.
+ *
+ * @param overrides Column to on/off. Absent leaves the reader's own answer.
  */
 export function signalColumnsFor(
   intakeKeys: string[],
-  discovered: DiscoveredSignal[]
+  discovered: DiscoveredSignal[],
+  overrides: Record<string, boolean> = {}
 ): string[] {
-  const out = [...intakeKeys];
-  for (const d of discovered) if (!out.includes(d.column)) out.push(d.column);
+  const out: string[] = [];
+  const add = (c: string) => {
+    if (overrides[c] === false) return;
+    if (!out.includes(c)) out.push(c);
+  };
+
+  for (const c of intakeKeys) add(c);
+  for (const d of discovered) if (d.suggested) add(d.column);
+  // Switched on by hand, whatever its shape said.
+  for (const d of discovered) if (overrides[d.column] === true) add(d.column);
+
   return out;
 }

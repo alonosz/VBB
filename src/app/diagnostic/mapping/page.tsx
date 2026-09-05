@@ -95,15 +95,29 @@ function RowPreview({
   headers,
   rows,
   fields,
+  isSignal,
 }: {
   headers: string[];
   rows: Record<string, string>[];
   fields: DetectedField[];
+  /** Columns the engine will test as value signals. */
+  isSignal: (column: string) => boolean;
 }) {
   const mappedTo = new Map<string, string>();
   for (const f of fields) {
     if (f.column) mappedTo.set(f.column, f.label);
   }
+  /*
+   * A third state. Discovery means a column can be unmapped and still used,
+   * and this header said "not used" about columns the engine was pricing on -
+   * a false statement about the very thing the screen exists to make visible.
+   */
+  const labelFor = (h: string): { text: string; tone: "mapped" | "signal" | "unused" } =>
+    mappedTo.has(h)
+      ? { text: mappedTo.get(h)!, tone: "mapped" }
+      : isSignal(h)
+        ? { text: "tested as a signal", tone: "signal" }
+        : { text: "not used", tone: "unused" };
   const preview = rows.slice(0, 10);
 
   return (
@@ -121,15 +135,23 @@ function RowPreview({
               {headers.map((h) => (
                 <th key={h} className="whitespace-nowrap px-3 py-2 align-bottom">
                   <span className="mono block text-[11.5px] font-bold">{h}</span>
-                  {mappedTo.has(h) ? (
-                    <span className="mt-0.5 block text-[10px] font-bold uppercase tracking-[.06em] text-[var(--primary)]">
-                      {mappedTo.get(h)}
-                    </span>
-                  ) : (
-                    <span className="mt-0.5 block text-[10px] uppercase tracking-[.06em] text-[var(--muted)]">
-                      not used
-                    </span>
-                  )}
+                  {(() => {
+                    const l = labelFor(h);
+                    return (
+                      <span
+                        className={
+                          "mt-0.5 block text-[10px] uppercase tracking-[.06em] " +
+                          (l.tone === "mapped"
+                            ? "font-bold text-[var(--primary)]"
+                            : l.tone === "signal"
+                              ? "font-bold text-[var(--accent)]"
+                              : "text-[var(--muted)]")
+                        }
+                      >
+                        {l.text}
+                      </span>
+                    );
+                  })()}
                 </th>
               ))}
             </tr>
@@ -142,7 +164,9 @@ function RowPreview({
                     key={h}
                     className={
                       "mono max-w-[220px] truncate px-3 py-1.5 " +
-                      (mappedTo.has(h) ? "text-[var(--foreground)]" : "text-[var(--muted)]")
+                      (mappedTo.has(h) || isSignal(h)
+                        ? "text-[var(--foreground)]"
+                        : "text-[var(--muted)]")
                     }
                     title={row[h] ?? ""}
                   >
@@ -163,7 +187,7 @@ function RowPreview({
 
 export default function MappingPage() {
   const router = useRouter();
-  const { audience, file, fields, setFields, issues, currency, setCurrency, stageTiming, intake, restored } =
+  const { audience, file, fields, setFields, issues, currency, setCurrency, stageTiming, intake, restored, setSignalOverride } =
     useDiagnostic();
 
   useEffect(() => {
@@ -407,9 +431,100 @@ export default function MappingPage() {
           )}
         </section>
 
+        {/*
+          What else in the file might price a lead.
+
+          The mapping above answers "which column is the create date". This
+          answers the question the mapping cannot: which of the remaining
+          columns carry signal. The engine decides that by shape, and the
+          shape rules are a judgement about what usually works, not a fact
+          about this file - so they are shown as suggestions with a switch
+          beside each, and the advertiser gets the last word. Everything they
+          turn on still has to clear the same sample-size and lift tests, and
+          is reported dropped with a reason if it carries nothing.
+        */}
+        {(signals.discovered.length > 0 || signals.refused.length > 0) && (
+          <section className="mt-8">
+            <div className="mb-4 flex flex-wrap items-baseline justify-between gap-3">
+              <h2 className="h2">Signals we&apos;ll test</h2>
+              <span className="text-[12.5px] text-[var(--muted)]">
+                Nothing here is priced yet - each one is tested against your closed deals
+              </span>
+            </div>
+
+            {signals.discovered.length > 0 && (
+              <div className="grid gap-2">
+                {signals.discovered.map((d) => {
+                  const on = signals.isOn(d.column);
+                  const claimed = signals.fromClaim.has(d.column);
+                  return (
+                    <div
+                      key={d.column}
+                      className={
+                        "flex flex-wrap items-center justify-between gap-3 rounded-xl border px-4 py-3 transition-colors " +
+                        (on
+                          ? "border-[var(--primary)]/30 bg-[var(--primary-soft)]/40"
+                          : "border-[var(--border)] bg-[var(--surface)]")
+                      }
+                    >
+                      <div className="min-w-0">
+                        <span className="mono block text-[13px] font-bold">{d.column}</span>
+                        <span className="mt-0.5 block max-w-[70ch] text-[12.5px] text-[var(--muted)]">
+                          {claimed
+                            ? "You mentioned this in your description, so we test it whatever its shape."
+                            : d.reason}
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setSignalOverride(d.column, !on)}
+                        aria-pressed={on}
+                        className={
+                          "shrink-0 rounded-full border px-3.5 py-1.5 text-[12.5px] font-semibold transition-colors " +
+                          (on
+                            ? "border-[var(--primary)] bg-[var(--primary-soft)] text-[var(--primary)]"
+                            : "border-[var(--border)] bg-[var(--surface)] text-[var(--muted-strong)] hover:border-[var(--primary)]/40 hover:text-[var(--foreground)]")
+                        }
+                      >
+                        {on ? "Testing" : "Not testing"}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/*
+              Shown here as well as in the report, because this is the screen
+              where somebody would otherwise go looking for the column and
+              wonder why it is missing.
+            */}
+            {signals.refused.length > 0 && (
+              <div className="mt-3 rounded-xl border border-[var(--border)] bg-[var(--surface-sunken)] p-3.5">
+                <p className="label">Never tested</p>
+                <ul className="mt-2 grid gap-2">
+                  {signals.refused.map((r) => (
+                    <li key={r.column}>
+                      <span className="mono text-[12.5px] font-bold">{r.column}</span>
+                      <span className="mt-0.5 block max-w-[70ch] text-[12.5px] text-[var(--muted)]">
+                        {r.reason}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </section>
+        )}
+
         {/* `shown`, not `fields`: a column the audience has taken out of the
             mapping must not be highlighted here as though it were mapped. */}
-        <RowPreview headers={file.headers} rows={file.rows} fields={shown} />
+        <RowPreview
+          headers={file.headers}
+          rows={file.rows}
+          fields={shown}
+          isSignal={signals.isOn}
+        />
 
         {/* ---- currency ---- */}
         {mixedCurrency && (

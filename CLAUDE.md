@@ -88,6 +88,14 @@ their buyers. That is the whole remit.
   whether or not the call ran or mentioned it. Discovered columns clear the
   same thresholds as everything else. Without this, a file carrying none of
   the four built-in B2B factors was priced flat by default.
+- **Discovery proposes; the advertiser decides.** Every eligible column is
+  offered on the mapping screen with a switch, suggested when its shape clears
+  the thresholds and offered-but-off when it does not. The thresholds
+  (`MIN_FILL`, `MAX_LEVELS`) are a judgement about what usually carries signal,
+  not a fact about a given file, so they must never be the last word - that is
+  principle 3 applied to which columns get tested at all. Only identifiers and
+  free text are excluded outright (`MAX_DISTINCT_SHARE`), because no level in
+  them could ever reach the 25 deals the engine needs.
 - **Protected characteristics are never factors.** Age, gender, race,
   religion, disability, health, credit, marital status, national origin,
   sexual orientation, veteran status and identity numbers are refused by

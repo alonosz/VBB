@@ -37,6 +37,7 @@ export interface PersistedFlow {
   version: 1;
   savedAt: string;
   audience: Audience;
+  signalOverrides: Record<string, boolean>;
   businessContext: string;
   statedCycleDays: number | null;
   statedSizeBands: string[];
@@ -126,6 +127,14 @@ export function loadFlow(): PersistedFlow | null {
       savedAt: typeof parsed.savedAt === "string" ? parsed.savedAt : new Date().toISOString(),
       // A flow saved before the flag existed was a business flow.
       audience: parsed.audience === "b2c" ? "b2c" : "b2b",
+      signalOverrides:
+        parsed.signalOverrides && typeof parsed.signalOverrides === "object"
+          ? Object.fromEntries(
+              Object.entries(parsed.signalOverrides).filter(
+                ([, v]) => typeof v === "boolean"
+              )
+            )
+          : {},
       businessContext: typeof parsed.businessContext === "string" ? parsed.businessContext : "",
       statedCycleDays:
         typeof parsed.statedCycleDays === "number" ? parsed.statedCycleDays : null,

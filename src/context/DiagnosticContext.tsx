@@ -33,6 +33,14 @@ interface DiagnosticState {
   audience: Audience;
   setAudience: (a: Audience) => void;
 
+  /**
+   * Columns the advertiser switched on or off by hand, over what discovery
+   * proposed. Absent means "whatever the file's shape suggested", which is
+   * the case for nearly everybody.
+   */
+  signalOverrides: Record<string, boolean>;
+  setSignalOverride: (column: string, on: boolean) => void;
+
   businessContext: string;
   setBusinessContext: (v: string) => void;
 
@@ -107,6 +115,12 @@ export function DiagnosticProvider({ children }: { children: ReactNode }) {
   const [snapshot] = useState(() => (typeof window === "undefined" ? null : loadFlow()));
 
   const [audience, setAudience] = useState<Audience>(snapshot?.audience ?? "b2b");
+  const [signalOverrides, setSignalOverrides] = useState<Record<string, boolean>>(
+    snapshot?.signalOverrides ?? {}
+  );
+  const setSignalOverride = useCallback((column: string, on: boolean) => {
+    setSignalOverrides((current) => ({ ...current, [column]: on }));
+  }, []);
   const [businessContext, setBusinessContext] = useState(snapshot?.businessContext ?? "");
   const [statedCycleDays, setStatedCycleDays] = useState<number | null>(
     snapshot?.statedCycleDays ?? null
@@ -153,10 +167,10 @@ export function DiagnosticProvider({ children }: { children: ReactNode }) {
       return;
     }
     saveFlow({
-      audience, businessContext, statedCycleDays, statedSizeBands,
+      audience, businessContext, statedCycleDays, statedSizeBands, signalOverrides,
       file, fields, issues, stageTiming, currency, intake,
     });
-  }, [audience, businessContext, statedCycleDays, statedSizeBands, file, fields, issues, stageTiming, currency, intake]);
+  }, [audience, businessContext, statedCycleDays, statedSizeBands, signalOverrides, file, fields, issues, stageTiming, currency, intake]);
 
   const reset = useCallback(() => {
     clearFlow();
@@ -176,6 +190,7 @@ export function DiagnosticProvider({ children }: { children: ReactNode }) {
   const value = useMemo(
     () => ({
       audience, setAudience,
+      signalOverrides, setSignalOverride,
       businessContext, setBusinessContext,
       statedCycleDays, setStatedCycleDays,
       statedSizeBands, setStatedSizeBands,
@@ -188,7 +203,7 @@ export function DiagnosticProvider({ children }: { children: ReactNode }) {
       restored, needsFile,
       reset,
     }),
-    [audience, businessContext, statedCycleDays, statedSizeBands, file, fields, issues, stageTiming, currency, intake, restored, needsFile, reset]
+    [audience, businessContext, statedCycleDays, statedSizeBands, signalOverrides, setSignalOverride, file, fields, issues, stageTiming, currency, intake, restored, needsFile, reset]
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

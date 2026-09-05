@@ -24,14 +24,18 @@ export interface SignalColumns {
   hypotheses: Hypothesis[];
   /** Every column the engine will test, assistant's first. */
   customSignalKeys: string[];
-  /** The ones the file's shape put forward. */
+  /** Every column that could be tested, suggested or not. */
   discovered: DiscoveredSignal[];
   /** Protected characteristics, never tested, with the reason. */
   refused: RefusedColumn[];
+  /** True where the column is on, whether by shape, claim, or by hand. */
+  isOn: (column: string) => boolean;
+  /** Columns the assistant named, which are on regardless of shape. */
+  fromClaim: Set<string>;
 }
 
 export function useSignalColumns(): SignalColumns {
-  const { file, fields, intake } = useDiagnostic();
+  const { file, fields, intake, signalOverrides } = useDiagnostic();
 
   return useMemo(() => {
     const fromIntake =
@@ -43,11 +47,20 @@ export function useSignalColumns(): SignalColumns {
       ? discoverSignalColumns(file.headers, file.rows, fields)
       : { discovered: [], refused: [] };
 
+    const customSignalKeys = signalColumnsFor(
+      fromIntake.customSignalKeys,
+      discovered,
+      signalOverrides
+    );
+    const on = new Set(customSignalKeys);
+
     return {
       hypotheses: fromIntake.hypotheses,
-      customSignalKeys: signalColumnsFor(fromIntake.customSignalKeys, discovered),
+      customSignalKeys,
       discovered,
       refused,
+      isOn: (column: string) => on.has(column),
+      fromClaim: new Set(fromIntake.customSignalKeys),
     };
-  }, [file, fields, intake]);
+  }, [file, fields, intake, signalOverrides]);
 }
