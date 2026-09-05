@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import type { Audience } from "@/lib/analysis/types";
 
 /**
  * How to get an export that the analysis can actually use.
@@ -41,6 +42,20 @@ const NICE_TO_HAVE = [
   { label: "Employee count", why: "" },
   { label: "Industry", why: "" },
   { label: "Contact title", why: "" },
+];
+
+/**
+ * A consumer has no headcount or job title. What separates one consumer lead
+ * from another is what they asked for, and that is usually already a column
+ * on the form: the case type, the product, the coverage or package tier, when
+ * they want it. Any short category column is picked up and tested on its own;
+ * this list is what to make sure survives the export.
+ */
+const NICE_TO_HAVE_CONSUMER = [
+  { label: "What they asked for", why: "case type, product line, service, programme" },
+  { label: "Tier or package", why: "coverage level, plan, package" },
+  { label: "Timeline or urgency", why: "when they want it" },
+  { label: "State or region", why: "pricing and rules differ by place" },
 ];
 
 const CRMS = [
@@ -121,8 +136,9 @@ function Group({
   );
 }
 
-export function ExportGuide() {
+export function ExportGuide({ audience = "b2b" }: { audience?: Audience }) {
   const [crm, setCrm] = useState(CRMS[0].name);
+  const consumer = audience === "b2c";
   const active = CRMS.find((c) => c.name === crm) ?? CRMS[0];
 
   return (
@@ -201,9 +217,13 @@ export function ExportGuide() {
           />
           <Group
             tone="extra"
-            title="Unlocks the ICP check"
-            note="Whether your best customers really are who you think."
-            items={NICE_TO_HAVE}
+            title={consumer ? "What separates one lead from another" : "Unlocks the ICP check"}
+            note={
+              consumer
+                ? "Usually on the form already. Keep them in the export."
+                : "Whether your best customers really are who you think."
+            }
+            items={consumer ? NICE_TO_HAVE_CONSUMER : NICE_TO_HAVE}
           />
         </div>
 

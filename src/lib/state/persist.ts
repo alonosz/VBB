@@ -1,3 +1,4 @@
+import type { Audience } from "@/lib/analysis/types";
 import type { DetectedField, FileIssue, StageTimingColumn } from "@/lib/mapping/detect";
 import type { CurrencyPolicy } from "@/lib/mapping/toDeals";
 import type { IntakeResult } from "@/lib/intake/client";
@@ -35,6 +36,7 @@ export interface PersistedFile {
 export interface PersistedFlow {
   version: 1;
   savedAt: string;
+  audience: Audience;
   businessContext: string;
   statedCycleDays: number | null;
   statedSizeBands: string[];
@@ -122,6 +124,8 @@ export function loadFlow(): PersistedFlow | null {
     return {
       version: 1,
       savedAt: typeof parsed.savedAt === "string" ? parsed.savedAt : new Date().toISOString(),
+      // A flow saved before the flag existed was a business flow.
+      audience: parsed.audience === "b2c" ? "b2c" : "b2b",
       businessContext: typeof parsed.businessContext === "string" ? parsed.businessContext : "",
       statedCycleDays:
         typeof parsed.statedCycleDays === "number" ? parsed.statedCycleDays : null,

@@ -32,6 +32,7 @@ export * from "./gateValue";
  */
 export function runDiagnostic(input: AnalysisInput): DiagnosticResult {
   const { deals, excluded, businessContext, currencyCode, customSignalKeys, hypotheses } = input;
+  const audience = input.audience ?? "b2b";
   const now = input.now ?? new Date();
 
   const cycle = cycleLengthStats(deals);
@@ -49,6 +50,7 @@ export function runDiagnostic(input: AnalysisInput): DiagnosticResult {
     currencyCode,
     customSignalKeys,
     hypotheses,
+    audience,
   });
   const verdict = determineVerdict(cycle, volume, matchRate, earlyGate);
   // What reaching the early gate is worth - the one signal that can sharpen a

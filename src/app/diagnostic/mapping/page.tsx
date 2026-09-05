@@ -8,7 +8,7 @@ import { FlowSkeleton } from "@/components/diagnostic/FlowSkeleton";
 import { ArrowIcon } from "@/components/ArrowIcon";
 import type { DetectedField, FileIssue } from "@/lib/mapping/detect";
 import { rowsToDeals } from "@/lib/mapping/toDeals";
-import { resolveHypotheses } from "@/lib/intake/merge";
+import { useSignalColumns } from "@/lib/diagnostic/useSignals";
 import { PageHead } from "@/components/ui";
 
 const CURRENCIES = ["USD", "EUR", "GBP", "CAD", "AUD", "JPY", "INR", "BRL", "MXN", "NZD"];
@@ -176,12 +176,11 @@ export default function MappingPage() {
   const mixedCurrency = issues.find((i) => i.kind === "mixed_currency");
 
 
+  const signals = useSignalColumns();
+
   const { hypotheses, customSignalKeys } = useMemo(
-    () =>
-      intake?.status === "ready"
-        ? resolveHypotheses(intake.proposal, fields)
-        : { hypotheses: [], customSignalKeys: [] },
-    [intake, fields]
+    () => ({ hypotheses: signals.hypotheses, customSignalKeys: signals.customSignalKeys }),
+    [signals]
   );
 
   const preview = useMemo(() => {

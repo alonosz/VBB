@@ -43,9 +43,23 @@ export interface ExcludedRow {
   reason: string;
 }
 
+/**
+ * Who the advertiser sells to.
+ *
+ * Not a preference and not a segment: it decides which of the built-in
+ * factors can mean anything. Headcount, industry and seniority describe a
+ * company, and a consumer has none of them; a free-webmail address separates
+ * a corporate buyer from a hobbyist and separates nothing at all in a file
+ * where every buyer is a person. Everything else in the engine is discovered
+ * from the file and needs no such flag.
+ */
+export type Audience = "b2b" | "b2c";
+
 export interface AnalysisInput {
   deals: MappedDeal[];
   excluded: ExcludedRow[];
+  /** Defaults to businesses, which is what every file before this flag was. */
+  audience?: Audience;
   /** Raw free text from the intake step. Never parsed into structure. */
   businessContext?: string;
   currencyCode: string;

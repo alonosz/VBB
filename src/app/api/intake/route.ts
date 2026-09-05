@@ -62,6 +62,7 @@ const ProposalSchema = z.object({
 interface IntakeRequestBody {
   businessContext?: unknown;
   columns?: unknown;
+  audience?: unknown;
   /** Whose call this is. The endpoint spends money, so it has an owner. */
   workspaceKey?: unknown;
 }
@@ -112,6 +113,8 @@ export async function POST(request: Request) {
   }
 
   const headers = columns.map((c) => c.name).filter((n): n is string => typeof n === "string");
+  // Anything but the one other value is businesses, which is what it always was.
+  const audience = body.audience === "b2c" ? "b2c" : "b2b";
 
   const client = new Anthropic({
     apiKey,
@@ -125,7 +128,7 @@ export async function POST(request: Request) {
       model: process.env.VBB_INTAKE_MODEL || DEFAULT_MODEL,
       max_tokens: 4096,
       system: INTAKE_SYSTEM_PROMPT,
-      messages: [{ role: "user", content: buildIntakeUserMessage(businessContext, columns) }],
+      messages: [{ role: "user", content: buildIntakeUserMessage(businessContext, columns, audience) }],
       output_config: { format: zodOutputFormat(ProposalSchema) },
     });
 

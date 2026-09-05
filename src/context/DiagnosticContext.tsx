@@ -1,5 +1,6 @@
 "use client";
 
+import type { Audience } from "@/lib/analysis/types";
 import {
   createContext,
   type Dispatch,
@@ -25,6 +26,13 @@ export interface UploadedFile {
 }
 
 interface DiagnosticState {
+  /**
+   * Who they sell to. Decides which built-in factors can apply and which
+   * questions step one asks; nothing about it reaches a value directly.
+   */
+  audience: Audience;
+  setAudience: (a: Audience) => void;
+
   businessContext: string;
   setBusinessContext: (v: string) => void;
 
@@ -98,6 +106,7 @@ export function DiagnosticProvider({ children }: { children: ReactNode }) {
    */
   const [snapshot] = useState(() => (typeof window === "undefined" ? null : loadFlow()));
 
+  const [audience, setAudience] = useState<Audience>(snapshot?.audience ?? "b2b");
   const [businessContext, setBusinessContext] = useState(snapshot?.businessContext ?? "");
   const [statedCycleDays, setStatedCycleDays] = useState<number | null>(
     snapshot?.statedCycleDays ?? null
@@ -144,14 +153,15 @@ export function DiagnosticProvider({ children }: { children: ReactNode }) {
       return;
     }
     saveFlow({
-      businessContext, statedCycleDays, statedSizeBands,
+      audience, businessContext, statedCycleDays, statedSizeBands,
       file, fields, issues, stageTiming, currency, intake,
     });
-  }, [businessContext, statedCycleDays, statedSizeBands, file, fields, issues, stageTiming, currency, intake]);
+  }, [audience, businessContext, statedCycleDays, statedSizeBands, file, fields, issues, stageTiming, currency, intake]);
 
   const reset = useCallback(() => {
     clearFlow();
     setNeedsFile(false);
+    setAudience("b2b");
     setBusinessContext("");
     setStatedCycleDays(null);
     setStatedSizeBands([]);
@@ -165,6 +175,7 @@ export function DiagnosticProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo(
     () => ({
+      audience, setAudience,
       businessContext, setBusinessContext,
       statedCycleDays, setStatedCycleDays,
       statedSizeBands, setStatedSizeBands,
@@ -177,7 +188,7 @@ export function DiagnosticProvider({ children }: { children: ReactNode }) {
       restored, needsFile,
       reset,
     }),
-    [businessContext, statedCycleDays, statedSizeBands, file, fields, issues, stageTiming, currency, intake, restored, needsFile, reset]
+    [audience, businessContext, statedCycleDays, statedSizeBands, file, fields, issues, stageTiming, currency, intake, restored, needsFile, reset]
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

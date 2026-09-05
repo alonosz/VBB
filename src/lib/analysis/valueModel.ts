@@ -1,3 +1,4 @@
+import type { Audience } from "./types";
 import type { MappedDeal } from "./types";
 import { median, round } from "./helpers";
 import { applyCap } from "./valueSpread";
@@ -95,6 +96,8 @@ export interface ValueModel {
   /** Resolved deals the model was fitted on. */
   fittedOn: number;
   currencyCode: string;
+  /** Who it prices for. Absent on models fitted before the flag existed. */
+  audience?: Audience;
 }
 
 export interface ValuedLead {
@@ -242,16 +245,17 @@ export interface BuildValueModelOptions {
   overrides?: Record<string, number>;
   /** Claims from the intake step, attached to the factor that can test them. */
   hypotheses?: FactorHypothesis[];
+  audience?: Audience;
 }
 
 export function buildValueModel(opts: BuildValueModelOptions): ValueModel {
-  const { cap, currencyCode, customSignalKeys = [], hypotheses = [] } = opts;
+  const { cap, currencyCode, customSignalKeys = [], hypotheses = [], audience = "b2b" } = opts;
   const pool = resolved(opts.deals);
 
   const { ev: baseValue } = expectedValueOf(pool, cap);
 
   const claimFor = new Map(hypotheses.map((h) => [h.factorKey, h]));
-  const factors = buildFactorList(customSignalKeys).map((f) =>
+  const factors = buildFactorList(customSignalKeys, audience).map((f) =>
     fitFactor(f, pool, baseValue, cap, claimFor.get(f.key) ?? null)
   );
 
@@ -269,6 +273,7 @@ export function buildValueModel(opts: BuildValueModelOptions): ValueModel {
     isFlat: includedFactors.length === 0 || baseValue <= 0,
     fittedOn: pool.length,
     currencyCode,
+    audience,
   };
 
   model.calibrationFactor = computeCalibration(model, pool, opts.overrides);
@@ -370,7 +375,8 @@ function rawValueFor(
   overrides?: Record<string, number>
 ): number {
   const factorDefs = buildFactorList(
-    model.factors.filter((f) => !isCoreKey(f.key)).map((f) => f.key)
+    model.factors.filter((f) => !isCoreKey(f.key)).map((f) => f.key),
+    model.audience ?? "b2b"
   );
 
   let product = 1;

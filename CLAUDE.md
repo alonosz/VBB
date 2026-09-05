@@ -82,6 +82,29 @@ their buyers. That is the whole remit.
   returns a reason and the flow continues on the header heuristics alone.
 - Default model is a fast one (`claude-haiku-4-5-20251001`). The task is
   comprehension, not depth, and latency is the constraint that matters.
+- **The assistant is not the only reader of the file.** `discoverSignalColumns()`
+  puts forward any unmapped column whose shape is a short category, so a
+  consumer file with a case type or a product line gets its signal tested
+  whether or not the call ran or mentioned it. Discovered columns clear the
+  same thresholds as everything else. Without this, a file carrying none of
+  the four built-in B2B factors was priced flat by default.
+- **Protected characteristics are never factors.** Age, gender, race,
+  religion, disability, health, credit, marital status, national origin,
+  sexual orientation, veteran status and identity numbers are refused by
+  header before their shape is examined, and the report lists each refusal
+  with the reason. Bidding differently on them is what Google's personalised
+  advertising rules and discrimination law forbid, and it is exactly what the
+  engine would do with such a column if allowed to.
+
+## 5a. Who they sell to is a switch, not a segment
+
+`Audience` is `"b2b" | "b2c"`, asked first on step one, carried in the flow,
+the analysis input and the saved model. It decides which of the four built-in
+factors can apply (headcount, industry, seniority and email domain type
+describe a company and are dropped for consumers) and which questions the
+intake asks. Nothing about it reaches a value directly. Everything else the
+engine prices on is discovered from the file, which is what lets one product
+serve a SaaS company and an insurance marketplace without a second version.
 
 ## 6. Cap outlier values
 

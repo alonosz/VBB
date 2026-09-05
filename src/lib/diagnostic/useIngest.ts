@@ -43,7 +43,7 @@ export interface IngestInput {
 
 export function useIngest(onLog?: (line: string) => void) {
   const router = useRouter();
-  const { businessContext, setFile, setFields, setIssues, setStageTiming, setIntake } =
+  const { audience, businessContext, setFile, setFields, setIssues, setStageTiming, setIntake } =
     useDiagnostic();
 
   return useCallback(
@@ -73,7 +73,7 @@ export function useIngest(onLog?: (line: string) => void) {
       if (description) {
         log("Reading your description against these columns…");
 
-        const pending = requestIntakeProposal({ businessContext: description, headers, rows })
+        const pending = requestIntakeProposal({ businessContext: description, headers, rows, audience })
           .then((intake) => {
             setIntake(intake);
             if (intake.status === "ready") {
@@ -95,6 +95,6 @@ export function useIngest(onLog?: (line: string) => void) {
 
       router.push("/diagnostic/mapping");
     },
-    [businessContext, onLog, router, setFields, setFile, setIntake, setIssues, setStageTiming]
+    [audience, businessContext, onLog, router, setFields, setFile, setIntake, setIssues, setStageTiming]
   );
 }

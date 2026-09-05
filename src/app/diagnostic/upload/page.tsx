@@ -16,7 +16,7 @@ const MAX_ROWS = 100_000;
 
 export default function UploadPage() {
   const router = useRouter();
-  const { businessContext, needsFile } = useDiagnostic();
+  const { businessContext, needsFile, audience } = useDiagnostic();
   const inputRef = useRef<HTMLInputElement>(null);
 
   const [dragging, setDragging] = useState(false);
@@ -249,7 +249,7 @@ export default function UploadPage() {
             />
 
 
-            <ExportGuide />
+            <ExportGuide audience={audience} />
 
             {assisted && (
               <details className="mt-4 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 py-3">

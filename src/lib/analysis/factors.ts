@@ -1,4 +1,4 @@
-import type { MappedDeal } from "./types";
+import type { Audience, MappedDeal } from "./types";
 import { classifyDomain } from "./helpers";
 
 /**
@@ -112,9 +112,19 @@ export function customFactor(key: string, label: string): FactorDefinition {
   };
 }
 
-export function buildFactorList(customSignalKeys: string[] = []): FactorDefinition[] {
+/**
+ * @param audience The four built-ins describe a company and are dropped for a
+ *   consumer file rather than fitted and refuted. Fitting them would either
+ *   find nothing (no headcount column) or find the wrong thing (every consumer
+ *   on Gmail reading as one "Free webmail" level), and either way the report
+ *   would carry lines about signals that could never have applied.
+ */
+export function buildFactorList(
+  customSignalKeys: string[] = [],
+  audience: Audience = "b2b"
+): FactorDefinition[] {
   return [
-    ...CORE_FACTORS,
+    ...(audience === "b2c" ? [] : CORE_FACTORS),
     ...customSignalKeys.map((k) => customFactor(k, k)),
   ];
 }

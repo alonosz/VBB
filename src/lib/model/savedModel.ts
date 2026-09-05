@@ -1,4 +1,4 @@
-import type { MappedDeal } from "@/lib/analysis/types";
+import type { Audience, MappedDeal } from "@/lib/analysis/types";
 import type {
   FactorHypothesis,
   ModelFactor,
@@ -101,6 +101,11 @@ export interface SavedValueModel {
   /** Columns that must be mapped again for the custom rules to fire. */
   customSignalKeys: string[];
   claims: FactorHypothesis[];
+  /**
+   * Who the model prices for. Optional so a model saved before the flag
+   * existed still loads; it is read as businesses, which is what it was.
+   */
+  audience?: Audience;
 }
 
 const CORE_KEYS = new Set(["domainType", "employeeBand", "industry", "seniority"]);
@@ -173,6 +178,7 @@ export function saveValueModel(model: ValueModel, opts: SaveOptions): SavedValue
     claims: model.factors
       .filter((f) => f.userClaim !== null)
       .map((f) => ({ factorKey: f.key, claim: f.userClaim!, statedLevels: f.statedLevels })),
+    audience: model.audience ?? "b2b",
   };
 }
 
@@ -320,6 +326,7 @@ export function loadSavedModel(raw: unknown): LoadResult {
       customSignalKeys: Array.isArray(r.customSignalKeys)
         ? r.customSignalKeys.filter((k): k is string => typeof k === "string")
         : [],
+      audience: r.audience === "b2c" ? "b2c" : "b2b",
       claims: Array.isArray(r.claims)
         ? (r.claims as unknown[])
             .filter((c): c is FactorHypothesis => {
@@ -380,6 +387,7 @@ export function savedModelToValueModel(saved: SavedValueModel): ValueModel {
     droppedFactors: [],
     refutedClaims: [],
     isFlat: factors.length === 0,
+    audience: saved.audience ?? "b2b",
     fittedOn: saved.fittedOn,
     currencyCode: saved.currencyCode,
   };
@@ -402,7 +410,10 @@ export function checkApplicability(
   deals: MappedDeal[],
   reportingCurrency?: string
 ): { factors: Applicability[]; inert: Applicability[]; currencyMismatch: string | null } {
-  const defs = buildFactorList(saved.factors.map((f) => f.key).filter((k) => !CORE_KEYS.has(k)));
+  const defs = buildFactorList(
+    saved.factors.map((f) => f.key).filter((k) => !CORE_KEYS.has(k)),
+    saved.audience ?? "b2b"
+  );
 
   const factors = saved.factors.map((f) => {
     const def = defs.find((d) => d.key === f.key);

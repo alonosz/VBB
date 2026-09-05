@@ -767,6 +767,42 @@ export function DroppedFactorsSection({ model }: { model: ValueModel }) {
 }
 
 /**
+ * Columns the engine would not touch, and why.
+ *
+ * A protected characteristic is refused before its shape is examined, so it
+ * never appears in the tested list and could otherwise vanish without a
+ * trace. An advertiser who uploaded an age band expecting it to matter
+ * deserves to be told it was seen and set aside on purpose, rather than left
+ * to wonder whether the tool missed it.
+ */
+export function RefusedColumnsSection({
+  refused,
+}: {
+  refused: { column: string; reason: string }[];
+}) {
+  if (refused.length === 0) return null;
+  return (
+    <section>
+      <h3 className="h3 mb-1">Columns we will not price on</h3>
+      <p className="mb-3 max-w-[74ch] text-[13.5px] text-[var(--muted)]">
+        Seen in your file and left out on purpose. Bidding differently on any
+        of these is what Google&apos;s personalised advertising rules and
+        discrimination law forbid, so they are never tested however strongly
+        they might predict.
+      </p>
+      <div className="grid gap-2">
+        {refused.map((r) => (
+          <div key={r.column} className="card px-4 py-3">
+            <p className="mono text-[13px] font-semibold">{r.column}</p>
+            <p className="mt-0.5 max-w-[74ch] text-[13px] text-[var(--muted)]">{r.reason}</p>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+/**
  * Answers the claims made at intake, one by one, whether or not they survived.
  * A refuted claim is the most useful line in the report - it is the moment the
  * advertiser learns their own data disagrees with them.

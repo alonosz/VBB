@@ -10,7 +10,7 @@ import { PageHead } from "@/components/ui";
 import { rowsToDeals } from "@/lib/mapping/toDeals";
 import { runDiagnostic, valueAllLeads, bestCaseStack, withOverrides } from "@/lib/analysis";
 import { buildComparisons } from "@/lib/analysis/statedVsActual";
-import { resolveHypotheses } from "@/lib/intake/merge";
+import { useSignalColumns } from "@/lib/diagnostic/useSignals";
 import { describeSizeSelection, sizeFit } from "@/lib/analysis/statedProfile";
 import {
   checkApplicability,
@@ -35,6 +35,7 @@ import {
   ClippedOutliersSection,
   EarlyGateSection,
   DroppedFactorsSection,
+  RefusedColumnsSection,
   HookPanel,
   ValueModelPanel,
   WiringPanel,
@@ -51,7 +52,8 @@ export default function ReportPage() {
   const router = useRouter();
   const {
     file, fields, currency, businessContext, stageTiming, intake,
-    statedCycleDays, statedSizeBands, restored } = useDiagnostic();
+    statedCycleDays, statedSizeBands, restored, audience } = useDiagnostic();
+  const signals = useSignalColumns();
 
   // A saved model is the difference between a diagnostic and a daily loop: it
   // stops the same lead being worth two different amounts on two days. Recalled
@@ -76,13 +78,7 @@ export default function ReportPage() {
 
   // Claims from the intake step become factors to test, never values. The
   // engine still has to earn each one against the same thresholds.
-  const { hypotheses, customSignalKeys } = useMemo(
-    () =>
-      intake?.status === "ready"
-        ? resolveHypotheses(intake.proposal, fields)
-        : { hypotheses: [], customSignalKeys: [] },
-    [intake, fields]
-  );
+  const { hypotheses, customSignalKeys } = signals;
 
   const mapped = useMemo(() => {
     if (!file) return null;
@@ -104,8 +100,9 @@ export default function ReportPage() {
       currencyCode: currency.reportingCurrency,
       customSignalKeys,
       hypotheses,
+      audience,
     });
-  }, [mapped, businessContext, currency.reportingCurrency, customSignalKeys, hypotheses]);
+  }, [mapped, businessContext, currency.reportingCurrency, customSignalKeys, hypotheses, audience]);
 
   // What actually prices the leads: the frozen model when one is in use,
   // otherwise today's fit.
@@ -157,11 +154,13 @@ export default function ReportPage() {
         : undefined,
       {
         cycleDays: statedCycleDays,
-        sizeLabel: describeSizeSelection(statedSizeBands),
-        sizeFit: mapped ? sizeFit(mapped.deals, statedSizeBands) : undefined,
+        // A consumer was never asked for a headcount, so there is no claim
+        // to hold against the data.
+        sizeLabel: audience === "b2c" ? "" : describeSizeSelection(statedSizeBands),
+        sizeFit: mapped && audience !== "b2c" ? sizeFit(mapped.deals, statedSizeBands) : undefined,
       }
     ).comparisons;
-  }, [result, businessContext, intake, statedCycleDays, statedSizeBands, mapped]);
+  }, [result, businessContext, intake, statedCycleDays, statedSizeBands, mapped, audience]);
 
   // Same markup on the server and during hydration; the restored flow only
   // exists in the browser and appears on the pass after.
@@ -316,6 +315,7 @@ export default function ReportPage() {
               <SourceEconomicsSection sources={result.sources} currency={cur} />
             </section>
             <DroppedFactorsSection model={result.valueModel} />
+            <RefusedColumnsSection refused={signals.refused} />
             <ClippedOutliersSection
               deals={mapped.deals}
               valued={valued}

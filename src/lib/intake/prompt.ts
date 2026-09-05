@@ -1,4 +1,5 @@
 import type { ColumnProfile } from "./profile";
+import type { Audience } from "@/lib/analysis/types";
 
 /**
  * The intake prompt.
@@ -28,9 +29,11 @@ Your job has exactly two parts.
    - email: the LEAD's email address, never the sales rep's or account owner's.
    - clickId: a Google click identifier (gclid / gbraid / wbraid) - a long opaque token.
    - pipeline: which pipeline or product line the deal sits in.
-   - employeeCount: company headcount.
-   - industry: the company's industry or vertical.
-   - contactTitle: the contact's job title.
+   - employeeCount: company headcount. Only meaningful when the advertiser sells to businesses.
+   - industry: the company's industry or vertical. Businesses only.
+   - contactTitle: the contact's job title. Businesses only.
+
+   The advertiser's audience is stated below. For a consumer audience, do not propose employeeCount, industry or contactTitle - a consumer has none of them - and expect the value signals to be what the lead asked for: a case type, a product line, a coverage or package tier, a service, a timeline.
 
 2. CANDIDATE FACTORS. From the advertiser's description, list the claims they made about which leads are worth more, and point each at the column that could confirm or refute it. Quote the claim in their own words. These are hypotheses to be tested against their data - not conclusions.
 
@@ -45,7 +48,8 @@ HARD LIMITS - these are not style preferences:
 
 export function buildIntakeUserMessage(
   businessContext: string,
-  profiles: ColumnProfile[]
+  profiles: ColumnProfile[],
+  audience: Audience = "b2b"
 ): string {
   const columns = profiles
     .map((p) => {
@@ -69,7 +73,9 @@ export function buildIntakeUserMessage(
     })
     .join("\n");
 
-  return `<business_description>
+  return `<audience>${audience === "b2c" ? "consumers and individuals" : "businesses"}</audience>
+
+<business_description>
 ${businessContext.trim() || "(the advertiser did not describe their business)"}
 </business_description>
 

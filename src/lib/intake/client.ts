@@ -1,3 +1,4 @@
+import type { Audience } from "@/lib/analysis/types";
 import { profileColumns, type ColumnProfile } from "./profile";
 import { readWorkspaceKey } from "@/lib/workspace/clientKey";
 import {
@@ -20,6 +21,7 @@ export interface IntakeRequest {
   businessContext: string;
   headers: string[];
   rows: Record<string, string>[];
+  audience?: Audience;
 }
 
 export interface IntakeResult extends IntakeOutcome {
@@ -57,6 +59,7 @@ export async function requestIntakeProposal(req: IntakeRequest): Promise<IntakeR
       body: JSON.stringify({
         businessContext: req.businessContext,
         columns: sent,
+        audience: req.audience ?? "b2b",
         workspaceKey: readWorkspaceKey(),
       }),
       signal: controller.signal,

@@ -4,6 +4,8 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useDiagnostic } from "@/context/DiagnosticContext";
 import { generateDemoDeals, demoDealsToCsvRows } from "@/lib/fixtures/demoDataset";
+import { CONSUMER_EXAMPLE, generateConsumerDemoRows } from "@/lib/fixtures/consumerDataset";
+import type { Audience } from "@/lib/analysis/types";
 import { SIZE_BANDS, describeSizeSelection } from "@/lib/analysis/statedProfile";
 import { useIngest } from "@/lib/diagnostic/useIngest";
 import { Stepper } from "@/components/diagnostic/Stepper";
@@ -22,10 +24,13 @@ const EXAMPLE =
 export default function IntakePage() {
   const router = useRouter();
   const {
+    audience, setAudience,
     businessContext, setBusinessContext,
     statedCycleDays, setStatedCycleDays,
     statedSizeBands, setStatedSizeBands,
   } = useDiagnostic();
+  const consumer = audience === "b2c";
+  const example = consumer ? CONSUMER_EXAMPLE : EXAMPLE;
 
   function nudgeCycle(by: number) {
     setStatedCycleDays(Math.max(1, Math.min(730, (statedCycleDays ?? 30) + by)));
@@ -43,12 +48,16 @@ export default function IntakePage() {
 
   async function trySample() {
     setLoadingSample(true);
-    const description = businessContext.trim() || EXAMPLE;
-    if (!businessContext.trim()) setBusinessContext(EXAMPLE);
-    const rows = demoDealsToCsvRows(generateDemoDeals());
+    const description = businessContext.trim() || example;
+    if (!businessContext.trim()) setBusinessContext(example);
+    // Each audience gets a sample shaped like its own world. A consumer
+    // walking through a B2B file learns that the product is for somebody else.
+    const rows = consumer
+      ? generateConsumerDemoRows()
+      : demoDealsToCsvRows(generateDemoDeals());
     await ingest({
-      name: "sample_b2b_deals.csv",
-      sizeBytes: 248_000,
+      name: consumer ? "sample_quote_requests.csv" : "sample_b2b_deals.csv",
+      sizeBytes: consumer ? 190_000 : 248_000,
       headers: Object.keys(rows[0]),
       rows,
       businessContext: description,
@@ -65,11 +74,56 @@ export default function IntakePage() {
           lede="Nothing here changes what your leads are worth. We hold it next to what your data actually says and show you where the two disagree - usually the most useful page in the report."
         />
 
-        {/* ---- the two claims worth asking for straight, first ---- */}
+        {/*
+          Asked first, because it decides what the rest of the page asks.
+
+          Headcount, industry and job title describe a company. Asking a law
+          firm or an insurance marketplace how big their best customers are
+          tells them this tool was built for somebody else, and it was the one
+          question on the page that made the product read as B2B when its
+          engine never was. The answer also switches off the built-in factors
+          that could only mislead on a consumer file.
+        */}
         <div className="card mt-8 p-6 sm:p-7">
-          <h2 className="h3">Start with two numbers</h2>
+          <h2 className="h3">Who do you sell to?</h2>
           <p className="mt-1.5 max-w-[62ch] text-[13.5px] text-[var(--muted)]">
-            Both optional. Neither prices a lead - your closed deals do that.
+            Changes which questions we ask and which built-in signals we test.
+            Nothing else.
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {(
+              [
+                { id: "b2b", label: "Businesses", hint: "companies, teams, the people who buy for them" },
+                { id: "b2c", label: "Consumers", hint: "individuals, households, sole traders" },
+              ] as { id: Audience; label: string; hint: string }[]
+            ).map((opt) => {
+              const on = audience === opt.id;
+              return (
+                <button
+                  key={opt.id}
+                  type="button"
+                  onClick={() => setAudience(opt.id)}
+                  aria-pressed={on}
+                  className={
+                    "rounded-xl border px-4 py-2.5 text-left transition-colors " +
+                    (on
+                      ? "border-[var(--primary)] bg-[var(--primary-soft)]"
+                      : "border-[var(--border)] bg-[var(--surface)] hover:border-[var(--primary)]/40")
+                  }
+                >
+                  <span className="block text-[14px] font-bold">{opt.label}</span>
+                  <span className="block text-[12.5px] text-[var(--muted)]">{opt.hint}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* ---- the two claims worth asking for straight, first ---- */}
+        <div className="card mt-4 p-6 sm:p-7">
+          <h2 className="h3">{consumer ? "Start with one number" : "Start with two numbers"}</h2>
+          <p className="mt-1.5 max-w-[62ch] text-[13.5px] text-[var(--muted)]">
+            {consumer ? "Optional. It does not price a lead" : "Both optional. Neither prices a lead"} - your closed deals do that.
           </p>
 
           {/* Sales cycle */}
@@ -121,7 +175,8 @@ export default function IntakePage() {
             </div>
           </div>
 
-          {/* Company size */}
+          {/* Company size. A consumer has none, so the question is not asked. */}
+          {!consumer && (
           <div className="mt-6 border-t border-[var(--border)] pt-5">
             <p className="text-[14px] font-semibold">How big are your best customers?</p>
             <p className="mt-0.5 text-[13px] text-[var(--muted)]">
@@ -159,6 +214,7 @@ export default function IntakePage() {
               </p>
             )}
           </div>
+          )}
         </div>
 
         <div className="card mt-4 p-6 sm:p-7">
@@ -187,16 +243,20 @@ export default function IntakePage() {
             rows={7}
             value={businessContext}
             onChange={(e) => setBusinessContext(e.target.value)}
-            placeholder="e.g. We sell workflow software to manufacturers. Our buyers are ops directors and plant managers - the ones with a budget line for downtime. I think enterprise closes best. The seg column is company size band, and partner_ref means the lead came from a reseller."
+            placeholder={
+              consumer
+                ? "e.g. We are a personal injury law firm. Car accidents with an injury are worth far more than slip-and-fall. The matter_type column is the case type, and intake_score is what our paralegal gave it on the first call."
+                : "e.g. We sell workflow software to manufacturers. Our buyers are ops directors and plant managers - the ones with a budget line for downtime. I think enterprise closes best. The seg column is company size band, and partner_ref means the lead came from a reseller."
+            }
             className="input mt-3.5 min-h-[150px] resize-y bg-[var(--surface-sunken)] p-3.5 text-[15px] leading-relaxed"
           />
           <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
             <button
               type="button"
               onClick={() => {
-              setBusinessContext(EXAMPLE);
-              setStatedCycleDays(75);
-              setStatedSizeBands(["100-1000"]);
+              setBusinessContext(example);
+              setStatedCycleDays(consumer ? 10 : 75);
+              setStatedSizeBands(consumer ? [] : ["100-1000"]);
             }}
               className="text-[13px] font-semibold text-[var(--primary)] underline underline-offset-[3px] hover:text-[var(--primary-hover)]"
             >
@@ -227,8 +287,9 @@ export default function IntakePage() {
           <div>
             <p className="text-[14px] font-bold">No export handy?</p>
             <p className="mt-0.5 max-w-[58ch] text-[13.5px] text-[var(--muted)]">
-              See the whole thing end to end on a synthetic B2B dataset - 500 deals, six
-              months, clearly labelled as sample data throughout.
+              {consumer
+                ? "See the whole thing end to end on a synthetic quote funnel - 600 requests, six months, clearly labelled as sample data throughout."
+                : "See the whole thing end to end on a synthetic B2B dataset - 500 deals, six months, clearly labelled as sample data throughout."}
             </p>
           </div>
           <button
@@ -238,8 +299,10 @@ export default function IntakePage() {
             className="btn btn-secondary btn-wrap w-full sm:w-auto sm:shrink-0"
           >
             {loadingSample
-              ? "Building 500 deals…"
-              : "Try with sample B2B dataset (500 synthetic deals)"}
+              ? consumer ? "Building 600 quote requests…" : "Building 500 deals…"
+              : consumer
+                ? "Try with sample quote funnel (600 synthetic requests)"
+                : "Try with sample B2B dataset (500 synthetic deals)"}
           </button>
         </div>
       </main>
