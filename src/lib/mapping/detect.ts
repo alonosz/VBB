@@ -165,8 +165,8 @@ export const FIELD_SPECS: FieldSpec[] = [
   {
     key: "source",
     label: "Lead source",
-    hint: "where it came from",
-    required: true,
+    hint: "optional - for the channel table",
+    required: false,
     headerHints: ["source", "channel", "utm_source", "origin", "campaign"],
   },
   {

@@ -213,7 +213,7 @@ const BID_STEPS = [
 
 export default function ConnectPage() {
   const router = useRouter();
-  const { file, fields, currency, businessContext, stageTiming, restored, audience } = useDiagnostic();
+  const { file, fields, currency, businessContext, stageTiming, restored, audience, outcomeOverrides } = useDiagnostic();
 
   const [feed, setFeed] = useState<Published | null>(null);
   const [publishing, setPublishing] = useState(false);
@@ -244,8 +244,15 @@ export default function ConnectPage() {
 
   const mapped = useMemo(() => {
     if (!file) return null;
-    return rowsToDeals({ rows: file.rows, fields, currency, stageTiming, signalColumns: customSignalKeys });
-  }, [file, fields, currency, stageTiming, customSignalKeys]);
+    return rowsToDeals({
+      rows: file.rows,
+      fields,
+      currency,
+      stageTiming,
+      signalColumns: customSignalKeys,
+      outcomeOverrides,
+    });
+  }, [file, fields, currency, stageTiming, customSignalKeys, outcomeOverrides]);
 
   const diagnostic = useMemo(() => {
     if (!mapped) return null;

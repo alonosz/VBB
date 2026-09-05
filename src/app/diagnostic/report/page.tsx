@@ -52,7 +52,7 @@ export default function ReportPage() {
   const router = useRouter();
   const {
     file, fields, currency, businessContext, stageTiming, intake,
-    statedCycleDays, statedSizeBands, restored, audience } = useDiagnostic();
+    statedCycleDays, statedSizeBands, restored, audience, outcomeOverrides } = useDiagnostic();
   const signals = useSignalColumns();
 
   // A saved model is the difference between a diagnostic and a daily loop: it
@@ -88,8 +88,9 @@ export default function ReportPage() {
       currency,
       stageTiming,
       signalColumns: customSignalKeys,
+      outcomeOverrides,
     });
-  }, [file, fields, currency, stageTiming, customSignalKeys]);
+  }, [file, fields, currency, stageTiming, customSignalKeys, outcomeOverrides]);
 
   const result = useMemo(() => {
     if (!mapped) return null;

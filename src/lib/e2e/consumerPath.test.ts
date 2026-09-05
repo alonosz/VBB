@@ -194,3 +194,57 @@ describe("a business file, run as a consumer", () => {
     expect(result.icpFit.available).toBe(false);
   });
 });
+
+/*
+ * A consumer file in its own words. The status column says "Policy issued"
+ * and "Not taken up", which no built-in list should be expected to know.
+ * Without a correction every row reads as open and there is nothing to
+ * price. With the two values marked on the mapping screen, the same file
+ * prices, and no other row was touched.
+ */
+describe("a consumer file in its own vocabulary", () => {
+  const rows = generateConsumerDemoRows().map((r) => ({
+    ...r,
+    outcome: r.outcome === "Won" ? "Policy issued" : r.outcome === "Lost" ? "Not taken up" : "",
+    stage: r.stage === "Bound" ? "Issued" : r.stage === "Lost" ? "NTU" : r.stage,
+  }));
+  const headers = Object.keys(rows[0]);
+  const { fields } = detectColumns(headers, rows);
+  const stageTiming = detectStageTimingColumns(headers, rows);
+  const { discovered } = discoverSignalColumns(headers, rows, fields, "b2c");
+  const customSignalKeys = signalColumnsFor([], discovered);
+
+  it("reads every row as open when nobody has said what a sale is", () => {
+    const mapped = rowsToDeals({ rows, fields, stageTiming, signalColumns: customSignalKeys });
+    expect(mapped.deals.filter((d) => d.outcome === "won")).toHaveLength(0);
+    expect(mapped.deals.filter((d) => d.outcome === "lost")).toHaveLength(0);
+  });
+
+  it("prices once the two values are marked, and matches the file in our words", () => {
+    const corrected = rowsToDeals({
+      rows,
+      fields,
+      stageTiming,
+      signalColumns: customSignalKeys,
+      outcomeOverrides: { "policy issued": "won", "not taken up": "lost" },
+    });
+    const original = rowsToDeals({
+      rows: generateConsumerDemoRows(),
+      fields,
+      stageTiming,
+      signalColumns: customSignalKeys,
+    });
+    expect(corrected.deals.map((d) => d.outcome)).toEqual(original.deals.map((d) => d.outcome));
+
+    const result = runDiagnostic({
+      deals: corrected.deals,
+      excluded: corrected.excluded,
+      currencyCode: "USD",
+      customSignalKeys,
+      audience: "b2c",
+      now: new Date("2026-09-05T00:00:00Z"),
+    });
+    expect(result.valueModel.isFlat).toBe(false);
+    expect(result.verdict.mode).toBe("MEASURED");
+  });
+});

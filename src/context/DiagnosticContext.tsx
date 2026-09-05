@@ -14,6 +14,8 @@ import {
   type ReactNode,
 } from "react";
 import { clearFlow, loadFlow, saveFlow } from "@/lib/state/persist";
+import { outcomeKey, type OutcomeOverrides } from "@/lib/mapping/outcomes";
+import type { DealOutcome } from "@/lib/analysis/types";
 import type { DetectedField, FileIssue, StageTimingColumn } from "@/lib/mapping/detect";
 import type { CurrencyPolicy } from "@/lib/mapping/toDeals";
 import type { IntakeResult } from "@/lib/intake/client";
@@ -40,6 +42,13 @@ interface DiagnosticState {
    */
   signalOverrides: Record<string, boolean>;
   setSignalOverride: (column: string, on: boolean) => void;
+
+  /**
+   * Which values in the outcome or stage column mean a sale, where the
+   * advertiser corrected the built-in reading. Null clears a correction.
+   */
+  outcomeOverrides: OutcomeOverrides;
+  setOutcomeOverride: (value: string, outcome: DealOutcome | null) => void;
 
   businessContext: string;
   setBusinessContext: (v: string) => void;
@@ -121,6 +130,17 @@ export function DiagnosticProvider({ children }: { children: ReactNode }) {
   const setSignalOverride = useCallback((column: string, on: boolean) => {
     setSignalOverrides((current) => ({ ...current, [column]: on }));
   }, []);
+  const [outcomeOverrides, setOutcomeOverrides] = useState<OutcomeOverrides>(
+    snapshot?.outcomeOverrides ?? {}
+  );
+  const setOutcomeOverride = useCallback((value: string, outcome: DealOutcome | null) => {
+    setOutcomeOverrides((current) => {
+      const next = { ...current };
+      if (outcome === null) delete next[outcomeKey(value)];
+      else next[outcomeKey(value)] = outcome;
+      return next;
+    });
+  }, []);
   const [businessContext, setBusinessContext] = useState(snapshot?.businessContext ?? "");
   const [statedCycleDays, setStatedCycleDays] = useState<number | null>(
     snapshot?.statedCycleDays ?? null
@@ -167,15 +187,19 @@ export function DiagnosticProvider({ children }: { children: ReactNode }) {
       return;
     }
     saveFlow({
-      audience, businessContext, statedCycleDays, statedSizeBands, signalOverrides,
+      audience, businessContext, statedCycleDays, statedSizeBands, signalOverrides, outcomeOverrides,
       file, fields, issues, stageTiming, currency, intake,
     });
-  }, [audience, businessContext, statedCycleDays, statedSizeBands, signalOverrides, file, fields, issues, stageTiming, currency, intake]);
+  }, [audience, businessContext, statedCycleDays, statedSizeBands, signalOverrides, outcomeOverrides, file, fields, issues, stageTiming, currency, intake]);
 
   const reset = useCallback(() => {
     clearFlow();
     setNeedsFile(false);
     setAudience("b2b");
+    // Start over used to leave these behind, so the next file inherited the
+    // last file's switches under column names that happened to match.
+    setSignalOverrides({});
+    setOutcomeOverrides({});
     setBusinessContext("");
     setStatedCycleDays(null);
     setStatedSizeBands([]);
@@ -191,6 +215,7 @@ export function DiagnosticProvider({ children }: { children: ReactNode }) {
     () => ({
       audience, setAudience,
       signalOverrides, setSignalOverride,
+      outcomeOverrides, setOutcomeOverride,
       businessContext, setBusinessContext,
       statedCycleDays, setStatedCycleDays,
       statedSizeBands, setStatedSizeBands,
@@ -203,7 +228,7 @@ export function DiagnosticProvider({ children }: { children: ReactNode }) {
       restored, needsFile,
       reset,
     }),
-    [audience, businessContext, statedCycleDays, statedSizeBands, signalOverrides, setSignalOverride, file, fields, issues, stageTiming, currency, intake, restored, needsFile, reset]
+    [audience, businessContext, statedCycleDays, statedSizeBands, signalOverrides, setSignalOverride, outcomeOverrides, setOutcomeOverride, file, fields, issues, stageTiming, currency, intake, restored, needsFile, reset]
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

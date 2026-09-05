@@ -1,4 +1,5 @@
-import type { DealOutcome, ExcludedRow, MappedDeal } from "@/lib/analysis/types";
+import type { ExcludedRow, MappedDeal } from "@/lib/analysis/types";
+import { readOutcome, type OutcomeOverrides } from "./outcomes";
 import type { DetectedField, FieldKey, StageTimingColumn } from "./detect";
 
 export interface CurrencyPolicy {
@@ -28,27 +29,6 @@ function parseAmount(raw: string | undefined): number | null {
   if (cleaned === "" || cleaned === "-" || cleaned === ".") return null;
   const n = Number(cleaned);
   return Number.isFinite(n) ? n : null;
-}
-
-const WON_PATTERNS = /\b(won|closed won|complete|completed|customer|success|sold)\b/i;
-const LOST_PATTERNS = /\b(lost|closed lost|dead|disqualified|rejected|churn)\b/i;
-
-/**
- * Derives outcome from an explicit outcome column when present, otherwise
- * from the stage name. Anything unrecognized is "open" rather than a guess in
- * either direction - miscounting a lost deal as won would inflate every close
- * rate in the report.
- */
-export function deriveOutcome(
-  outcomeRaw: string | undefined,
-  stageRaw: string | undefined
-): DealOutcome {
-  for (const candidate of [outcomeRaw, stageRaw]) {
-    if (!candidate?.trim()) continue;
-    if (LOST_PATTERNS.test(candidate)) return "lost";
-    if (WON_PATTERNS.test(candidate)) return "won";
-  }
-  return "open";
 }
 
 /**
@@ -83,6 +63,11 @@ export interface ToDealsOptions {
    * the model tests them against the same thresholds as everything else.
    */
   signalColumns?: string[];
+  /**
+   * The advertiser's reading of the values in the outcome or stage column,
+   * over the built-in list. See `outcomes.ts`.
+   */
+  outcomeOverrides?: OutcomeOverrides;
 }
 
 /**
@@ -136,6 +121,7 @@ export function rowsToDeals(opts: ToDealsOptions): MappingResult {
     dropDuplicates = true,
     stageTiming = [],
     signalColumns = [],
+    outcomeOverrides = {},
   } = opts;
 
   const col = (key: FieldKey): string | null =>
@@ -215,9 +201,10 @@ export function rowsToDeals(opts: ToDealsOptions): MappingResult {
       id,
       createdAt,
       closedAt: cClosed ? parseDate(row[cClosed]) : null,
-      outcome: deriveOutcome(
+      outcome: readOutcome(
         cOutcome ? row[cOutcome] : undefined,
-        cStage ? row[cStage] : undefined
+        cStage ? row[cStage] : undefined,
+        outcomeOverrides
       ),
       amount,
       stage: cStage ? (row[cStage] ?? "").trim() || null : null,
@@ -234,3 +221,5 @@ export function rowsToDeals(opts: ToDealsOptions): MappingResult {
 
   return { deals, excluded };
 }
+
+export { deriveOutcome } from "./outcomes";

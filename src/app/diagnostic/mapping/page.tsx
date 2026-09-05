@@ -10,6 +10,8 @@ import type { DetectedField, FileIssue } from "@/lib/mapping/detect";
 import { rowsToDeals } from "@/lib/mapping/toDeals";
 import { useSignalColumns } from "@/lib/diagnostic/useSignals";
 import { COMPANY_FIELD_KEYS } from "@/lib/mapping/signals";
+import { outcomeVocabulary } from "@/lib/mapping/outcomes";
+import type { DealOutcome } from "@/lib/analysis/types";
 import { PageHead } from "@/components/ui";
 
 const CURRENCIES = ["USD", "EUR", "GBP", "CAD", "AUD", "JPY", "INR", "BRL", "MXN", "NZD"];
@@ -188,7 +190,7 @@ function RowPreview({
 
 export default function MappingPage() {
   const router = useRouter();
-  const { audience, file, fields, setFields, issues, currency, setCurrency, stageTiming, intake, restored, setSignalOverride } =
+  const { audience, file, fields, setFields, issues, currency, setCurrency, stageTiming, intake, restored, setSignalOverride, outcomeOverrides, setOutcomeOverride } =
     useDiagnostic();
 
   useEffect(() => {
@@ -216,16 +218,32 @@ export default function MappingPage() {
       currency,
       stageTiming,
       signalColumns: customSignalKeys,
+      outcomeOverrides,
     });
-  }, [file, fields, currency, stageTiming, customSignalKeys]);
+  }, [file, fields, currency, stageTiming, customSignalKeys, outcomeOverrides]);
+
+  const vocabulary = useMemo(() => {
+    if (!file) return null;
+    const col = (key: string) => fields.find((f) => f.key === key)?.column ?? null;
+    return outcomeVocabulary(file.rows, col("outcome"), col("stage"), outcomeOverrides);
+  }, [file, fields, outcomeOverrides]);
 
   // Same markup on the server and during hydration; the restored flow only
   // exists in the browser and appears on the pass after.
   if (!restored) return <FlowSkeleton />;
   if (!file) return null;
 
-  const required = fields.filter((f) => f.required);
-  const missingRequired = required.filter((f) => f.column === null);
+  /*
+   * A stage column is how we read won and lost when there is no outcome
+   * column, and it is what the trust and early-gate checks read. With an
+   * outcome column mapped it is no longer the thing standing between the
+   * file and a report: a sheet with a status column and no pipeline is a
+   * perfectly good consumer file.
+   */
+  const outcomeMapped = fields.some((f) => f.key === "outcome" && f.column !== null);
+  const blocks = (f: DetectedField) =>
+    f.required && f.column === null && !(f.key === "stage" && outcomeMapped);
+  const missingRequired = fields.filter(blocks);
 
   function setColumn(key: string, column: string | null) {
     setFields(
@@ -327,7 +345,7 @@ export default function MappingPage() {
                     {group.rows.map((field, i) => {
                       // One rail, one meaning: this row is why you are on this
                       // screen. Red when it blocks, amber when we are unsure.
-                      const blocking = field.required && field.column === null;
+                      const blocking = blocks(field);
                       const unsure =
                         !blocking &&
                         (Boolean(field.disagreement) ||
@@ -428,6 +446,121 @@ export default function MappingPage() {
             </p>
           )}
         </section>
+
+        {/*
+          Which values mean a sale.
+
+          Every close rate in the report rests on reading the outcome or
+          stage column right, and the built-in list cannot know every
+          vertical's word for a customer. So the reading of each value is
+          shown, most common first, with the advertiser's word winning over
+          ours on the exact value they set it on.
+        */}
+        {vocabulary && (
+          <section className="mt-8">
+            <div className="mb-4 flex flex-wrap items-baseline justify-between gap-3">
+              <h2 className="h2">What counts as a sale</h2>
+              <span className="text-[12.5px] text-[var(--muted)]">
+                Read from <span className="mono">{vocabulary.column}</span> - every close rate
+                rests on this
+              </span>
+            </div>
+
+            {vocabulary.won === 0 && (
+              <p className="alert alert-bad mb-3 text-[13px] font-medium" role="alert">
+                None of these reads as a sale. Mark the value that means a customer, or
+                the analysis has nothing to price.
+              </p>
+            )}
+
+            <div className="grid gap-2">
+              {vocabulary.values.map((v) => (
+                <div
+                  key={v.value}
+                  className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 py-2.5"
+                >
+                  <div className="min-w-0">
+                    <span className="mono block text-[13px] font-bold">{v.value}</span>
+                    <span className="mt-0.5 block text-[12px] text-[var(--muted)]">
+                      <span className="mono">{v.count.toLocaleString()}</span> rows
+                      {v.by === "you" && (
+                        <>
+                          {" · you set this · "}
+                          <button
+                            type="button"
+                            onClick={() => setOutcomeOverride(v.value, null)}
+                            className="font-semibold text-[var(--primary)] underline underline-offset-[3px]"
+                          >
+                            use our reading
+                          </button>
+                        </>
+                      )}
+                    </span>
+                  </div>
+                  <div
+                    role="group"
+                    aria-label={`How "${v.value}" is read`}
+                    className="flex shrink-0 gap-1"
+                  >
+                    {(
+                      [
+                        ["won", "Sale"],
+                        ["lost", "Lost"],
+                        ["open", "Still open"],
+                      ] as [DealOutcome, string][]
+                    ).map(([o, label]) => {
+                      const on = v.read === o;
+                      return (
+                        <button
+                          key={o}
+                          type="button"
+                          aria-pressed={on}
+                          onClick={() => setOutcomeOverride(v.value, o === v.rule ? null : o)}
+                          className={
+                            "rounded-full border px-3 py-1 text-[12px] font-semibold transition-colors " +
+                            (on
+                              ? o === "won"
+                                ? "border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent)]"
+                                : o === "lost"
+                                  ? "border-[var(--danger)]/60 bg-[var(--danger-soft)] text-[var(--danger)]"
+                                  : "border-[var(--border-strong)] bg-[var(--surface-sunken)] text-[var(--foreground)]"
+                              : "border-[var(--border)] bg-[var(--surface)] text-[var(--muted-strong)] hover:border-[var(--primary)]/40 hover:text-[var(--foreground)]")
+                          }
+                        >
+                          {label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {vocabulary.more > 0 && (
+              <p className="mt-2 text-[12.5px] text-[var(--muted)]">
+                And <span className="mono">{vocabulary.more.toLocaleString()}</span> more
+                distinct values, which suggests this is not a status column. Check the
+                mapping above.
+              </p>
+            )}
+
+            <p className="mt-3 text-[12.5px] text-[var(--muted)]">
+              <span className="mono font-semibold text-[var(--foreground)]">
+                {vocabulary.won.toLocaleString()}
+              </span>{" "}
+              sales ·{" "}
+              <span className="mono font-semibold text-[var(--foreground)]">
+                {vocabulary.lost.toLocaleString()}
+              </span>{" "}
+              lost ·{" "}
+              <span className="mono font-semibold text-[var(--foreground)]">
+                {vocabulary.open.toLocaleString()}
+              </span>{" "}
+              still open. Open leads are left out of close rates, never counted against
+              you.
+            </p>
+          </section>
+        )}
 
         {/*
           What else in the file might price a lead.

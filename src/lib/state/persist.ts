@@ -2,6 +2,7 @@ import type { Audience } from "@/lib/analysis/types";
 import type { DetectedField, FileIssue, StageTimingColumn } from "@/lib/mapping/detect";
 import type { CurrencyPolicy } from "@/lib/mapping/toDeals";
 import type { IntakeResult } from "@/lib/intake/client";
+import type { OutcomeOverrides } from "@/lib/mapping/outcomes";
 
 /**
  * Keeping the diagnostic flow across a refresh.
@@ -38,6 +39,8 @@ export interface PersistedFlow {
   savedAt: string;
   audience: Audience;
   signalOverrides: Record<string, boolean>;
+  /** Which values mean a sale, where the advertiser corrected our reading. */
+  outcomeOverrides: OutcomeOverrides;
   businessContext: string;
   statedCycleDays: number | null;
   statedSizeBands: string[];
@@ -132,6 +135,14 @@ export function loadFlow(): PersistedFlow | null {
           ? Object.fromEntries(
               Object.entries(parsed.signalOverrides).filter(
                 ([, v]) => typeof v === "boolean"
+              )
+            )
+          : {},
+      outcomeOverrides:
+        parsed.outcomeOverrides && typeof parsed.outcomeOverrides === "object"
+          ? Object.fromEntries(
+              Object.entries(parsed.outcomeOverrides).filter(
+                ([, v]) => v === "won" || v === "lost" || v === "open"
               )
             )
           : {},
