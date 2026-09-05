@@ -9,6 +9,7 @@ import type { Audience } from "@/lib/analysis/types";
 import { SIZE_BANDS, describeSizeSelection } from "@/lib/analysis/statedProfile";
 import { useIngest } from "@/lib/diagnostic/useIngest";
 import { Stepper } from "@/components/diagnostic/Stepper";
+import { FlowSkeleton } from "@/components/diagnostic/FlowSkeleton";
 import { PageHead } from "@/components/ui";
 import { ArrowIcon } from "@/components/ArrowIcon";
 
@@ -28,6 +29,7 @@ export default function IntakePage() {
     businessContext, setBusinessContext,
     statedCycleDays, setStatedCycleDays,
     statedSizeBands, setStatedSizeBands,
+    restored,
   } = useDiagnostic();
   const consumer = audience === "b2c";
   const example = consumer ? CONSUMER_EXAMPLE : EXAMPLE;
@@ -45,6 +47,14 @@ export default function IntakePage() {
   }
   const [loadingSample, setLoadingSample] = useState(false);
   const ingest = useIngest();
+
+  /*
+   * Same markup on the server and during hydration. The saved flow only
+   * exists in the browser, and this screen shows three things from it - the
+   * audience chip, the description, the cycle - so a hard load with a flow
+   * in storage rendered one page on the server and another on the client.
+   */
+  if (!restored) return <FlowSkeleton />;
 
   async function trySample() {
     setLoadingSample(true);

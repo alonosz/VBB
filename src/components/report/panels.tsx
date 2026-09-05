@@ -42,10 +42,15 @@ export function HookPanel({
   spread,
   valued,
   currency,
+  flat,
+  onFixSignals,
 }: {
   spread: ValueSpread;
   valued: ValuedLead[];
   currency: string;
+  /** True when no signal cleared the thresholds and every lead is priced the same. */
+  flat: boolean;
+  onFixSignals: () => void;
 }) {
   if (spread.sampleSize === 0 || spread.min === null || spread.max === null) {
     return null;
@@ -157,6 +162,45 @@ export function HookPanel({
             </p>
           </figure>
 
+          {/*
+            A flat model used to land here as "what your model will send
+            instead: $2,195 - $2,195 per lead", over a chart with one tall bar
+            and twenty-three stubs, because every value fell in the first
+            log bucket. It read as a win and it was the opposite of one. When
+            nothing separates the leads, this side says so and points at the
+            screen where that gets fixed.
+          */}
+          {flat ? (
+            <div className="min-w-0">
+              <p className="text-[13px] font-bold" style={{ color: "var(--on-navy)" }}>
+                Right now your model would send one value too
+              </p>
+              <p
+                className="mono mt-0.5 text-[12px]"
+                style={{ color: "var(--on-navy-muted)" }}
+              >
+                {money(mean, currency)} × {values.length.toLocaleString()} leads
+              </p>
+              <p
+                className="mt-3 max-w-[52ch] text-[13px]"
+                style={{ color: "var(--on-navy-muted)" }}
+              >
+                Nothing in this file separated a good lead from a bad one by enough
+                to price them differently, so every lead gets your average. That is
+                still better than counting each form-fill as 1, but it is not the
+                spread above. The columns tested, and the ones left out, are on the
+                mapping screen.
+              </p>
+              <button
+                type="button"
+                onClick={onFixSignals}
+                className="mt-4 text-[13px] font-semibold underline underline-offset-[3px]"
+                style={{ color: "var(--primary-on-navy)" }}
+              >
+                Choose which columns to test
+              </button>
+            </div>
+          ) : (
           <figure className="min-w-0">
             <figcaption className="mb-3">
               <p className="text-[13px] font-bold" style={{ color: "var(--on-navy)" }}>
@@ -166,7 +210,7 @@ export function HookPanel({
                 className="mono mt-0.5 text-[12px]"
                 style={{ color: "var(--on-navy-muted)" }}
               >
-                {money(low, currency)} – {money(high, currency)} per lead
+                {money(low, currency)} - {money(high, currency)} per lead
               </p>
             </figcaption>
             <div
@@ -195,6 +239,7 @@ export function HookPanel({
               at lead creation, not a closed deal.
             </p>
           </figure>
+          )}
         </div>
       </div>
     </section>

@@ -175,3 +175,41 @@ describe("signalColumnsFor", () => {
       .toEqual(["Timeline"]);
   });
 });
+
+/*
+ * The bug behind a consumer's flat report. Detection maps "industry" and
+ * "contact_title" on any file whose headers look right. For a consumer the
+ * mapping screen hides those fields and the factor list drops them, and
+ * discovery then skipped the columns too because the field still claimed
+ * them. Three readers each did the right thing and the column vanished.
+ */
+describe("company fields on a consumer file", () => {
+  const rows = Array.from({ length: 60 }, (_, i) => ({
+    created: "2026-01-01",
+    industry: ["Retail", "Hospitality", "Trades"][i % 3],
+    contact_title: ["Owner", "Manager"][i % 2],
+    employee_count: String((i % 4) * 10),
+  }));
+  const headers = Object.keys(rows[0]);
+  const fields = [
+    { key: "createdAt", label: "Create date", hint: "", required: true, column: "created", confidence: 1, reason: "" },
+    { key: "industry", label: "Industry", hint: "", required: false, column: "industry", confidence: 1, reason: "" },
+    { key: "contactTitle", label: "Contact title", hint: "", required: false, column: "contact_title", confidence: 1, reason: "" },
+    { key: "employeeCount", label: "Employee count", hint: "", required: false, column: "employee_count", confidence: 1, reason: "" },
+  ] as DetectedField[];
+
+  it("stay claimed for a business, so they are not tested twice", () => {
+    const { discovered } = discoverSignalColumns(headers, rows, fields, "b2b");
+    expect(discovered.map((d) => d.column)).toEqual([]);
+  });
+
+  it("are handed back to discovery for a consumer", () => {
+    const { discovered } = discoverSignalColumns(headers, rows, fields, "b2c");
+    expect(discovered.map((d) => d.column).sort()).toEqual(["contact_title", "industry"]);
+  });
+
+  it("never release a structural field, whatever the audience", () => {
+    const { discovered } = discoverSignalColumns(headers, rows, fields, "b2c");
+    expect(discovered.map((d) => d.column)).not.toContain("created");
+  });
+});

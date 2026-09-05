@@ -259,7 +259,13 @@ export default function ReportPage() {
             below its min-content, so one wide table inside any panel would push
             the whole page sideways on a phone. */}
         <div className="mt-8 grid grid-cols-[minmax(0,1fr)] gap-7">
-          <HookPanel spread={result.valueSpread} valued={valued} currency={cur} />
+          <HookPanel
+            spread={result.valueSpread}
+            valued={valued}
+            currency={cur}
+            flat={activeModel.isFlat}
+            onFixSignals={() => router.push("/diagnostic/mapping")}
+          />
 
           <ModelSourcePanel
             saved={saved}

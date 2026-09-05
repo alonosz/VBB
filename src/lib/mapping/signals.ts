@@ -1,5 +1,6 @@
 import type { DetectedField } from "./detect";
 import { looksLikeDate, looksNumeric } from "./detect";
+import type { Audience } from "@/lib/analysis/types";
 
 /**
  * Finding the columns that could price a lead, without being told.
@@ -50,6 +51,14 @@ export const MAX_LEVELS = 12;
  * of column".
  */
 export const MAX_DISTINCT_SHARE = 0.5;
+
+/**
+ * The fields that describe a company rather than a lead. Detection maps them
+ * on any file whose headers look right, and the mapping screen, the factor
+ * list and discovery all have to agree on what happens to them for a
+ * consumer: hidden, dropped, and handed back to discovery, in that order.
+ */
+export const COMPANY_FIELD_KEYS = ["employeeCount", "industry", "contactTitle"] as const;
 
 export interface DiscoveredSignal {
   column: string;
@@ -153,13 +162,29 @@ function sampled(rows: Record<string, string>[], column: string): string[] {
 /**
  * @param fields The mapping as it stands. A column a field has claimed is
  *   structural (a date, an amount, a stage) and never a category to price on.
+ * @param audience Decides whether the company fields count as a claim.
  */
 export function discoverSignalColumns(
   headers: string[],
   rows: Record<string, string>[],
-  fields: DetectedField[]
+  fields: DetectedField[],
+  audience: Audience = "b2b"
 ): { discovered: DiscoveredSignal[]; refused: RefusedColumn[] } {
-  const claimed = new Set(fields.map((f) => f.column).filter((c): c is string => !!c));
+  /*
+   * A consumer file with a column that happens to be called "industry" or
+   * "title" used to lose it three times over: the mapping screen hid the
+   * field, the factor list dropped it for the audience, and discovery
+   * skipped the column because the field still claimed it. A file that
+   * carried real signal in that column was priced flat, and nothing on
+   * screen said why. For consumers those fields claim nothing.
+   */
+  const inert: readonly string[] = audience === "b2c" ? COMPANY_FIELD_KEYS : [];
+  const claimed = new Set(
+    fields
+      .filter((f) => !inert.includes(f.key))
+      .map((f) => f.column)
+      .filter((c): c is string => !!c)
+  );
   const discovered: DiscoveredSignal[] = [];
   const refused: RefusedColumn[] = [];
 

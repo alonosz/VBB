@@ -5,10 +5,12 @@ import Papa from "papaparse";
 import { useRouter } from "next/navigation";
 import { useDiagnostic } from "@/context/DiagnosticContext";
 import { Stepper } from "@/components/diagnostic/Stepper";
+import { FlowSkeleton } from "@/components/diagnostic/FlowSkeleton";
 import { Alert, PageHead } from "@/components/ui";
 import { ExportGuide } from "@/components/diagnostic/ExportGuide";
 import { ConnectHubSpot, type ImportedRows } from "@/components/diagnostic/ConnectHubSpot";
 import { generateDemoDeals, demoDealsToCsvRows } from "@/lib/fixtures/demoDataset";
+import { generateConsumerDemoRows } from "@/lib/fixtures/consumerDataset";
 import { useIngest } from "@/lib/diagnostic/useIngest";
 
 const MAX_BYTES = 25 * 1024 * 1024;
@@ -16,7 +18,7 @@ const MAX_ROWS = 100_000;
 
 export default function UploadPage() {
   const router = useRouter();
-  const { businessContext, needsFile, audience } = useDiagnostic();
+  const { businessContext, needsFile, audience, restored } = useDiagnostic();
   const inputRef = useRef<HTMLInputElement>(null);
 
   const [dragging, setDragging] = useState(false);
@@ -119,16 +121,25 @@ export default function UploadPage() {
     [ingest]
   );
 
+  /*
+   * The same sample as step one offers, for the same audience. This button
+   * used to load the B2B file whatever had been chosen, so a consumer who
+   * picked it saw 500 software deals priced with every company factor
+   * switched off - one flat value, and nothing on screen saying why.
+   */
   function loadDemo() {
     setError(null);
     setParsing(true);
     setLog([]);
-    const rows = demoDealsToCsvRows(generateDemoDeals());
+    const consumer = audience === "b2c";
+    const rows = consumer
+      ? generateConsumerDemoRows()
+      : demoDealsToCsvRows(generateDemoDeals());
     setTimeout(
       () =>
         void ingest({
-          name: "demo_deals_export.csv",
-          sizeBytes: 248_000,
+          name: consumer ? "sample_quote_requests.csv" : "sample_b2b_deals.csv",
+          sizeBytes: consumer ? 190_000 : 248_000,
           headers: Object.keys(rows[0]),
           rows,
         }),
@@ -136,17 +147,29 @@ export default function UploadPage() {
     );
   }
 
+  // The audience and the "select your file again" notice both come from the
+  // saved flow, which the server never sees.
+  if (!restored) return <FlowSkeleton />;
+
   return (
     <div className="animate-page-in flex min-h-screen flex-col">
       <Stepper current="upload" />
       <main className="page-narrow animate-page-in flex-1 py-10">
         <PageHead
-          eyebrow="Step 2 of 5 · Your deals"
-          title={parsing ? "Reading your file…" : "Bring in your deal history"}
+          eyebrow={audience === "b2c" ? "Step 2 of 5 · Your leads" : "Step 2 of 5 · Your deals"}
+          title={
+            parsing
+              ? "Reading your file…"
+              : audience === "b2c"
+                ? "Bring in your lead history"
+                : "Bring in your deal history"
+          }
           lede={
             parsing
               ? "Parsing rows, sampling values, and matching columns against the fields the analysis needs."
-              : "Won and lost, twelve months of it. Connect HubSpot and we read it straight from your portal, or upload an export from any other CRM - we'll work out which columns are which and say straight away if anything will cause trouble."
+              : audience === "b2c"
+                ? "Every lead, whether it bought or not, twelve months of it. Connect HubSpot and we read it straight from your portal, or upload an export from any other CRM - we'll work out which columns are which and say straight away if anything will cause trouble."
+                : "Won and lost, twelve months of it. Connect HubSpot and we read it straight from your portal, or upload an export from any other CRM - we'll work out which columns are which and say straight away if anything will cause trouble."
           }
         />
 
@@ -296,10 +319,11 @@ export default function UploadPage() {
 
             <div className="well mt-5 flex flex-wrap items-center justify-between gap-3 p-4 sm:p-5">
               <p className="text-[13px] text-[var(--muted)]">
-                No export handy? Try it on a synthetic dataset first.
+                No export handy? Try it on a synthetic{" "}
+                {audience === "b2c" ? "quote funnel" : "B2B dataset"} first.
               </p>
               <button type="button" onClick={loadDemo} className="btn btn-secondary btn-sm">
-                Use demo data
+                Use sample data
               </button>
             </div>
           </>

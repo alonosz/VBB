@@ -4,6 +4,7 @@ import { discoverSignalColumns, signalColumnsFor } from "@/lib/mapping/signals";
 import { rowsToDeals } from "@/lib/mapping/toDeals";
 import { runDiagnostic } from "@/lib/analysis";
 import { generateConsumerDemoRows } from "@/lib/fixtures/consumerDataset";
+import { demoDealsToCsvRows, generateDemoDeals } from "@/lib/fixtures/demoDataset";
 import { saveValueModel, loadSavedModel, savedModelToValueModel } from "@/lib/model/savedModel";
 import { valueAllLeads } from "@/lib/analysis/valueModel";
 
@@ -148,5 +149,48 @@ describe("a consumer file, with no assistant", () => {
     const rebuilt = savedModelToValueModel(back.model!);
     expect(rebuilt.audience).toBe("b2c");
     expect(rebuilt.factors.map((f) => f.key)).toContain("product_line");
+  });
+});
+
+/*
+ * The report behind the screenshot: 500 software deals, run as a consumer.
+ * Headcount, industry and title were dropped as factors, discovery skipped
+ * those columns because the fields still claimed them, and every lead was
+ * priced at the average. The hero then presented "$2,195 - $2,195 per lead"
+ * as what the model would send instead. Under a consumer the company columns
+ * go back to discovery and the file is priced on whatever they carry.
+ */
+describe("a business file, run as a consumer", () => {
+  const rows = demoDealsToCsvRows(generateDemoDeals());
+  const headers = Object.keys(rows[0]);
+  const { fields } = detectColumns(headers, rows);
+  const stageTiming = detectStageTimingColumns(headers, rows);
+
+  it("was priced flat when the company columns stayed claimed", () => {
+    const { discovered } = discoverSignalColumns(headers, rows, fields, "b2b");
+    expect(discovered.map((d) => d.column)).not.toContain("industry");
+  });
+
+  it("is priced on the company columns as plain categories instead", () => {
+    const { discovered } = discoverSignalColumns(headers, rows, fields, "b2c");
+    const customSignalKeys = signalColumnsFor([], discovered);
+    expect(customSignalKeys).toContain("industry");
+
+    const mapped = rowsToDeals({ rows, fields, stageTiming, signalColumns: customSignalKeys });
+    const result = runDiagnostic({
+      deals: mapped.deals,
+      excluded: mapped.excluded,
+      currencyCode: "USD",
+      customSignalKeys,
+      audience: "b2c",
+      businessContext: "We sell to mid-market logistics and manufacturing companies.",
+      now: new Date("2026-09-05T00:00:00Z"),
+    });
+    expect(result.valueModel.isFlat).toBe(false);
+    expect(result.valueModel.factors.map((f) => f.key)).not.toContain("employeeBand");
+
+    // A consumer has no ideal customer profile to hold the data against,
+    // however many industries the description happens to name.
+    expect(result.icpFit.available).toBe(false);
   });
 });

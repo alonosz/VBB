@@ -35,7 +35,7 @@ export interface SignalColumns {
 }
 
 export function useSignalColumns(): SignalColumns {
-  const { file, fields, intake, signalOverrides } = useDiagnostic();
+  const { audience, file, fields, intake, signalOverrides } = useDiagnostic();
 
   return useMemo(() => {
     const fromIntake =
@@ -44,7 +44,7 @@ export function useSignalColumns(): SignalColumns {
         : { hypotheses: [], customSignalKeys: [] };
 
     const { discovered, refused } = file
-      ? discoverSignalColumns(file.headers, file.rows, fields)
+      ? discoverSignalColumns(file.headers, file.rows, fields, audience)
       : { discovered: [], refused: [] };
 
     const customSignalKeys = signalColumnsFor(
@@ -62,5 +62,5 @@ export function useSignalColumns(): SignalColumns {
       isOn: (column: string) => on.has(column),
       fromClaim: new Set(fromIntake.customSignalKeys),
     };
-  }, [file, fields, intake, signalOverrides]);
+  }, [audience, file, fields, intake, signalOverrides]);
 }

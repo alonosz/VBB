@@ -43,7 +43,9 @@ export function runDiagnostic(input: AnalysisInput): DiagnosticResult {
   const valueSpread = valueSpreadAndCaps(deals, DEFAULT_CAP_MULTIPLE);
   const volume = volumeCheck(deals, now);
   const domainDisparity = domainValueDisparity(deals);
-  const icpFit = icpFitCheck(deals, businessContext);
+  // A consumer has no headcount, industry or job title, so a description
+  // that happens to mention one is not a claim about their buyers.
+  const icpFit = icpFitCheck(deals, audience === "b2c" ? undefined : businessContext);
   const valueModel = buildValueModel({
     deals,
     cap: valueSpread.recommendedCap,

@@ -9,6 +9,7 @@ import { ArrowIcon } from "@/components/ArrowIcon";
 import type { DetectedField, FileIssue } from "@/lib/mapping/detect";
 import { rowsToDeals } from "@/lib/mapping/toDeals";
 import { useSignalColumns } from "@/lib/diagnostic/useSignals";
+import { COMPANY_FIELD_KEYS } from "@/lib/mapping/signals";
 import { PageHead } from "@/components/ui";
 
 const CURRENCIES = ["USD", "EUR", "GBP", "CAD", "AUD", "JPY", "INR", "BRL", "MXN", "NZD"];
@@ -252,14 +253,11 @@ export default function MappingPage() {
    * the tool was built for a different kind of business, which is the whole
    * thing the audience question exists to stop saying.
    */
-  const COMPANY_FIELDS = ["employeeCount", "industry", "contactTitle"];
-  const shown = fields.filter(
-    (f) => audience !== "b2c" || !COMPANY_FIELDS.includes(f.key)
-  );
+  const isCompanyField = (key: string) =>
+    (COMPANY_FIELD_KEYS as readonly string[]).includes(key);
+  const shown = fields.filter((f) => audience !== "b2c" || !isCompanyField(f.key));
 
-  const detectedOptional = shown.filter(
-    (f) => COMPANY_FIELDS.includes(f.key) && f.column !== null
-  );
+  const detectedOptional = shown.filter((f) => isCompanyField(f.key) && f.column !== null);
 
   return (
     <div className="animate-page-in flex min-h-screen flex-col">
