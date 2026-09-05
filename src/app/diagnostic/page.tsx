@@ -49,7 +49,13 @@ export default function IntakePage() {
   async function trySample() {
     setLoadingSample(true);
     const description = businessContext.trim() || example;
-    if (!businessContext.trim()) setBusinessContext(example);
+    if (!businessContext.trim()) {
+      setBusinessContext(example);
+      // Stated claims belong to the sample too. Without them the walkthrough
+      // reaches stated-versus-actual with nothing stated to compare.
+      if (statedCycleDays === null) setStatedCycleDays(consumer ? 10 : 75);
+      if (statedSizeBands.length === 0 && !consumer) setStatedSizeBands(["100-1000"]);
+    }
     // Each audience gets a sample shaped like its own world. A consumer
     // walking through a B2B file learns that the product is for somebody else.
     const rows = consumer
@@ -254,18 +260,19 @@ export default function IntakePage() {
             }
             className="input mt-3.5 min-h-[150px] resize-y bg-[var(--surface-sunken)] p-3.5 text-[15px] leading-relaxed"
           />
-          <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-            <button
-              type="button"
-              onClick={() => {
-              setBusinessContext(example);
-              setStatedCycleDays(consumer ? 10 : 75);
-              setStatedSizeBands(consumer ? [] : ["100-1000"]);
-            }}
-              className="text-[13px] font-semibold text-[var(--primary)] underline underline-offset-[3px] hover:text-[var(--primary-hover)]"
-            >
-              Fill with example text
-            </button>
+          {/*
+            There was a "Fill with example text" link here. It pasted the
+            sample dataset's own description into the box, which is exactly
+            right for the sample and a trap for anybody else: that text is
+            written to match the sample's rows, so an advertiser who filled it
+            in and then uploaded their own file had their data tested against
+            somebody else's claims, and the report refuted them one by one.
+
+            The sample fills its own description when it loads, and the
+            placeholder above already shows the shape without becoming the
+            answer. Nothing was lost by removing it.
+          */}
+          <div className="mt-3 flex flex-wrap items-center justify-end gap-3">
             <span className="text-[13px] text-[var(--muted)]">
               Free text - nothing here is parsed into a form or required.
             </span>
