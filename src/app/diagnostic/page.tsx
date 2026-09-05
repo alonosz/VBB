@@ -299,7 +299,7 @@ export default function IntakePage() {
             <p className="text-[14px] font-bold">No export handy?</p>
             <p className="mt-0.5 max-w-[58ch] text-[13.5px] text-[var(--muted)]">
               {consumer
-                ? "See the whole thing end to end on a synthetic quote funnel - 600 requests, six months, clearly labelled as sample data throughout."
+                ? "See the whole thing end to end on a synthetic quote funnel - 700 requests, six months, clearly labelled as sample data throughout."
                 : "See the whole thing end to end on a synthetic B2B dataset - 500 deals, six months, clearly labelled as sample data throughout."}
             </p>
           </div>
@@ -310,9 +310,9 @@ export default function IntakePage() {
             className="btn btn-secondary btn-wrap w-full sm:w-auto sm:shrink-0"
           >
             {loadingSample
-              ? consumer ? "Building 600 quote requests…" : "Building 500 deals…"
+              ? consumer ? "Building 700 quote requests…" : "Building 500 deals…"
               : consumer
-                ? "Try with sample quote funnel (600 synthetic requests)"
+                ? "Try with sample quote funnel (700 synthetic requests)"
                 : "Try with sample B2B dataset (500 synthetic deals)"}
           </button>
         </div>

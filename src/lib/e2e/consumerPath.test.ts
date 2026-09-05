@@ -82,6 +82,59 @@ describe("a consumer file, with no assistant", () => {
   });
 
   /*
+   * The sample is a designed artifact, not just some rows. Each of these was
+   * broken at some point while building it: the value cap was three times a
+   * median that renters dragged down, so bundle, life and commercial priced
+   * identically at the cap and the most valuable product came out cheaper
+   * than the second. It read as a bug and hid the thing the file exists to
+   * show. These lock the shape rather than the numbers.
+   */
+  it("caps a handful of deals rather than a whole segment", () => {
+    expect(result.valueSpread.dealsAboveCap).toBeGreaterThan(0);
+    expect(result.valueSpread.dealsAboveCap).toBeLessThan(25);
+
+    /*
+     * No level we actually price on may sit entirely above the cap. When it
+     * does, every deal in it is clipped to the same figure, the segment's
+     * value disappears and the ladder inverts. Commercial is the exception
+     * and is allowed to be: a fleet policy really is more than three times a
+     * personal one, and with thirteen quotes behind it the engine marks it
+     * unusable and never prices on it anyway.
+     */
+    const products = result.valueModel.factors.find((f) => f.key === "product_line");
+    const cap = result.valueModel.cap;
+    const pinned = (products?.levels ?? [])
+      .filter((l) => l.usable && l.won > 0 && l.avgWonAmount === cap)
+      .map((l) => l.level);
+    expect(pinned).toEqual([]);
+  });
+
+  it("keeps the signals that carry value and drops the one that does not", () => {
+    const included = result.valueModel.includedFactors.map((f) => f.key);
+    expect(included).toEqual(
+      expect.arrayContaining(["product_line", "coverage_tier", "timeline", "currently_insured", "state"])
+    );
+    // A pure A/B split with no effect on anything. If this ever survives, the
+    // lift threshold has stopped doing its job.
+    expect(result.valueModel.droppedFactors.map((f) => f.key)).toContain("form_variant");
+  });
+
+  it("catches the stage that was dragged through retroactively", () => {
+    expect(result.stageTrust.untrustedStages).toEqual(["Application"]);
+    const quoted = result.stageTrust.findings.find((f) => f.stage === "Quoted");
+    expect(quoted?.trusted).toBe(true);
+  });
+
+  it("prices renters below auto despite renters converting far better", () => {
+    const products = result.valueModel.factors.find((f) => f.key === "product_line");
+    const level = (n: string) => products?.levels.find((l) => l.level === n);
+    const renters = level("Renters");
+    const auto = level("Auto");
+    expect(renters!.closeRate).toBeGreaterThan(auto!.closeRate * 1.3);
+    expect(renters!.expectedValue).toBeLessThan(auto!.expectedValue * 0.7);
+  });
+
+  /*
    * Frozen and reloaded, the model still knows it prices consumers and
    * rebuilds its rules without the business factors. A model that forgot its
    * audience on the way through JSON would come back with four inert rules
