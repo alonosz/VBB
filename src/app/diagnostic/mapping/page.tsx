@@ -163,7 +163,7 @@ function RowPreview({
 
 export default function MappingPage() {
   const router = useRouter();
-  const { file, fields, setFields, issues, currency, setCurrency, stageTiming, intake, restored } =
+  const { audience, file, fields, setFields, issues, currency, setCurrency, stageTiming, intake, restored } =
     useDiagnostic();
 
   useEffect(() => {
@@ -221,9 +221,20 @@ export default function MappingPage() {
     );
   }
 
-  const optionalKeys = ["employeeCount", "industry", "contactTitle"];
-  const detectedOptional = fields.filter(
-    (f) => optionalKeys.includes(f.key) && f.column !== null
+  /*
+   * Headcount, industry and job title describe a company. On a consumer file
+   * the engine drops the factors built on them, so offering them here asks
+   * somebody to map three columns that will then be ignored - and tells them
+   * the tool was built for a different kind of business, which is the whole
+   * thing the audience question exists to stop saying.
+   */
+  const COMPANY_FIELDS = ["employeeCount", "industry", "contactTitle"];
+  const shown = fields.filter(
+    (f) => audience !== "b2c" || !COMPANY_FIELDS.includes(f.key)
+  );
+
+  const detectedOptional = shown.filter(
+    (f) => COMPANY_FIELDS.includes(f.key) && f.column !== null
   );
 
   return (
@@ -273,13 +284,13 @@ export default function MappingPage() {
                   key: "required",
                   title: "Needed to run",
                   note: "The analysis cannot start without these.",
-                  rows: fields.filter((f) => f.required),
+                  rows: shown.filter((f) => f.required),
                 },
                 {
                   key: "optional",
                   title: "Makes it sharper",
                   note: "Each one adds a signal the model can test. Leave any unmapped.",
-                  rows: fields.filter((f) => !f.required),
+                  rows: shown.filter((f) => !f.required),
                 },
               ] as const
             ).map((group) =>
@@ -396,7 +407,9 @@ export default function MappingPage() {
           )}
         </section>
 
-        <RowPreview headers={file.headers} rows={file.rows} fields={fields} />
+        {/* `shown`, not `fields`: a column the audience has taken out of the
+            mapping must not be highlighted here as though it were mapped. */}
+        <RowPreview headers={file.headers} rows={file.rows} fields={shown} />
 
         {/* ---- currency ---- */}
         {mixedCurrency && (

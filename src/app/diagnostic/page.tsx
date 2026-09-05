@@ -86,16 +86,21 @@ export default function IntakePage() {
         */}
         <div className="card mt-8 p-6 sm:p-7">
           <h2 className="h3">Who do you sell to?</h2>
-          <p className="mt-1.5 max-w-[62ch] text-[13.5px] text-[var(--muted)]">
-            Changes which questions we ask and which built-in signals we test.
-            Nothing else.
+          <p className="mt-0.5 text-[13px] text-[var(--muted)]">
+            Only changes what we ask you and which built-in signals we test.
           </p>
-          <div className="mt-3 flex flex-wrap gap-2">
+          {/*
+            Chips, like the size bands below. Two labelled cards explaining
+            what a business is and what a consumer is was the tool talking
+            down to somebody who runs a marketing team - and the shape said
+            "important decision" about a question that takes no thought.
+          */}
+          <div className="mt-2.5 flex flex-wrap gap-2">
             {(
               [
-                { id: "b2b", label: "Businesses", hint: "companies, teams, the people who buy for them" },
-                { id: "b2c", label: "Consumers", hint: "individuals, households, sole traders" },
-              ] as { id: Audience; label: string; hint: string }[]
+                { id: "b2b", label: "Businesses" },
+                { id: "b2c", label: "Consumers" },
+              ] as { id: Audience; label: string }[]
             ).map((opt) => {
               const on = audience === opt.id;
               return (
@@ -105,14 +110,13 @@ export default function IntakePage() {
                   onClick={() => setAudience(opt.id)}
                   aria-pressed={on}
                   className={
-                    "rounded-xl border px-4 py-2.5 text-left transition-colors " +
+                    "rounded-full border px-3.5 py-1.5 text-[13px] font-semibold transition-colors " +
                     (on
-                      ? "border-[var(--primary)] bg-[var(--primary-soft)]"
-                      : "border-[var(--border)] bg-[var(--surface)] hover:border-[var(--primary)]/40")
+                      ? "border-[var(--primary)] bg-[var(--primary-soft)] text-[var(--primary)]"
+                      : "border-[var(--border)] bg-[var(--surface)] text-[var(--muted-strong)] hover:border-[var(--primary)]/40 hover:text-[var(--foreground)]")
                   }
                 >
-                  <span className="block text-[14px] font-bold">{opt.label}</span>
-                  <span className="block text-[12.5px] text-[var(--muted)]">{opt.hint}</span>
+                  {opt.label}
                 </button>
               );
             })}
