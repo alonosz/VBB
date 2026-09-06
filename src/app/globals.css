@@ -206,7 +206,9 @@ body {
   /* ---------------------------------------------------------------------- */
 
   .display {
-    font-size: clamp(1.9rem, 1.3rem + 2.2vw, 2.9rem);
+    /* Capped at 38px. At 46px the landing hero and the report's money shot
+       filled most of a laptop's first screen and read as shouting at 100%. */
+    font-size: clamp(1.75rem, 1.2rem + 1.6vw, 2.4rem);
     font-weight: 800;
     letter-spacing: -0.028em;
     line-height: 1.06;

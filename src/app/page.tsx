@@ -72,7 +72,7 @@ export default function Home() {
         {/* ---------------------------------------------------------------- */}
         <div className="page-wide">
           <section className="panel-navy overflow-hidden">
-            <div className="grid items-center gap-10 p-7 sm:p-10 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,.95fr)] lg:gap-14 lg:p-14">
+            <div className="grid items-center gap-8 p-7 sm:p-9 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,.95fr)] lg:gap-12 lg:p-11">
               <div className="min-w-0">
                 <p className="label" style={{ color: "var(--on-navy-muted)" }}>
                   Value-based bidding for lead gen
