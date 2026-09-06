@@ -1,6 +1,6 @@
 import type { Audience } from "@/lib/analysis/types";
 import { profileColumns, type ColumnProfile } from "./profile";
-import { readWorkspaceKey } from "@/lib/workspace/clientKey";
+import { readWorkspaceKey, rememberWorkspaceKey } from "@/lib/workspace/clientKey";
 import {
   EMPTY_PROPOSAL,
   sanitizeProposal,
@@ -67,6 +67,12 @@ export async function requestIntakeProposal(req: IntakeRequest): Promise<IntakeR
 
     const data: unknown = await res.json().catch(() => null);
     const d = (data ?? {}) as Record<string, unknown>;
+
+    // A workspace minted for a new visitor arrives here, whether or not the
+    // suggestion itself worked. Kept before anything else is looked at.
+    if (typeof d.workspaceKey === "string" && d.workspaceKey.trim()) {
+      rememberWorkspaceKey(d.workspaceKey.trim());
+    }
 
     if (!res.ok || d.ok !== true) {
       return {

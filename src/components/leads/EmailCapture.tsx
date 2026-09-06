@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { readWorkspaceKey } from "@/lib/workspace/clientKey";
 import { ArrowIcon } from "@/components/ArrowIcon";
 import { looksLikeEmail } from "@/lib/leads/leads";
 import type { LeadSource } from "@/lib/leads/leads";
@@ -63,7 +64,7 @@ export function EmailCapture({
       await fetch("/api/leads", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, source, step }),
+        body: JSON.stringify({ email, source, step, workspaceKey: readWorkspaceKey() }),
       });
     } catch {
       // Deliberately swallowed. See the note above.

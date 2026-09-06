@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { workspaceRepositoryFromEnv } from "@/lib/workspace/env";
-import { authorizeWorkspace } from "@/lib/workspace/authorize";
+import { authorizeOrCreateWorkspace } from "@/lib/workspace/selfServe";
+import { callerIp } from "@/lib/workspace/callerIp";
 import Anthropic from "@anthropic-ai/sdk";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { z } from "zod";
@@ -94,12 +95,28 @@ export async function POST(request: Request) {
   if (!workspaces) {
     return fail("Workspaces are not configured, so the mapping suggestion was skipped.");
   }
-  const auth = await authorizeWorkspace(workspaces, body.workspaceKey);
+  /*
+   * A new visitor gets a workspace here, silently, the way the connection
+   * routes already do. This is the first server call in the flow, so it is
+   * where "no account needed" is either true or not: refusing meant every
+   * organic visitor lost the mapping suggestion and was told to open a
+   * workspace page they had never heard of. A presented key that does not
+   * work is still refused - that is a returning customer with a problem,
+   * not a stranger.
+   */
+  const auth = await authorizeOrCreateWorkspace({
+    repo: workspaces,
+    presented: body.workspaceKey,
+    ip: callerIp(request),
+  });
   if (!auth.ok) {
     return fail(
-      "Open your workspace page first so we know whose account this is - until then we match columns by name only."
+      auth.status === 429
+        ? "Too many new sessions from here in the last hour, so we matched columns by name only."
+        : "This browser's access no longer works, so we matched columns by name only. Open the link we sent you again."
     );
   }
+  const mintedKey = auth.mintedKey;
 
   const businessContext =
     typeof body.businessContext === "string" ? body.businessContext.slice(0, MAX_CONTEXT_CHARS) : "";
@@ -141,9 +158,17 @@ export async function POST(request: Request) {
       reason: null,
       proposal: sanitizeProposal(response.parsed_output, headers),
       model: response.model,
+      // The one moment a minted key exists outside a hash. The browser has
+      // to keep it now or the workspace is unreachable.
+      ...(mintedKey ? { workspaceKey: mintedKey } : {}),
     });
   } catch (error) {
-    return fail(describeError(error));
+    return NextResponse.json({
+      ok: false,
+      reason: describeError(error),
+      proposal: EMPTY_PROPOSAL,
+      ...(mintedKey ? { workspaceKey: mintedKey } : {}),
+    });
   }
 }
 

@@ -105,6 +105,7 @@ async function handle(request: Request) {
       workspaces: all.map((w) => ({
         id: w.id,
         name: w.name,
+        contactEmail: w.contactEmail,
         keyPrefix: w.keyPrefix,
         status: w.status,
         createdAt: w.createdAt.toISOString(),

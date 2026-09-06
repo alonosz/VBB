@@ -323,6 +323,15 @@ Not in scope unless explicitly requested: user accounts/auth, billing,
 live Google Ads / Meta API calls, CRM OAuth beyond a named phase,
 multi-tenancy (though schemas carry `client_id` for later).
 
+**Nobody is ever asked for a workspace key.** A workspace is minted for a new
+visitor at the first server call (`authorizeOrCreateWorkspace()` - the intake
+suggestion, a connection, or a publish) and the key goes into that browser
+and nowhere on screen. A presented key that does not work is refused, never
+replaced: that is a returning customer with a problem, not a stranger. The
+address left at the send step is attached to the workspace; it is how the
+operator tells self-serve workspaces apart and how the advertiser is let back
+in from another device. There are no accounts and no passwords.
+
 **Server-side storage**: the feed tables only (`supabase/README.md`). Hashed
 identifiers, timestamps, values, currency, model id. Never CRM records, names,
 deal amounts or free text. The CHECK constraints enforce this rather than

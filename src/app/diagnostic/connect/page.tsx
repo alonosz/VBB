@@ -24,7 +24,7 @@ import { buildValueModelCsv, downloadCsv, identifierLabel } from "@/lib/export/g
 import { identifiersFor, buildFeedRows } from "@/lib/feed/publish";
 import type { FeedIdentifier } from "@/lib/feed/types";
 import { isDeploymentOrigin } from "@/lib/feed/origin";
-import { readWorkspaceKey } from "@/lib/workspace/clientKey";
+import { readWorkspaceKey, rememberWorkspaceKey } from "@/lib/workspace/clientKey";
 import { WorkspaceKeyPrompt } from "@/components/workspace/WorkspaceKeyPrompt";
 import { money } from "@/components/report/panels";
 import { CONVERSION_NAME } from "@/lib/feed/handlers";
@@ -440,10 +440,13 @@ export default function ConnectPage() {
       const data = await res.json();
       if (!res.ok || !data.ok) {
         setError(data.error ?? "The feed could not be published.");
-        // 401 here means the key is missing or wrong, which is a thing the
-        // customer can fix on the spot rather than a dead end.
-        setNeedsKey(res.status === 401);
-      } else
+        // A new visitor is given a workspace on the way through, so a 401
+        // here is a returning customer whose stored access no longer works.
+        setNeedsKey(res.status === 401 && !!readWorkspaceKey());
+      } else {
+        if (typeof data.workspaceKey === "string" && data.workspaceKey.trim()) {
+          rememberWorkspaceKey(data.workspaceKey.trim());
+        }
         setFeed({
           feedUrl: data.feedUrl,
           rowsPublished: data.rowsPublished,
@@ -453,6 +456,7 @@ export default function ConnectPage() {
           gateStage: gate?.available ? gate.stage : null,
           modelStored: data.modelStored === true,
         });
+      }
     } catch {
       setError("The feed could not be published. Nothing was sent.");
     } finally {
@@ -953,9 +957,9 @@ export default function ConnectPage() {
           <EmailCapture
             source="flow"
             step="connect"
-            title="Want a second pair of eyes on this?"
-            body="Leave your address and we will get in touch about what your model is showing, and how the first weeks of bidding go. Your numbers stay in this browser; only the address is sent."
-            cta="Get in touch"
+            title="Keep this workspace"
+            body="Right now it lives in this browser. Leave your address and we will send you a link that opens it on any device, and get in touch about how the first weeks of bidding go. Your numbers stay in this browser; only the address is sent."
+            cta="Send me the link"
           />
         </section>
 

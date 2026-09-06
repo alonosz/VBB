@@ -18,6 +18,8 @@ import { ArrowIcon } from "@/components/ArrowIcon";
 interface Workspace {
   id: string;
   name: string;
+  /** Left by the advertiser at the send step; how a self-serve one is told apart. */
+  contactEmail?: string | null;
   keyPrefix: string;
   status: string;
   createdAt: string;
@@ -363,7 +365,12 @@ export function AdminView() {
                 <tbody>
                   {workspaces.map((w) => (
                     <tr key={w.id} className="border-b border-[var(--border)] last:border-0">
-                      <td className="py-2 font-semibold">{w.name}</td>
+                      <td className="py-2">
+                        <span className="font-semibold">{w.name}</span>
+                        {w.contactEmail && (
+                          <span className="mono block text-[12px] text-[var(--muted)]">{w.contactEmail}</span>
+                        )}
+                      </td>
                       <td className="mono py-2 text-[12px] text-[var(--muted)]">{w.keyPrefix}…</td>
                       <td className="mono py-2">
                         <span style={{ color: w.status === "active" ? "var(--accent)" : "var(--muted)" }}>

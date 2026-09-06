@@ -17,7 +17,7 @@ import { rememberWorkspaceKey } from "@/lib/workspace/clientKey";
  */
 export function WorkspaceKeyPrompt({
   onSaved,
-  title = "Paste your workspace key to publish",
+  title = "This browser's access no longer works",
 }: {
   onSaved: () => void;
   title?: string;
@@ -35,9 +35,9 @@ export function WorkspaceKeyPrompt({
     <div className="mt-3 rounded-xl border border-[var(--warn)]/40 bg-[var(--warn-soft)] px-4 py-3.5">
       <p className="text-[13.5px] font-semibold">{title}</p>
       <p className="mt-0.5 max-w-[66ch] text-[13px] text-[var(--muted)]">
-        It starts <span className="mono">vbb_ws_</span> and was sent to you when
-        your workspace was set up. This browser remembers it, so you only do
-        this once.
+        Open the link we sent you again and it will fix itself. If you have the
+        key from that message, it starts <span className="mono">vbb_ws_</span> and
+        can be pasted here instead.
       </p>
       <div className="mt-2.5 flex flex-wrap gap-2">
         <input

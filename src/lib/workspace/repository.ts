@@ -27,6 +27,12 @@ export interface Workspace {
    * afterwards, which is why it is recorded the day it happens.
    */
   valueBiddingSwitchedAt: Date | null;
+  /**
+   * Where to send the link that opens this workspace on another device. A
+   * self-serve workspace has no name anyone typed, so this is also how the
+   * operator tells them apart. Null until the advertiser leaves one.
+   */
+  contactEmail: string | null;
 }
 
 export interface NewWorkspace {
@@ -48,9 +54,10 @@ interface WorkspaceDto {
   status: WorkspaceStatus;
   created_at: string;
   value_bidding_switched_at: string | null;
+  contact_email?: string | null;
 }
 
-const COLUMNS = "id, name, key_prefix, status, created_at, value_bidding_switched_at";
+const COLUMNS = "id, name, key_prefix, status, created_at, value_bidding_switched_at, contact_email";
 
 function toWorkspace(dto: WorkspaceDto): Workspace {
   return {
@@ -62,6 +69,7 @@ function toWorkspace(dto: WorkspaceDto): Workspace {
     valueBiddingSwitchedAt: dto.value_bidding_switched_at
       ? new Date(dto.value_bidding_switched_at)
       : null,
+    contactEmail: dto.contact_email ?? null,
   };
 }
 
@@ -84,6 +92,8 @@ export interface WorkspaceRepository {
 
   /** Records, or clears, the day they switched to value-based bidding. */
   setSwitchedAt(id: string, at: Date | null): Promise<void>;
+  /** The address the advertiser left, replacing any earlier one. */
+  setContactEmail(id: string, email: string): Promise<void>;
   /**
    * How many workspaces this caller has minted since `since`.
    *
@@ -170,6 +180,14 @@ export class SupabaseWorkspaceRepository implements WorkspaceRepository {
     if (error) throw new Error(error.message);
   }
 
+  async setContactEmail(id: string, email: string): Promise<void> {
+    const { error } = await this.client
+      .from("workspaces")
+      .update({ contact_email: email })
+      .eq("id", id);
+    if (error) throw new Error(error.message);
+  }
+
   async countCreatedSince(ipHash: string | null, since: Date): Promise<number> {
     if (!ipHash) return 0;
 
@@ -207,6 +225,7 @@ export class InMemoryWorkspaceRepository implements WorkspaceRepository {
       status: "active" as const,
       createdAt: this.now(),
       valueBiddingSwitchedAt: null as Date | null,
+      contactEmail: null as string | null,
     };
     this.rows.set(row.id, row);
     return { ...row };
@@ -235,6 +254,11 @@ export class InMemoryWorkspaceRepository implements WorkspaceRepository {
   async setSwitchedAt(id: string, at: Date | null): Promise<void> {
     const row = this.rows.get(id);
     if (row) row.valueBiddingSwitchedAt = at;
+  }
+
+  async setContactEmail(id: string, email: string): Promise<void> {
+    const row = this.rows.get(id);
+    if (row) row.contactEmail = email;
   }
 
   async rotateKey(id: string, keyHash: string, keyPrefix: string): Promise<void> {

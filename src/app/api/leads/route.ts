@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseFromEnv } from "@/lib/feed/supabaseRepository";
+import { workspaceRepositoryFromEnv } from "@/lib/workspace/env";
+import { authorizeWorkspace } from "@/lib/workspace/authorize";
 import {
   cleanStep,
   hashCaller,
@@ -37,14 +39,10 @@ export const runtime = "nodejs";
 /** Every path answers with this. See above: the sameness is the feature. */
 const THANKS = { ok: true } as const;
 
-function callerIp(request: Request): string | null {
-  const forwarded = request.headers.get("x-forwarded-for");
-  if (forwarded) return forwarded.split(",")[0].trim();
-  return request.headers.get("x-real-ip");
-}
+import { callerIp } from "@/lib/workspace/callerIp";
 
 export async function POST(request: Request) {
-  let body: { email?: unknown; source?: unknown; step?: unknown };
+  let body: { email?: unknown; source?: unknown; step?: unknown; workspaceKey?: unknown };
   try {
     body = (await request.json()) as typeof body;
   } catch {
@@ -88,6 +86,18 @@ export async function POST(request: Request) {
     }
 
     await store.record({ email, source, furthestStep: step, ipHash });
+
+    /*
+     * The same address, on the workspace this browser holds. This is what
+     * turns a silently minted workspace into one the operator can name and
+     * the advertiser can be let back into. A key that does not authorise is
+     * simply not attached; the address is still recorded above.
+     */
+    const workspaces = workspaceRepositoryFromEnv();
+    if (workspaces && typeof body.workspaceKey === "string" && body.workspaceKey.trim()) {
+      const auth = await authorizeWorkspace(workspaces, body.workspaceKey);
+      if (auth.ok) await workspaces.setContactEmail(auth.workspace.id, email);
+    }
   } catch (error) {
     console.error("Could not record a lead:", error);
   }
