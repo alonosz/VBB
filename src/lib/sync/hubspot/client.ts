@@ -1,11 +1,15 @@
-import type { HubSpotObject, HubSpotPage, HubSpotPull } from "./types";
+import type { HubSpotObject, HubSpotPage, HubSpotPropertyDef, HubSpotPull } from "./types";
 import {
   CLICK_ID_PROPERTIES,
   COMPANY_PROPERTIES,
   CONTACT_PROPERTIES,
   DEAL_PROPERTIES,
+  MAX_SIGNAL_PROPERTIES,
   googleClickIdProperties,
+  signalPropertiesOf,
+  stageTimingProperties,
 } from "./map";
+import { HUBSPOT_HEADERS } from "./rows";
 
 /**
  * Reading deals out of HubSpot.
@@ -121,17 +125,57 @@ export class HubSpotClient {
    * guessed someone would call it. Cheap - one request, no paging in practice
    * - and the alternative is a connection that silently carries no click IDs.
    */
-  async listContactProperties(): Promise<{ name: string; label?: string }[]> {
-    const res = await this.request<{ results?: { name?: string; label?: string }[] }>(
-      "/crm/v3/properties/contacts",
-      null
-    );
-    return (res.results ?? [])
-      .filter((p): p is { name: string; label?: string } => typeof p.name === "string");
+  async listContactProperties(): Promise<HubSpotPropertyDef[]> {
+    return this.listProperties("contacts");
   }
 
-  /** Deals created inside the window, newest pages first as HubSpot orders them. */
-  async listRecentDeals(): Promise<HubSpotObject[]> {
+  /**
+   * Every property definition the portal has for one object: name, label,
+   * type, and the options behind a dropdown. This is how the pull learns
+   * what the advertiser's own fields are called and which of them are
+   * categories worth pricing on.
+   */
+  async listProperties(object: "deals" | "contacts"): Promise<HubSpotPropertyDef[]> {
+    const res = await this.request<{ results?: Partial<HubSpotPropertyDef>[] }>(
+      `/crm/v3/properties/${object}`,
+      null
+    );
+    return (res.results ?? []).filter(
+      (p): p is HubSpotPropertyDef => typeof p.name === "string"
+    );
+  }
+
+  /**
+   * Stage id -> label, across every deal pipeline.
+   *
+   * Stage ids are opaque ("123456", "appointmentscheduled"), and the
+   * hs_date_entered_ and hs_time_in_ properties are named by id. Without this
+   * the report would call a stage by its id and could not ask for its timing
+   * at all.
+   */
+  async listPipelineStages(): Promise<Map<string, string>> {
+    const res = await this.request<{
+      results?: { stages?: { id?: string; label?: string }[] }[];
+    }>("/crm/v3/pipelines/deals", null);
+    const out = new Map<string, string>();
+    for (const pipeline of res.results ?? []) {
+      for (const stage of pipeline.stages ?? []) {
+        if (typeof stage.id === "string" && typeof stage.label === "string") {
+          out.set(stage.id, stage.label);
+        }
+      }
+    }
+    return out;
+  }
+
+  /**
+   * Deals created inside the window, newest pages first as HubSpot orders them.
+   *
+   * @param extraProperties The portal's own signal properties and the
+   *   per-stage timing properties, discovered before this is called. The
+   *   search endpoint returns only what is asked for.
+   */
+  async listRecentDeals(extraProperties: readonly string[] = []): Promise<HubSpotObject[]> {
     const now = this.opts.now ?? new Date();
     const windowDays = this.opts.windowDays ?? DEFAULT_WINDOW_DAYS;
     const since = now.getTime() - windowDays * 86_400_000;
@@ -144,7 +188,7 @@ export class HubSpotClient {
         filterGroups: [
           { filters: [{ propertyName: "createdate", operator: "GTE", value: String(since) }] },
         ],
-        properties: DEAL_PROPERTIES,
+        properties: [...new Set([...DEAL_PROPERTIES, ...extraProperties])],
         limit: PAGE_SIZE,
         sorts: [{ propertyName: "createdate", direction: "DESCENDING" }],
       };
@@ -276,9 +320,38 @@ export async function verifyAccess(
  * thousand recent deals is 10 deal pages and 20 batch reads, not 2,000 calls.
  */
 export async function pullFromHubSpot(client: HubSpotClient): Promise<HubSpotPull> {
-  const deals = await client.listRecentDeals();
+  /*
+   * What the portal calls things, before a single deal is read. The search
+   * endpoint returns only the properties named in the request, so the
+   * advertiser's own dropdowns and the per-stage timing have to be known in
+   * advance to be asked for at all. None of these reads is worth losing the
+   * run over: a portal whose token cannot see property definitions still
+   * gets its deals priced on the standard fields, the way it always was.
+   */
+  const [stageLabels, dealDefs, contactDefs] = await Promise.all([
+    client.listPipelineStages().catch(() => new Map<string, string>()),
+    client.listProperties("deals").catch(() => [] as HubSpotPropertyDef[]),
+    client.listContactProperties().catch(() => [] as HubSpotPropertyDef[]),
+  ]);
+
+  // Signal headers must never collide with the fixed columns, or a portal
+  // with a property labelled "Industry" would overwrite the mapped one.
+  const taken = new Set<string>(Object.values(HUBSPOT_HEADERS));
+  const dealSignals = signalPropertiesOf(dealDefs, "deals", taken);
+  const contactSignals = signalPropertiesOf(
+    contactDefs,
+    "contacts",
+    taken,
+    MAX_SIGNAL_PROPERTIES - dealSignals.length
+  );
+  const signalProperties = [...dealSignals, ...contactSignals];
+
+  const deals = await client.listRecentDeals([
+    ...dealSignals.map((s) => s.name),
+    ...stageTimingProperties(stageLabels.keys()),
+  ]);
   if (deals.length === 0) {
-    return { deals, contactsById: new Map(), companiesById: new Map() };
+    return { deals, contactsById: new Map(), companiesById: new Map(), stageLabels, signalProperties };
   }
 
   const dealIds = deals.map((d) => d.id);
@@ -302,19 +375,18 @@ export async function pullFromHubSpot(client: HubSpotClient): Promise<HubSpotPul
     };
   }
 
-  // Ask the portal where it keeps the click ID before reading contacts, so
-  // the batch request includes it. A failure here is not worth losing the run
-  // over: fall back to the names we know and carry on.
+  // Where the portal keeps the click ID, read off the same property list, so
+  // the batch request includes it. With no definitions the known names stand.
   let clickIdProperties = [...CLICK_ID_PROPERTIES];
-  try {
-    const discovered = googleClickIdProperties(await client.listContactProperties());
-    if (discovered.length > 0) clickIdProperties = discovered;
-  } catch {
-    // Keep the defaults.
-  }
+  const discovered = googleClickIdProperties(contactDefs);
+  if (discovered.length > 0) clickIdProperties = discovered;
 
   const contactProperties = [
-    ...new Set([...CONTACT_PROPERTIES, ...clickIdProperties]),
+    ...new Set([
+      ...CONTACT_PROPERTIES,
+      ...clickIdProperties,
+      ...contactSignals.map((s) => s.name),
+    ]),
   ];
 
   const contactIds = [...contactLinks.values()].flat();
@@ -329,5 +401,5 @@ export async function pullFromHubSpot(client: HubSpotClient): Promise<HubSpotPul
       : Promise.resolve(new Map<string, HubSpotObject>()),
   ]);
 
-  return { deals, contactsById, companiesById, clickIdProperties };
+  return { deals, contactsById, companiesById, clickIdProperties, stageLabels, signalProperties };
 }

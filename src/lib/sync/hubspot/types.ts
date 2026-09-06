@@ -22,6 +22,31 @@ export interface HubSpotPage {
   paging?: { next?: { after?: string } };
 }
 
+/** A property definition, as /crm/v3/properties/{object} returns it. */
+export interface HubSpotPropertyDef {
+  name: string;
+  label?: string;
+  /** "string" | "number" | "enumeration" | "bool" | "date" | "datetime" */
+  type?: string;
+  /** "select" | "radio" | "checkbox" | "booleancheckbox" | "text" | ... */
+  fieldType?: string;
+  hidden?: boolean;
+  calculated?: boolean;
+  hubspotDefined?: boolean;
+  options?: { label?: string; value?: string; hidden?: boolean }[];
+}
+
+/** A property carried onto every deal as a value signal, and how to read it. */
+export interface SignalProperty {
+  object: "deals" | "contacts";
+  name: string;
+  /** The column it becomes. Unique across the pull, so nothing overwrites. */
+  header: string;
+  /** Internal option value -> the label a person sees. */
+  options: Record<string, string>;
+  kind: "enumeration" | "bool";
+}
+
 /** What a pull hands the mapper: deals plus the records they point at. */
 export interface HubSpotPull {
   deals: HubSpotObject[];
@@ -34,4 +59,9 @@ export interface HubSpotPull {
    * discovered rather than assumed. Absent falls back to the known names.
    */
   clickIdProperties?: string[];
+  /**
+   * The portal's own dropdowns and checkboxes, read from its property
+   * definitions rather than assumed. Absent means none were read.
+   */
+  signalProperties?: SignalProperty[];
 }

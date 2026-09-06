@@ -302,6 +302,19 @@ Anything built for the connection has to leave the file route working, and
 both sources land on the same `MappedDeal[]` so nothing downstream knows or
 cares which one was used.
 
+**The connection reads the portal's own vocabulary, not a fixed list.** The
+pull asks HubSpot what deal and contact properties exist and carries every
+single-choice dropdown, radio and checkbox through as a column headed by its
+label (`signalPropertiesOf()`), so a consumer business's "Product line" is
+discovered and priced exactly as it would be from a file. Free text,
+numbers, dates and multi-select stay out; HubSpot's own properties stay out
+apart from deal type and priority. It also reads the pipeline's stage labels
+and requests `hs_date_entered_` and `hs_time_in_` per stage, so the early
+gate and the trust check have something to read. Every metadata read falls
+back rather than fails: a token that cannot see property definitions still
+prices on the standard fields. The nightly sync reads the same properties
+under the same labels, which is what lets the saved model's rules apply.
+
 ---
 
 # Scope guardrails

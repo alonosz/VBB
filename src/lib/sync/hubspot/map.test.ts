@@ -1,12 +1,18 @@
 import { describe, expect, it } from "vitest";
 import {
+  CONTACT_PROPERTIES,
+  MAX_SIGNAL_PROPERTIES,
   currenciesInPull,
   googleClickIdProperties,
   hubspotToDeals,
   outcomeOf,
+  signalPropertiesOf,
+  signalsOf,
+  stageDurationsOf,
   stageTimingOf,
+  stageTimingProperties,
 } from "./map";
-import type { HubSpotObject, HubSpotPull } from "./types";
+import type { HubSpotObject, HubSpotPropertyDef, HubSpotPull } from "./types";
 
 const CREATED = "2026-05-01T09:00:00Z";
 
@@ -284,5 +290,165 @@ describe("googleClickIdProperties", () => {
       clickIdProperties: ["p_47281__c"],
     });
     expect(mapped.clickId).toBe("EAIaIQobChMIzfaU1aS0lQMV");
+  });
+});
+
+/*
+ * The portal's own dropdowns, read as signals. A consumer business on
+ * HubSpot keeps what the lead asked for in properties it made itself, and
+ * until these were pulled the connection priced every such lead the same.
+ */
+describe("signalPropertiesOf", () => {
+  const def = (over: Partial<HubSpotPropertyDef>): HubSpotPropertyDef => ({
+    name: "x", type: "enumeration", fieldType: "select", ...over,
+  });
+
+  it("takes the portal's own dropdowns, radios and checkboxes", () => {
+    const out = signalPropertiesOf([
+      def({ name: "product_line", label: "Product line", options: [{ value: "auto", label: "Auto" }] }),
+      def({ name: "urgent", label: "Urgent?", type: "bool", fieldType: "booleancheckbox" }),
+      def({ name: "coverage", label: "Coverage", fieldType: "radio" }),
+    ], "deals");
+    expect(out.map((s) => [s.header, s.kind])).toEqual([
+      ["Coverage", "enumeration"],
+      ["Product line", "enumeration"],
+      ["Urgent?", "bool"],
+    ]);
+    expect(out[1].options).toEqual({ auto: "Auto" });
+  });
+
+  it("leaves free text, numbers, dates and multi-select alone", () => {
+    const out = signalPropertiesOf([
+      def({ name: "notes", label: "Notes", type: "string", fieldType: "textarea" }),
+      def({ name: "budget", label: "Budget", type: "number", fieldType: "number" }),
+      def({ name: "renewal", label: "Renewal", type: "date", fieldType: "date" }),
+      def({ name: "interests", label: "Interests", fieldType: "checkbox" }),
+    ], "deals");
+    expect(out).toEqual([]);
+  });
+
+  it("leaves HubSpot's own properties alone, apart from the two that describe the lead", () => {
+    const out = signalPropertiesOf([
+      def({ name: "dealtype", label: "Deal Type", hubspotDefined: true }),
+      def({ name: "hs_priority", label: "Priority", hubspotDefined: true }),
+      def({ name: "hs_object_source", label: "Record source", hubspotDefined: true }),
+      def({ name: "hs_all_owner_ids", label: "All owner ids", hubspotDefined: true }),
+    ], "deals");
+    expect(out.map((s) => s.name)).toEqual(["dealtype", "hs_priority"]);
+  });
+
+  /*
+   * Lifecycle stage is "customer" exactly when the deal is won. It is the
+   * outcome under another name, and HubSpot defines it, so it stays out
+   * even though its shape is a perfect category.
+   */
+  it("never takes the outcome wearing another name", () => {
+    const out = signalPropertiesOf([
+      def({ name: "lifecyclestage", label: "Lifecycle Stage", hubspotDefined: true }),
+      def({ name: "hs_lead_status", label: "Lead Status", hubspotDefined: true }),
+      def({ name: "dealstage", label: "Deal Stage", hubspotDefined: true }),
+    ], "contacts");
+    expect(out).toEqual([]);
+  });
+
+  it("skips hidden and calculated properties", () => {
+    const out = signalPropertiesOf([
+      def({ name: "a", label: "A", hidden: true }),
+      def({ name: "b", label: "B", calculated: true }),
+    ], "deals");
+    expect(out).toEqual([]);
+  });
+
+  it("never hands out a header already in use, and remembers the ones it gives", () => {
+    const taken = new Set(["Industry"]);
+    const deals = signalPropertiesOf([
+      def({ name: "industry_c", label: "Industry" }),
+      def({ name: "tier", label: "Tier" }),
+    ], "deals", taken);
+    expect(deals.map((s) => s.header)).toEqual(["Industry (deal)", "Tier"]);
+    const contacts = signalPropertiesOf([def({ name: "tier_c", label: "Tier" })], "contacts", taken);
+    expect(contacts.map((s) => s.header)).toEqual(["Tier (contact)"]);
+  });
+
+  it("caps the list, the portal's own properties first, in a stable order", () => {
+    const many = Array.from({ length: MAX_SIGNAL_PROPERTIES + 5 }, (_, i) =>
+      def({ name: `p${i}`, label: `Prop ${String(i).padStart(2, "0")}` })
+    );
+    const out = signalPropertiesOf([def({ name: "dealtype", label: "Deal Type", hubspotDefined: true }), ...many], "deals");
+    expect(out).toHaveLength(MAX_SIGNAL_PROPERTIES);
+    expect(out[0].header).toBe("Prop 00");
+    expect(out.map((s) => s.name)).not.toContain("dealtype");
+  });
+});
+
+describe("signalsOf", () => {
+  const props = signalPropertiesOf([
+    { name: "product_line", label: "Product line", type: "enumeration", fieldType: "select",
+      options: [{ value: "auto", label: "Auto" }, { value: "home", label: "Home" }] },
+    { name: "urgent", label: "Urgent?", type: "bool", fieldType: "booleancheckbox" },
+  ], "deals");
+  const contactProps = signalPropertiesOf([
+    { name: "insured", label: "Currently insured", type: "enumeration", fieldType: "radio",
+      options: [{ value: "yes", label: "Yes" }] },
+  ], "contacts");
+
+  it("writes the label a person sees, not the value the portal stores", () => {
+    const deal: HubSpotObject = { id: "d1", properties: { product_line: "auto", urgent: "true" } };
+    const contact: HubSpotObject = { id: "c1", properties: { insured: "yes" } };
+    expect(signalsOf(deal, contact, [...props, ...contactProps])).toEqual({
+      "Product line": "Auto",
+      "Urgent?": "Yes",
+      "Currently insured": "Yes",
+    });
+  });
+
+  it("keeps a value the options list does not know, rather than dropping the row", () => {
+    const deal: HubSpotObject = { id: "d1", properties: { product_line: "pet" } };
+    expect(signalsOf(deal, undefined, props)).toEqual({ "Product line": "pet" });
+  });
+
+  it("is nothing when the deal carries none of them", () => {
+    expect(signalsOf({ id: "d1", properties: { product_line: "" } }, undefined, props)).toBeUndefined();
+  });
+});
+
+describe("what a pull carries through to the deal", () => {
+  it("attaches the signals, the stage labels, the durations and the source", () => {
+    const pull: HubSpotPull = {
+      deals: [{
+        id: "d1",
+        properties: {
+          createdate: CREATED, dealstage: "s1", product_line: "auto",
+          hs_date_entered_s2: "2026-05-03T09:00:00Z", hs_time_in_s1: "172800000",
+        },
+        associations: { contacts: { results: [{ id: "c1" }] } },
+      }],
+      contactsById: new Map([["c1", { id: "c1", properties: { email: "a@b.com", hs_analytics_source: "PAID_SEARCH" } }]]),
+      companiesById: new Map(),
+      stageLabels: new Map([["s1", "New"], ["s2", "Quoted"]]),
+      signalProperties: signalPropertiesOf([
+        { name: "product_line", label: "Product line", type: "enumeration", fieldType: "select",
+          options: [{ value: "auto", label: "Auto" }] },
+      ], "deals"),
+    };
+    const [deal] = hubspotToDeals(pull);
+    expect(deal.signals).toEqual({ "Product line": "Auto" });
+    expect(deal.stage).toBe("New");
+    expect(deal.source).toBe("PAID_SEARCH");
+    expect(deal.stageReachedAfterDays).toEqual({ Quoted: 2 });
+    expect(deal.stageDurations).toEqual({ New: 172800 });
+  });
+
+  it("asks for the source, which it used to read without requesting", () => {
+    expect(CONTACT_PROPERTIES).toContain("hs_analytics_source");
+  });
+
+  it("names the timing properties by stage id, both kinds", () => {
+    expect(stageTimingProperties(["s1"])).toEqual(["hs_date_entered_s1", "hs_time_in_s1"]);
+  });
+
+  it("reads durations in seconds from HubSpot's milliseconds", () => {
+    expect(stageDurationsOf({ id: "d", properties: { hs_time_in_x: "9000" } })).toEqual({ x: 9 });
+    expect(stageDurationsOf({ id: "d", properties: { hs_time_in_x: "-1" } })).toBeUndefined();
   });
 });

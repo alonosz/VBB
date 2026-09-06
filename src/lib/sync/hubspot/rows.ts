@@ -87,9 +87,26 @@ function outcome(value: MappedDeal["outcome"]): string {
  * field as present at a 0% fill rate. A portal that does not capture the click
  * ID should see no click ID column at all, and be told so.
  */
+/**
+ * Headers for what the portal knows beyond the fixed fields.
+ *
+ * Signals keep the property's own label, which is what discovery will offer
+ * and what the saved model will be keyed by - so the nightly sync, reading
+ * the same label off the same property, prices on the same rule. Stage
+ * timing takes the shapes `detectStageTimingColumns()` reads, so the early
+ * gate and the trust check open filled in for a HubSpot customer the way
+ * they do for a file that carries them.
+ */
+export const enteredHeader = (stage: string) => `Date entered ${stage}`;
+export const durationHeader = (stage: string) => `Time in ${stage}`;
+
 export function dealsToRows(deals: MappedDeal[]): RowSet {
   const present = new Set<string>();
+  const extra: string[] = [];
   const rows: Record<string, string>[] = [];
+  const seen = (header: string) => {
+    if (!extra.includes(header)) extra.push(header);
+  };
 
   for (const deal of deals) {
     const row: Record<string, string> = {
@@ -107,6 +124,25 @@ export function dealsToRows(deals: MappedDeal[]): RowSet {
       [HUBSPOT_HEADERS.contactTitle]: text(deal.contactTitle),
     };
 
+    for (const [header, value] of Object.entries(deal.signals ?? {})) {
+      if (header in row) continue;
+      row[header] = value;
+      seen(header);
+    }
+    for (const [stage, days] of Object.entries(deal.stageReachedAfterDays ?? {})) {
+      if (!deal.createdAt) continue;
+      const header = enteredHeader(stage);
+      if (header in row) continue;
+      row[header] = day(new Date(deal.createdAt.getTime() + days * 86_400_000));
+      seen(header);
+    }
+    for (const [stage, seconds] of Object.entries(deal.stageDurations ?? {})) {
+      const header = durationHeader(stage);
+      if (header in row) continue;
+      row[header] = num(seconds);
+      seen(header);
+    }
+
     for (const [header, value] of Object.entries(row)) {
       if (value !== "") present.add(header);
     }
@@ -117,12 +153,15 @@ export function dealsToRows(deals: MappedDeal[]): RowSet {
   // columns at all reads downstream as a broken file rather than an empty one.
   present.add(HUBSPOT_HEADERS.id);
 
-  const headers = Object.values(HUBSPOT_HEADERS).filter((h) => present.has(h));
+  const headers = [
+    ...Object.values(HUBSPOT_HEADERS).filter((h) => present.has(h)),
+    ...extra.filter((h) => present.has(h)).sort((a, b) => a.localeCompare(b)),
+  ];
   return {
     headers,
     rows: rows.map((row) => {
       const trimmed: Record<string, string> = {};
-      for (const header of headers) trimmed[header] = row[header];
+      for (const header of headers) trimmed[header] = row[header] ?? "";
       return trimmed;
     }),
   };

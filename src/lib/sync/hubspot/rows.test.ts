@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { dealsToRows, HUBSPOT_HEADERS } from "./rows";
-import { detectColumns } from "@/lib/mapping/detect";
+import { detectColumns, detectStageTimingColumns } from "@/lib/mapping/detect";
+import { discoverSignalColumns } from "@/lib/mapping/signals";
 import { rowsToDeals } from "@/lib/mapping/toDeals";
 import type { MappedDeal } from "@/lib/analysis/types";
 
@@ -153,5 +154,57 @@ describe("the round trip", () => {
     const { headers, rows } = dealsToRows([]);
     expect(rows).toHaveLength(0);
     expect(headers).toEqual([HUBSPOT_HEADERS.id]);
+  });
+});
+
+/*
+ * What the portal knows beyond the fixed fields has to reach the mapping
+ * screen the way a file's columns do, or a HubSpot customer gets no
+ * discovered signals, no early gate and no trust check.
+ */
+describe("the portal's own columns", () => {
+  const deals = Array.from({ length: 60 }, (_, i) =>
+    deal({
+      signals: { "Product line": ["Auto", "Home", "Renters"][i % 3], "Urgent?": i % 2 ? "Yes" : "No" },
+      stageReachedAfterDays: { Quoted: 2 },
+      stageDurations: { Quoted: 7200 },
+    })
+  );
+
+  it("become columns, after the fixed ones, in a stable order", () => {
+    const { headers } = dealsToRows(deals);
+    const fixed = headers.filter((h) => (Object.values(HUBSPOT_HEADERS) as string[]).includes(h));
+    expect(headers.slice(fixed.length)).toEqual([
+      "Date entered Quoted", "Product line", "Time in Quoted", "Urgent?",
+    ]);
+  });
+
+  it("are discovered as signals by the same rules a file's columns are", () => {
+    const { headers, rows } = dealsToRows(deals);
+    const { fields } = detectColumns(headers, rows);
+    const { discovered } = discoverSignalColumns(headers, rows, fields, "b2c");
+    expect(discovered.filter((d) => d.suggested).map((d) => d.column).sort()).toEqual(["Product line", "Urgent?"]);
+  });
+
+  it("carry the stage timing the early gate and the trust check read", () => {
+    const { headers, rows } = dealsToRows(deals);
+    const timing = detectStageTimingColumns(headers, rows);
+    expect(timing).toEqual(expect.arrayContaining([
+      expect.objectContaining({ stage: "Quoted", kind: "entered" }),
+      expect.objectContaining({ stage: "Quoted", kind: "duration", unit: "seconds" }),
+    ]));
+    expect(rows[0]["Date entered Quoted"]).toBe("2026-03-06");
+    expect(rows[0]["Time in Quoted"]).toBe("7200");
+  });
+
+  it("do not appear at all when no deal carried them", () => {
+    const { headers } = dealsToRows([deal(), deal()]);
+    expect(headers).not.toContain("Product line");
+    expect(headers.some((h) => h.startsWith("Date entered"))).toBe(false);
+  });
+
+  it("never overwrite a fixed column", () => {
+    const { rows } = dealsToRows([deal({ industry: "Manufacturing", signals: { Industry: "Pets" } })]);
+    expect(rows[0][HUBSPOT_HEADERS.industry]).toBe("Manufacturing");
   });
 });

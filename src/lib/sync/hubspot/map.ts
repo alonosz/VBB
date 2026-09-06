@@ -1,6 +1,6 @@
 import type { MappedDeal, DealOutcome } from "@/lib/analysis/types";
 import type { CurrencyPolicy } from "@/lib/mapping/toDeals";
-import type { HubSpotObject, HubSpotPull } from "./types";
+import type { HubSpotObject, HubSpotPropertyDef, HubSpotPull, SignalProperty } from "./types";
 
 /**
  * Turning HubSpot records into the shape the engine already understands.
@@ -90,9 +90,113 @@ export const DEAL_PROPERTIES = [
   "hs_is_closed_won",
 ];
 
-export const CONTACT_PROPERTIES = ["email", "jobtitle", ...CLICK_ID_PROPERTIES];
+/**
+ * hs_analytics_source is HubSpot's own first-touch attribution. It was read
+ * off the contact and never requested, so every HubSpot lead arrived with no
+ * source and the channel table was empty for anyone on the connection.
+ */
+export const CONTACT_PROPERTIES = ["email", "jobtitle", "hs_analytics_source", ...CLICK_ID_PROPERTIES];
 
 export const COMPANY_PROPERTIES = ["numberofemployees", "industry", "name"];
+
+/**
+ * The portal's own dropdowns, read as value signals.
+ *
+ * Until now the pull asked for a fixed list of standard properties and
+ * nothing else, so a consumer business on HubSpot with a "Product line" or
+ * "Coverage tier" property never saw it discovered - it never arrived. On
+ * the file route those columns are what the whole model is priced on, which
+ * made the connection quietly B2B-only.
+ *
+ * What is taken: single-choice enumerations (dropdown, radio) and booleans,
+ * because those are categories by construction and carry no free text. What
+ * is not: text properties (notes, names, addresses - a category is words the
+ * portal enumerated, not words a rep typed), multi-select checkboxes (one
+ * cell carrying several values is not one level), numbers and dates (the
+ * detector already treats them as structural), and anything hidden or
+ * calculated. HubSpot's own properties stay out apart from a short list that
+ * genuinely describes the lead; the rest are system fields, and two of them
+ * (lifecycle stage, lead status) are the outcome wearing another name.
+ */
+export const MAX_SIGNAL_PROPERTIES = 30;
+
+const HUBSPOT_OWN_SIGNALS: Record<SignalProperty["object"], readonly string[]> = {
+  deals: ["dealtype", "hs_priority"],
+  contacts: [],
+};
+
+/** Structural or outcome-bearing, never a signal, however a portal defined them. */
+const NEVER_SIGNALS = new Set([
+  "dealstage", "pipeline", "hs_is_closed", "hs_is_closed_won", "deal_currency_code",
+  "lifecyclestage", "hs_lead_status", "hs_analytics_source",
+]);
+
+function signalKind(def: HubSpotPropertyDef): SignalProperty["kind"] | null {
+  if (def.type === "bool") return "bool";
+  if (def.type === "enumeration" && (def.fieldType === "select" || def.fieldType === "radio")) {
+    return "enumeration";
+  }
+  return null;
+}
+
+/**
+ * @param taken Headers already in use. Mutated: every header handed out is
+ *   added, so a second call for another object cannot collide with the first.
+ */
+export function signalPropertiesOf(
+  defs: HubSpotPropertyDef[],
+  object: SignalProperty["object"],
+  taken: Set<string> = new Set(),
+  limit: number = MAX_SIGNAL_PROPERTIES
+): SignalProperty[] {
+  const eligible = defs
+    .filter((d) => typeof d.name === "string" && !d.hidden && !d.calculated)
+    .filter((d) => !NEVER_SIGNALS.has(d.name))
+    .filter((d) => !d.hubspotDefined || HUBSPOT_OWN_SIGNALS[object].includes(d.name))
+    .filter((d) => signalKind(d) !== null)
+    // The portal's own properties first: they are the ones somebody made on
+    // purpose. Then by label, so the cap cuts the same way every night.
+    .sort((a, b) =>
+      Number(!!a.hubspotDefined) - Number(!!b.hubspotDefined) ||
+      (a.label ?? a.name).localeCompare(b.label ?? b.name)
+    );
+
+  const out: SignalProperty[] = [];
+  for (const def of eligible) {
+    if (out.length >= limit) break;
+    const base = (def.label ?? def.name).trim() || def.name;
+    let header = base;
+    if (taken.has(header)) header = `${base} (${object === "deals" ? "deal" : "contact"})`;
+    for (let n = 2; taken.has(header); n++) header = `${base} (${n})`;
+    taken.add(header);
+
+    const options: Record<string, string> = {};
+    for (const o of def.options ?? []) {
+      if (typeof o.value === "string" && typeof o.label === "string") options[o.value] = o.label;
+    }
+    out.push({ object, name: def.name, header, options, kind: signalKind(def)! });
+  }
+  return out;
+}
+
+/** One deal's signals, in the words the portal shows rather than stores. */
+export function signalsOf(
+  deal: HubSpotObject,
+  contact: HubSpotObject | undefined,
+  props: readonly SignalProperty[]
+): Record<string, string> | undefined {
+  const out: Record<string, string> = {};
+  for (const p of props) {
+    const raw = text(p.object === "deals" ? deal : contact, p.name);
+    if (raw === null) continue;
+    const value =
+      p.kind === "bool"
+        ? raw === "true" ? "Yes" : raw === "false" ? "No" : raw
+        : p.options[raw] ?? raw;
+    if (value) out[p.header] = value;
+  }
+  return Object.keys(out).length > 0 ? out : undefined;
+}
 
 function text(record: HubSpotObject | undefined, key: string): string | null {
   const value = record?.properties?.[key];
@@ -195,6 +299,34 @@ export function stageTimingOf(
 }
 
 /**
+ * Seconds spent in each stage, from hs_time_in_<stageId>, which HubSpot keeps
+ * in milliseconds. This is what the stage-trust check reads: a card dragged
+ * through a stage in nine seconds was never in it, and without durations no
+ * HubSpot stage could ever be caught doing that.
+ */
+export function stageDurationsOf(
+  deal: HubSpotObject,
+  stageLabels?: Map<string, string>
+): Record<string, number> | undefined {
+  const out: Record<string, number> = {};
+  for (const [key] of Object.entries(deal.properties)) {
+    const match = /^hs_time_in_(.+)$/.exec(key);
+    if (!match) continue;
+    const ms = number(deal, key);
+    if (ms === null || ms < 0) continue;
+    out[stageLabels?.get(match[1]) ?? match[1]] = Math.round(ms / 1000);
+  }
+  return Object.keys(out).length > 0 ? out : undefined;
+}
+
+/** The properties a pull must request for stage timing to exist at all. */
+export function stageTimingProperties(stageIds: Iterable<string>): string[] {
+  const out: string[] = [];
+  for (const id of stageIds) out.push(`hs_date_entered_${id}`, `hs_time_in_${id}`);
+  return out;
+}
+
+/**
  * Which currencies this portal actually deals in, commonest first.
  *
  * Asked for before anything is priced, so a mixed portal can be given the same
@@ -266,7 +398,9 @@ export function hubspotToDeals(
       employeeCount: number(company, "numberofemployees"),
       industry: text(company, "industry"),
       contactTitle: text(contact, "jobtitle"),
+      signals: signalsOf(deal, contact, pull.signalProperties ?? []),
       stageReachedAfterDays: stageTimingOf(deal, createdAt, pull.stageLabels),
+      stageDurations: stageDurationsOf(deal, pull.stageLabels),
     });
   }
 
