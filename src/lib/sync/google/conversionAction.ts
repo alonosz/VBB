@@ -60,6 +60,7 @@ interface SearchResponse {
       name?: string;
       status?: string;
       type?: string;
+      category?: string;
       countingType?: string;
       primaryForGoal?: boolean;
       valueSettings?: { alwaysUseDefaultValue?: boolean; defaultValue?: number };
@@ -92,7 +93,7 @@ export async function findConversionAction(
   const res = await client.post<SearchResponse>(`customers/${customerId}/googleAds:search`, {
     query:
       "SELECT conversion_action.resource_name, conversion_action.name, " +
-      "conversion_action.status, conversion_action.type, " +
+      "conversion_action.status, conversion_action.type, conversion_action.category, " +
       "conversion_action.counting_type, conversion_action.primary_for_goal, " +
       "conversion_action.value_settings.always_use_default_value " +
       "FROM conversion_action " +
@@ -126,11 +127,30 @@ export async function findConversionAction(
  */
 export function judgeSettings(action: {
   status?: string;
+  category?: string;
   countingType?: string;
   primaryForGoal?: boolean;
   valueSettings?: { alwaysUseDefaultValue?: boolean };
 }): SettingProblem[] {
   const problems: SettingProblem[] = [];
+
+  /*
+   * "Other" is where an action lands when nobody chose a goal for it, and
+   * where the first version of this product put it. Google's guidance for
+   * imported lead values is the Leads goal, as a qualified or converted
+   * lead, and a campaign optimising to the Leads goal will not see an
+   * action filed under Other. Imported lead is the category Google retired
+   * in favour of those two.
+   */
+  if (action.category === "DEFAULT" || action.category === "IMPORTED_LEAD") {
+    problems.push({
+      title:
+        action.category === "DEFAULT"
+          ? 'It is filed under the "Other" goal, not Leads'
+          : 'It uses the retired "Imported lead" category',
+      fix: 'Google Ads: Goals → Conversions → VBB Lead Value → Edit settings → Goal and action optimization → Leads → Qualified lead. Google recommends the Leads goal for imported lead values, and a campaign set to optimise for Leads does not see an action filed anywhere else.',
+    });
+  }
 
   if (action.valueSettings?.alwaysUseDefaultValue === true) {
     problems.push({
@@ -180,7 +200,12 @@ export function conversionActionPayload(name: string = CONVERSION_ACTION_NAME) {
     // Uploaded against a click Google already recorded, which is what an
     // offline conversion from a CRM is.
     type: "UPLOAD_CLICKS",
-    category: "DEFAULT",
+    // The Leads goal, as Google recommends for imported lead values. Of the
+    // two categories it offers for that, "qualified" is the honest one: a
+    // lead priced from the CRM's own history has been qualified, not
+    // converted, and calling every new lead a converted one would misstate
+    // the account's reports.
+    category: "QUALIFIED_LEAD",
     status: "ENABLED",
     valueSettings: {
       alwaysUseDefaultValue: false,

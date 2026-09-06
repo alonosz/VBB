@@ -208,7 +208,7 @@ const BID_STEPS = [
   },
   {
     title: "Expect a quiet couple of weeks",
-    body: "Google re-learns when a bid strategy changes, and it needs a run of real values before that settles. Judge it on what happens after, not during.",
+    body: "Google re-learns when a bid strategy changes, and it needs a run of real values before that settles. The action does not start from nothing: your first send carries up to 90 days of leads with their original dates, so it opens with history. Judge it on what happens after the learning period, not during it.",
   },
 ];
 

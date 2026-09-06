@@ -117,6 +117,7 @@ describe("finding one that already exists", () => {
     for (const field of [
       "conversion_action.value_settings.always_use_default_value",
       "conversion_action.primary_for_goal",
+      "conversion_action.category",
       "conversion_action.counting_type",
       "conversion_action.status",
     ]) {
@@ -220,6 +221,7 @@ describe("ensuring it is there", () => {
 describe("judging settings on an action somebody else made", () => {
   const good = {
     status: "ENABLED",
+    category: "QUALIFIED_LEAD",
     countingType: "ONE_PER_CLICK",
     primaryForGoal: true,
     valueSettings: { alwaysUseDefaultValue: false },
@@ -227,6 +229,21 @@ describe("judging settings on an action somebody else made", () => {
 
   it("passes an action configured the way we would have made it", () => {
     expect(judgeSettings(good)).toEqual([]);
+  });
+
+  it("catches an action filed under Other rather than the Leads goal", () => {
+    const [problem] = judgeSettings({ ...good, category: "DEFAULT" });
+    expect(problem.title).toMatch(/"Other" goal/);
+    expect(problem.fix).toMatch(/Leads → Qualified lead/);
+  });
+
+  it("catches the retired imported-lead category", () => {
+    const [problem] = judgeSettings({ ...good, category: "IMPORTED_LEAD" });
+    expect(problem.title).toMatch(/retired/);
+  });
+
+  it("accepts either of the categories Google recommends", () => {
+    expect(judgeSettings({ ...good, category: "CONVERTED_LEAD" })).toEqual([]);
   });
 
   it("catches one flat value for every lead, which discards the whole model", () => {
@@ -257,11 +274,12 @@ describe("judging settings on an action somebody else made", () => {
     expect(
       judgeSettings({
         status: "PAUSED",
+        category: "DEFAULT",
         countingType: "MANY_PER_CLICK",
         primaryForGoal: false,
         valueSettings: { alwaysUseDefaultValue: true },
       })
-    ).toHaveLength(4);
+    ).toHaveLength(5);
   });
 
   /*
