@@ -203,10 +203,6 @@ const BID_STEPS = [
     body: 'If it currently says Maximize conversions or Target CPA, that is the problem - those bid on how many leads you get, not what they are worth.',
   },
   {
-    title: "Point this campaign at our action, and touch nothing else",
-    body: 'Goals → Conversions → Custom goals → create one containing only VBB Lead Value. Then in this campaign: Settings → Goals → "Use campaign-specific goal settings" → pick that custom goal. Your existing lead conversions stay exactly as they are, primary, for every other campaign - do not make them secondary, or every campaign still bidding on them changes overnight. This campaign alone now bids on our values rather than counting the same lead twice.',
-  },
-  {
     title: "Leave Target ROAS empty for now",
     body: "A target is a promise about a ratio Google has no history for yet. Let it run on Maximize conversion value first, then set a target once you can see what your actual return has been.",
   },
