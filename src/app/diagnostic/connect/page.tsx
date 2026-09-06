@@ -203,8 +203,8 @@ const BID_STEPS = [
     body: 'If it currently says Maximize conversions or Target CPA, that is the problem - those bid on how many leads you get, not what they are worth.',
   },
   {
-    title: "Make your old lead conversion secondary",
-    body: 'Goals → Conversions → your existing form-submit or lead action → Edit settings → Secondary. Ours fires for the same leads with a value; theirs fires for the same leads with none. Left primary side by side, every lead is counted twice and half of the count carries no value, which drags the bidding back toward "any lead will do".',
+    title: "Point this campaign at our action, and touch nothing else",
+    body: 'Goals → Conversions → Custom goals → create one containing only VBB Lead Value. Then in this campaign: Settings → Goals → "Use campaign-specific goal settings" → pick that custom goal. Your existing lead conversions stay exactly as they are, primary, for every other campaign - do not make them secondary, or every campaign still bidding on them changes overnight. This campaign alone now bids on our values rather than counting the same lead twice.',
   },
   {
     title: "Leave Target ROAS empty for now",
