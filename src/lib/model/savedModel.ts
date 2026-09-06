@@ -405,11 +405,29 @@ export interface Applicability {
   coverage: number;
 }
 
+export interface ApplicabilityReport {
+  factors: Applicability[];
+  inert: Applicability[];
+  currencyMismatch: string | null;
+  /** The model was fitted for the other audience, so it describes other buyers. */
+  audienceMismatch: string | null;
+  /**
+   * One sentence when the model cannot price this file at all, null when it
+   * can. A model that cannot price is never the default and never sent: a
+   * frozen rule set with nothing to read prices every lead at its base value
+   * and calls that a model.
+   */
+  unusableBecause: string | null;
+}
+
+const AUDIENCE_WORD: Record<Audience, string> = { b2b: "businesses", b2c: "consumers" };
+
 export function checkApplicability(
   saved: SavedValueModel,
   deals: MappedDeal[],
-  reportingCurrency?: string
-): { factors: Applicability[]; inert: Applicability[]; currencyMismatch: string | null } {
+  reportingCurrency?: string,
+  audience?: Audience
+): ApplicabilityReport {
   const defs = buildFactorList(
     saved.factors.map((f) => f.key).filter((k) => !CORE_KEYS.has(k)),
     saved.audience ?? "b2b"
@@ -439,10 +457,30 @@ export function checkApplicability(
       ? `This model was fitted in ${saved.currencyCode}, and this file is reported in ${reportingCurrency}. Refit before using it, or switch the reporting currency back.`
       : null;
 
+  // A model fitted on businesses prices headcount and industry; one fitted on
+  // consumers prices what they asked for. Neither describes the other's
+  // buyers, and a saved model from before the audience existed was a
+  // business model.
+  const savedAudience = saved.audience ?? "b2b";
+  const audienceMismatch =
+    audience && audience !== savedAudience
+      ? `This model was fitted for ${AUDIENCE_WORD[savedAudience]}, and this file is ${AUDIENCE_WORD[audience]}. It cannot price these leads - fit a fresh one on this file.`
+      : null;
+
+  const inert = factors.filter((f) => f.dealsCovered === 0);
+  const nothingFires = factors.length > 0 && inert.length === factors.length;
+
   return {
     factors,
-    inert: factors.filter((f) => f.dealsCovered === 0),
+    inert,
     currencyMismatch,
+    audienceMismatch,
+    unusableBecause:
+      currencyMismatch ??
+      audienceMismatch ??
+      (nothingFires
+        ? "None of this model's rules can read a column in this file, so it would price every lead the same. Fit a fresh one on this file."
+        : null),
   };
 }
 

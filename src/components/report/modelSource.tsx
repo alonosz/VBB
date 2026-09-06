@@ -25,6 +25,7 @@ export function ModelSourcePanel({
   drift,
   inert,
   currencyMismatch,
+  unusableBecause,
   freshFittedOn,
   onSave,
   onLoadFile,
@@ -37,6 +38,8 @@ export function ModelSourcePanel({
   drift: ModelDrift | null;
   inert: Applicability[];
   currencyMismatch: string | null;
+  /** Set when the saved model cannot price this file; the option is then off. */
+  unusableBecause: string | null;
   freshFittedOn: number;
   onSave: () => void;
   onLoadFile: (file: File) => void;
@@ -70,7 +73,8 @@ export function ModelSourcePanel({
             <button
               type="button"
               onClick={() => onUse("saved")}
-              disabled={!saved}
+              disabled={!saved || !!unusableBecause}
+              title={unusableBecause ?? undefined}
               aria-pressed={active === "saved"}
               className={
                 "rounded-full px-3.5 py-1.5 text-[13px] font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-45 " +
@@ -138,6 +142,13 @@ export function ModelSourcePanel({
         </p>
       )}
 
+      {saved && unusableBecause && unusableBecause !== currencyMismatch && (
+        <div className="alert alert-warn mt-4">
+          <p className="text-[13.5px] font-bold">Your saved model cannot price this file</p>
+          <p className="mt-1 max-w-[72ch] text-[13px] text-[var(--muted)]">{unusableBecause}</p>
+        </div>
+      )}
+
       {saved && currencyMismatch && (
         <div className="mt-4 rounded-xl border border-[var(--danger)]/30 bg-[var(--danger-soft)] px-4 py-3">
           <p className="text-[13.5px] font-semibold text-[var(--danger)]">
@@ -149,7 +160,24 @@ export function ModelSourcePanel({
         </div>
       )}
 
-      {saved && inert.length > 0 && (
+      {/*
+        A model that cannot price this file is not compared to it. "Your
+        average lead is worth 83% less than when this model was fitted" is
+        what a business model looks like next to a consumer file, and it is
+        not drift - it is two different kinds of buyer. The only thing left
+        to do with such a model here is forget it.
+      */}
+      {saved && unusableBecause && (
+        <button
+          type="button"
+          onClick={onForget}
+          className="mt-4 text-[12.5px] font-semibold text-[var(--muted)] underline underline-offset-[3px] hover:text-[var(--foreground)]"
+        >
+          Forget the saved model
+        </button>
+      )}
+
+      {saved && !unusableBecause && inert.length > 0 && (
         <div className="mt-4 rounded-xl border border-[var(--warn-line)] bg-[var(--warn-soft)] px-4 py-3">
           <p className="text-[13.5px] font-semibold">
             {inert.length === 1 ? "One saved rule" : `${inert.length} saved rules`} cannot
@@ -163,7 +191,7 @@ export function ModelSourcePanel({
         </div>
       )}
 
-      {saved && drift && <DriftBlock drift={drift} onForget={onForget} />}
+      {saved && !unusableBecause && drift && <DriftBlock drift={drift} onForget={onForget} />}
     </section>
   );
 }

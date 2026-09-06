@@ -41,6 +41,13 @@ export interface PersistedFlow {
   signalOverrides: Record<string, boolean>;
   /** Which values mean a sale, where the advertiser corrected our reading. */
   outcomeOverrides: OutcomeOverrides;
+  /**
+   * Whether the report is pricing on the saved model or a fresh fit. Null
+   * until chosen, so the default can depend on whether the saved model can
+   * price this file at all. Carried here so the send step prices the same
+   * way the report did.
+   */
+  modelSource: "fresh" | "saved" | null;
   businessContext: string;
   statedCycleDays: number | null;
   statedSizeBands: string[];
@@ -146,6 +153,8 @@ export function loadFlow(): PersistedFlow | null {
               )
             )
           : {},
+      modelSource:
+        parsed.modelSource === "fresh" || parsed.modelSource === "saved" ? parsed.modelSource : null,
       businessContext: typeof parsed.businessContext === "string" ? parsed.businessContext : "",
       statedCycleDays:
         typeof parsed.statedCycleDays === "number" ? parsed.statedCycleDays : null,

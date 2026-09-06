@@ -19,6 +19,7 @@ import { runDiagnostic, valueAllLeads, withOverrides } from "@/lib/analysis";
 import { useSignalColumns } from "@/lib/diagnostic/useSignals";
 import { savedModelToValueModel, saveValueModel } from "@/lib/model/savedModel";
 import { recallModel } from "@/lib/model/storage";
+import { checkApplicability } from "@/lib/model/savedModel";
 import { buildValueModelCsv, downloadCsv, identifierLabel } from "@/lib/export/googleAds";
 import { identifiersFor, buildFeedRows } from "@/lib/feed/publish";
 import type { FeedIdentifier } from "@/lib/feed/types";
@@ -213,7 +214,7 @@ const BID_STEPS = [
 
 export default function ConnectPage() {
   const router = useRouter();
-  const { file, fields, currency, businessContext, stageTiming, restored, audience, outcomeOverrides } = useDiagnostic();
+  const { file, fields, currency, businessContext, stageTiming, restored, audience, outcomeOverrides, modelSource } = useDiagnostic();
 
   const [feed, setFeed] = useState<Published | null>(null);
   const [publishing, setPublishing] = useState(false);
@@ -230,7 +231,7 @@ export default function ConnectPage() {
     if (restored && !file) router.replace("/diagnostic/upload");
   }, [restored, file, router]);
 
-  const saved = useMemo(() => (typeof window === "undefined" ? null : recallModel()), []);
+  const remembered = useMemo(() => (typeof window === "undefined" ? null : recallModel()), []);
 
   /*
    * The same reading of the file the mapping screen and the report used.
@@ -273,6 +274,20 @@ export default function ConnectPage() {
   // Fixed for the life of the screen, so re-rendering cannot hand two halves
   // of the same publish two different model ids.
   const [freshModelId] = useState(() => `fresh-${new Date().toISOString().slice(0, 10)}`);
+
+  /*
+   * The same choice the report made, for the same reasons. This screen used
+   * to take the remembered model whenever one existed - whatever the report
+   * had shown, and whether or not the model could read this file - so a
+   * business model left in the browser priced a consumer file flat on the
+   * one screen that sends.
+   */
+  const saved = useMemo(() => {
+    if (!remembered || !mapped) return null;
+    if (modelSource === "fresh") return null;
+    const a = checkApplicability(remembered, mapped.deals, currency.reportingCurrency, audience);
+    return a.unusableBecause ? null : remembered;
+  }, [remembered, mapped, modelSource, currency.reportingCurrency, audience]);
 
   const { valued, artifact } = useMemo(() => {
     if (!mapped || !diagnostic) return { valued: [], artifact: null };

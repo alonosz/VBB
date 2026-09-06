@@ -52,7 +52,7 @@ export default function ReportPage() {
   const router = useRouter();
   const {
     file, fields, currency, businessContext, stageTiming, intake,
-    statedCycleDays, statedSizeBands, restored, audience, outcomeOverrides } = useDiagnostic();
+    statedCycleDays, statedSizeBands, restored, audience, outcomeOverrides, modelSource, setModelSource } = useDiagnostic();
   const signals = useSignalColumns();
 
   // A saved model is the difference between a diagnostic and a daily loop: it
@@ -62,7 +62,6 @@ export default function ReportPage() {
   const [saved, setSaved] = useState<SavedValueModel | null>(() =>
     typeof window === "undefined" ? null : recallModel()
   );
-  const [source, setSource] = useState<"fresh" | "saved">(saved ? "saved" : "fresh");
   const [modelNotice, setModelNotice] = useState<string | null>(null);
 
   // Multipliers the user has typed over, keyed "factorKey::level". A marketer
@@ -105,6 +104,25 @@ export default function ReportPage() {
     });
   }, [mapped, businessContext, currency.reportingCurrency, customSignalKeys, hypotheses, audience]);
 
+  const applicability = useMemo(
+    () =>
+      saved && mapped
+        ? checkApplicability(saved, mapped.deals, currency.reportingCurrency, audience)
+        : null,
+    [saved, mapped, currency.reportingCurrency, audience]
+  );
+
+  /*
+   * What prices the leads. The saved model when it can price this file and
+   * nobody has chosen otherwise; a fresh fit when there is no saved model,
+   * when the advertiser picked the fresh fit, or when the saved model cannot
+   * read this file at all. That last case used to be the default: a business
+   * model remembered from last week priced a consumer file at one flat value
+   * and the report presented it as the model in use.
+   */
+  const usable = !!saved && !applicability?.unusableBecause;
+  const source: "fresh" | "saved" = usable && modelSource !== "fresh" ? "saved" : "fresh";
+
   // What actually prices the leads: the frozen model when one is in use,
   // otherwise today's fit.
   const activeModel = useMemo(() => {
@@ -127,13 +145,6 @@ export default function ReportPage() {
     [result, saved]
   );
 
-  const applicability = useMemo(
-    () =>
-      saved && mapped
-        ? checkApplicability(saved, mapped.deals, currency.reportingCurrency)
-        : null,
-    [saved, mapped, currency.reportingCurrency]
-  );
 
   const comparisons = useMemo(() => {
     if (!result) return [];
@@ -200,7 +211,7 @@ export default function ReportPage() {
     rememberModel(s);
     downloadModel(s);
     setSaved(s);
-    setSource("saved");
+    setModelSource("saved");
     setModelNotice(`Saved as ${modelFilename(s)} and remembered in this browser.`);
   }
 
@@ -212,7 +223,7 @@ export default function ReportPage() {
     }
     rememberModel(model);
     setSaved(model);
-    setSource("saved");
+    setModelSource("saved");
     setModelNotice(`Loaded the model fitted on ${model.fittedAt.slice(0, 10)}.`);
   }
 
@@ -220,7 +231,7 @@ export default function ReportPage() {
   function handleForgetModel() {
     forgetModel();
     setSaved(null);
-    setSource("fresh");
+    setModelSource(null);
     setModelNotice("Saved model forgotten. These leads are priced on a fresh fit.");
   }
 
@@ -274,10 +285,11 @@ export default function ReportPage() {
             drift={drift}
             inert={applicability?.inert ?? []}
             currencyMismatch={applicability?.currencyMismatch ?? null}
+            unusableBecause={applicability?.unusableBecause ?? null}
             freshFittedOn={result.valueModel.fittedOn}
             onSave={handleSaveModel}
             onLoadFile={handleLoadModel}
-            onUse={setSource}
+            onUse={setModelSource}
             onForget={handleForgetModel}
             notice={modelNotice}
           />

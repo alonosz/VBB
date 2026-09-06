@@ -50,6 +50,13 @@ interface DiagnosticState {
   outcomeOverrides: OutcomeOverrides;
   setOutcomeOverride: (value: string, outcome: DealOutcome | null) => void;
 
+  /**
+   * Saved model or fresh fit, as chosen on the report. Null until chosen.
+   * The send step reads it, so what was shown is what is sent.
+   */
+  modelSource: "fresh" | "saved" | null;
+  setModelSource: (s: "fresh" | "saved" | null) => void;
+
   businessContext: string;
   setBusinessContext: (v: string) => void;
 
@@ -141,6 +148,9 @@ export function DiagnosticProvider({ children }: { children: ReactNode }) {
       return next;
     });
   }, []);
+  const [modelSource, setModelSource] = useState<"fresh" | "saved" | null>(
+    snapshot?.modelSource ?? null
+  );
   const [businessContext, setBusinessContext] = useState(snapshot?.businessContext ?? "");
   const [statedCycleDays, setStatedCycleDays] = useState<number | null>(
     snapshot?.statedCycleDays ?? null
@@ -187,10 +197,10 @@ export function DiagnosticProvider({ children }: { children: ReactNode }) {
       return;
     }
     saveFlow({
-      audience, businessContext, statedCycleDays, statedSizeBands, signalOverrides, outcomeOverrides,
+      audience, businessContext, statedCycleDays, statedSizeBands, signalOverrides, outcomeOverrides, modelSource,
       file, fields, issues, stageTiming, currency, intake,
     });
-  }, [audience, businessContext, statedCycleDays, statedSizeBands, signalOverrides, outcomeOverrides, file, fields, issues, stageTiming, currency, intake]);
+  }, [audience, businessContext, statedCycleDays, statedSizeBands, signalOverrides, outcomeOverrides, modelSource, file, fields, issues, stageTiming, currency, intake]);
 
   const reset = useCallback(() => {
     clearFlow();
@@ -200,6 +210,7 @@ export function DiagnosticProvider({ children }: { children: ReactNode }) {
     // last file's switches under column names that happened to match.
     setSignalOverrides({});
     setOutcomeOverrides({});
+    setModelSource(null);
     setBusinessContext("");
     setStatedCycleDays(null);
     setStatedSizeBands([]);
@@ -216,6 +227,7 @@ export function DiagnosticProvider({ children }: { children: ReactNode }) {
       audience, setAudience,
       signalOverrides, setSignalOverride,
       outcomeOverrides, setOutcomeOverride,
+      modelSource, setModelSource,
       businessContext, setBusinessContext,
       statedCycleDays, setStatedCycleDays,
       statedSizeBands, setStatedSizeBands,
@@ -228,7 +240,7 @@ export function DiagnosticProvider({ children }: { children: ReactNode }) {
       restored, needsFile,
       reset,
     }),
-    [audience, businessContext, statedCycleDays, statedSizeBands, signalOverrides, setSignalOverride, outcomeOverrides, setOutcomeOverride, file, fields, issues, stageTiming, currency, intake, restored, needsFile, reset]
+    [audience, businessContext, statedCycleDays, statedSizeBands, signalOverrides, setSignalOverride, outcomeOverrides, setOutcomeOverride, modelSource, file, fields, issues, stageTiming, currency, intake, restored, needsFile, reset]
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

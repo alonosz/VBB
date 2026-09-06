@@ -179,6 +179,45 @@ describe("checkApplicability", () => {
     const a = checkApplicability(saved, noEmails);
     expect(a.inert.map((f) => f.key)).toContain("domainType");
   });
+
+  /*
+   * The screen behind this: a business model remembered from a week earlier,
+   * a consumer file, every rule inert, and the report presenting it as the
+   * model in use with one flat value on the send step.
+   */
+  it("refuses a business model on a consumer file, in the advertiser's words", () => {
+    const saved = saveValueModel(fit(STRONG), { deals: STRONG, now: NOW });
+    const a = checkApplicability(saved, STRONG, "USD", "b2c");
+    expect(a.audienceMismatch).toMatch(/fitted for businesses, and this file is consumers/);
+    expect(a.unusableBecause).toBe(a.audienceMismatch);
+  });
+
+  it("is usable on the audience it was fitted for", () => {
+    const saved = saveValueModel(fit(STRONG), { deals: STRONG, now: NOW });
+    const a = checkApplicability(saved, STRONG, "USD", "b2b");
+    expect(a.audienceMismatch).toBeNull();
+    expect(a.unusableBecause).toBeNull();
+  });
+
+  it("treats a model saved before audiences existed as a business model", () => {
+    const saved = saveValueModel(fit(STRONG), { deals: STRONG, now: NOW });
+    const legacy = { ...saved, audience: undefined };
+    expect(checkApplicability(legacy, STRONG, "USD", "b2c").audienceMismatch).not.toBeNull();
+  });
+
+  it("is unusable when none of its rules can read a column in this file", () => {
+    const saved = saveValueModel(fit(STRONG), { deals: STRONG, now: NOW });
+    const blank = STRONG.map((d) => ({ ...d, email: null, employeeCount: null, industry: null, contactTitle: null }));
+    const a = checkApplicability(saved, blank, "USD", "b2b");
+    expect(a.inert).toHaveLength(a.factors.length);
+    expect(a.unusableBecause).toMatch(/price every lead the same/);
+  });
+
+  it("puts the currency first when more than one thing is wrong", () => {
+    const saved = saveValueModel(fit(STRONG), { deals: STRONG, now: NOW });
+    const a = checkApplicability(saved, STRONG, "EUR", "b2c");
+    expect(a.unusableBecause).toBe(a.currencyMismatch);
+  });
 });
 
 // ---------------------------------------------------------------------------
