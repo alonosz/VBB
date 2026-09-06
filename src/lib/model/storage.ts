@@ -50,11 +50,23 @@ export function rememberModel(model: SavedValueModel): void {
 export function recallModel(): SavedValueModel | null {
   try {
     const key = slot();
-    // Falls back to the unscoped slot once, so a model saved before scoping
-    // existed is not silently lost on the next visit.
-    const raw = localStorage.getItem(key) ?? (key === LEGACY_KEY ? null : localStorage.getItem(LEGACY_KEY));
-    if (!raw) return null;
-    return loadSavedModel(JSON.parse(raw)).model;
+    const own = localStorage.getItem(key);
+    if (own) return loadSavedModel(JSON.parse(own)).model;
+    if (key === LEGACY_KEY) return null;
+
+    /*
+     * A model saved before scoping existed sits in the unscoped slot. It
+     * belongs to the first workspace that comes looking, so it moves there
+     * and the unscoped slot is cleared. Left in place it surfaced in every
+     * workspace this browser ever opened afterwards - a business model saved
+     * in August turned up, weeks later, under a fresh workspace link on a
+     * consumer file, and was applied.
+     */
+    const legacy = localStorage.getItem(LEGACY_KEY);
+    if (!legacy) return null;
+    localStorage.setItem(key, legacy);
+    localStorage.removeItem(LEGACY_KEY);
+    return loadSavedModel(JSON.parse(legacy)).model;
   } catch {
     return null;
   }

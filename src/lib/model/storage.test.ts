@@ -41,6 +41,18 @@ describe("model storage scoped per workspace", () => {
     expect(recallModel()?.modelId).toBe("solo");
   });
 
+  it("moves a model saved before scoping existed into this workspace, once", () => {
+    localStorage.setItem("vbb.savedModel.v1", JSON.stringify(model("legacy", 900)));
+    localStorage.setItem(WORKSPACE_STORE, "vbb_ws_" + "a".repeat(32));
+    expect(recallModel()?.modelId).toBe("legacy");
+    // Claimed: the unscoped copy is gone, and another workspace does not see it.
+    expect(localStorage.getItem("vbb.savedModel.v1")).toBeNull();
+    localStorage.setItem(WORKSPACE_STORE, "vbb_ws_" + "b".repeat(32));
+    expect(recallModel()).toBeNull();
+    localStorage.setItem(WORKSPACE_STORE, "vbb_ws_" + "a".repeat(32));
+    expect(recallModel()?.modelId).toBe("legacy");
+  });
+
   it("does not lose a model saved before scoping existed", () => {
     localStorage.setItem("vbb.savedModel.v1", JSON.stringify(model("legacy", 900)));
     localStorage.setItem(WORKSPACE_STORE, "vbb_ws_" + "c".repeat(32));
