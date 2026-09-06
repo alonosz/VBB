@@ -216,7 +216,9 @@ body {
   }
 
   .h1 {
-    font-size: clamp(1.6rem, 1.2rem + 1.4vw, 2.1rem);
+    /* Capped at 29px, down from 34px, in step with the display size: at 100%
+       on a laptop every step's title read a size larger than its content. */
+    font-size: clamp(1.45rem, 1.1rem + 1vw, 1.8rem);
     font-weight: 780;
     letter-spacing: -0.024em;
     line-height: 1.14;
@@ -244,7 +246,7 @@ body {
   }
 
   .lede {
-    font-size: 1.0625rem;
+    font-size: 1rem;
     line-height: 1.55;
     color: var(--muted-strong);
     max-width: 62ch;
