@@ -239,34 +239,31 @@ export default function IntakePage() {
 
         <div className="card mt-4 p-6 sm:p-7">
           <label htmlFor="ctx" className="block text-[16px] font-bold">
-            Now describe your business and your ideal customer, in your own words
+            What makes a valuable lead?
           </label>
           <p className="mt-1 max-w-[64ch] text-[13.5px] text-[var(--muted)]">
-            Who actually buys, and what a good lead looks like to you. AI reads it
-            against the columns in your file to work out which is which, and turns
-            what you claim about your buyers into things we test against your own
-            closed deals. It never decides what a lead is worth - your data does that.
+            Tell us who tends to buy, what makes a strong lead, and what any unclear
+            columns mean. AI turns your description into signals to test against
+            your sales history. Your data determines the values.
+          </p>
+          <p className="mt-2 max-w-[64ch] text-[13.5px] text-[var(--muted)]">
+            Optional. A few sentences are enough.
           </p>
           {/*
-            Naming the two things that pay off, because "describe your business"
-            invites a paragraph of brand adjectives that cannot help. Length is
-            not what makes this useful: a column nobody could guess the meaning
-            of, and a belief worth checking, are.
+            The placeholder is a fill-in template rather than a worked example.
+            An example from one vertical reads as "this is for law firms" to
+            everyone else; a template with blanks reads as "this is for you".
           */}
-          <p className="mt-2 max-w-[64ch] text-[13.5px] text-[var(--muted)]">
-            Two things earn their place here: what any oddly named column in your
-            file means, and anything you believe about your buyers that you would
-            like checked. Length does nothing on its own.
-          </p>
           <textarea
             id="ctx"
             rows={7}
             value={businessContext}
             onChange={(e) => setBusinessContext(e.target.value)}
             placeholder={
-              consumer
-                ? "e.g. We are a personal injury law firm. Car accidents with an injury are worth far more than slip-and-fall. The matter_type column is the case type, and intake_score is what our paralegal gave it on the first call."
-                : "e.g. We sell workflow software to manufacturers. Our buyers are ops directors and plant managers - the ones with a budget line for downtime. I think enterprise closes best. The seg column is company size band, and partner_ref means the lead came from a reseller."
+              "Use this neutral business-description template:\n\n" +
+              "\u201cWe sell [product or service] to [type of customer]. People enquire through [form, call or booking]. " +
+              "We believe enquiries about [option or need] are more valuable because [reason]. " +
+              "Our [field name] records [what it means when someone first enquires].\u201d"
             }
             className="input mt-3.5 min-h-[150px] resize-y bg-[var(--surface-sunken)] p-3.5 text-[15px] leading-relaxed"
           />

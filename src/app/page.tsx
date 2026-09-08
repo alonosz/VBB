@@ -100,7 +100,7 @@ export default function Home() {
                     href="/diagnostic"
                     className="btn btn-primary btn-lg btn-wrap w-full sm:w-auto"
                   >
-                    Train Google to hunt high-value revenue <ArrowIcon />
+                    Train Google to hunt high-value leads <ArrowIcon />
                   </Link>
                   <span
                     className="text-[13px]"
