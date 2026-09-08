@@ -1,5 +1,6 @@
 import type { DetectedField } from "./detect";
 import { looksLikeDate, looksNumeric } from "./detect";
+import { isSortedHeader } from "@/lib/intake/sort";
 import { readOutcome, type OutcomeOverrides } from "./outcomes";
 import type { Audience, DealOutcome } from "@/lib/analysis/types";
 
@@ -267,7 +268,9 @@ export function discoverSignalColumns(
       refused.push({ column, reason: leakReason(column, "a reason recorded when a deal closes") });
       continue;
     }
-    if (aboutTheRecord(column)) continue;
+    // A column the sorting produced is about what the lead wrote, even when
+    // its source was headed "Comments" or "Notes".
+    if (aboutTheRecord(column) && !isSortedHeader(column)) continue;
 
     const values = sampled(rows, column);
     const present = values.filter((v) => v !== "");

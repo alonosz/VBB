@@ -11,6 +11,8 @@ import { rowsToDeals } from "@/lib/mapping/toDeals";
 import { useSignalColumns } from "@/lib/diagnostic/useSignals";
 import { COMPANY_FIELD_KEYS } from "@/lib/mapping/signals";
 import { outcomeVocabulary } from "@/lib/mapping/outcomes";
+import { sortableColumns, sortedHeader } from "@/lib/intake/sort";
+import { sortColumn, type SortProgress } from "@/lib/intake/sortClient";
 import type { DealOutcome } from "@/lib/analysis/types";
 import { PageHead } from "@/components/ui";
 
@@ -190,7 +192,7 @@ function RowPreview({
 
 export default function MappingPage() {
   const router = useRouter();
-  const { audience, file, fields, setFields, issues, currency, setCurrency, stageTiming, intake, restored, setSignalOverride, outcomeOverrides, setOutcomeOverride, proposedOutcomes, effectiveOutcomeOverrides, businessContext } =
+  const { audience, file, fields, setFields, issues, currency, setCurrency, stageTiming, intake, restored, setSignalOverride, outcomeOverrides, setOutcomeOverride, proposedOutcomes, effectiveOutcomeOverrides, businessContext, sortedColumns } =
     useDiagnostic();
 
   useEffect(() => {
@@ -221,6 +223,11 @@ export default function MappingPage() {
       outcomeOverrides: effectiveOutcomeOverrides,
     });
   }, [file, fields, currency, stageTiming, customSignalKeys, effectiveOutcomeOverrides]);
+
+  const sortable = useMemo(
+    () => (file ? sortableColumns(file.headers, file.rows, fields) : []),
+    [file, fields]
+  );
 
   const vocabulary = useMemo(() => {
     if (!file) return null;
@@ -594,7 +601,7 @@ export default function MappingPage() {
           turn on still has to clear the same sample-size and lift tests, and
           is reported dropped with a reason if it carries nothing.
         */}
-        {(signals.discovered.length > 0 || signals.refused.length > 0) && (
+        {(signals.discovered.length > 0 || signals.refused.length > 0 || sortable.length > 0 || sortedColumns.length > 0) && (
           <section className="mt-8">
             <div className="mb-4 flex flex-wrap items-baseline justify-between gap-3">
               <h2 className="h2">Signals we&apos;ll test</h2>
@@ -644,6 +651,8 @@ export default function MappingPage() {
                 })}
               </div>
             )}
+
+            <SortFreeText />
 
             {/*
               Shown here as well as in the report, because this is the screen
@@ -914,6 +923,128 @@ export default function MappingPage() {
           </div>
         </div>
       </main>
+    </div>
+  );
+}
+
+
+/**
+ * The one opt-in that sends text from the file anywhere.
+ *
+ * A free-text column is refused by discovery because no level in it could
+ * reach 25 deals. Sorted into a few buckets by a model, it becomes a column
+ * that can, and it is tested exactly like every other: dropped with a
+ * reason if the buckets carry nothing. Off until the advertiser turns it on
+ * for a named column, and what leaves is scrubbed of addresses, numbers and
+ * links first. Said plainly here, because it is the exception to a promise
+ * the rest of the product keeps.
+ */
+function SortFreeText() {
+  const { file, fields, audience, businessContext, sortedColumns, addSortedColumn, removeSortedColumn } =
+    useDiagnostic();
+  const [busy, setBusy] = useState<{ column: string; progress: SortProgress | null } | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const offered = useMemo(() => {
+    if (!file) return [];
+    const done = new Set(sortedColumns.map((c) => c.source));
+    return sortableColumns(file.headers, file.rows, fields).filter((c) => !done.has(c.column));
+  }, [file, fields, sortedColumns]);
+
+  if (!file || (offered.length === 0 && sortedColumns.length === 0)) return null;
+
+  async function sort(column: string) {
+    if (!file) return;
+    setError(null);
+    setBusy({ column, progress: null });
+    const result = await sortColumn({
+      rows: file.rows,
+      column,
+      businessContext,
+      audience,
+      onProgress: (progress) => setBusy({ column, progress }),
+    });
+    setBusy(null);
+    if (!result.ok) {
+      setError(result.reason ?? "The sorting could not run.");
+      return;
+    }
+    addSortedColumn(
+      { source: column, header: sortedHeader(column), labels: result.labels, texts: result.texts },
+      result.byText
+    );
+  }
+
+  return (
+    <div className="mt-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3.5">
+      <p className="label">Free text</p>
+      <p className="mt-1 max-w-[74ch] text-[12.5px] text-[var(--muted)]">
+        A column where every lead wrote something different cannot be tested as it is.
+        AI can sort it into a few buckets, which are then tested like any other column
+        and dropped if they carry nothing. This sends the text in that column, with
+        email addresses, phone numbers and links removed, to be sorted. Nothing is
+        stored. Off unless you switch it on.
+      </p>
+      <ul className="mt-3 grid gap-2">
+        {sortedColumns.map((c) => (
+          <li
+            key={c.header}
+            className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[var(--primary)]/30 bg-[var(--primary-soft)]/40 px-3.5 py-2.5"
+          >
+            <div className="min-w-0">
+              <span className="mono block text-[12.5px] font-bold">{c.header}</span>
+              <span className="mt-0.5 block max-w-[70ch] text-[12.5px] text-[var(--muted)]">
+                <span className="mono">{c.texts.toLocaleString()}</span> messages sorted into{" "}
+                {c.labels.join(", ")}. Tested above as a signal.
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => removeSortedColumn(c.header)}
+              className="shrink-0 text-[12.5px] font-semibold text-[var(--primary)] underline underline-offset-[3px]"
+            >
+              Remove
+            </button>
+          </li>
+        ))}
+        {offered.map((c) => {
+          const running = busy?.column === c.column;
+          return (
+            <li
+              key={c.column}
+              className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface-sunken)] px-3.5 py-2.5"
+            >
+              <div className="min-w-0">
+                <span className="mono block text-[12.5px] font-bold">{c.column}</span>
+                <span className="mt-0.5 block text-[12.5px] text-[var(--muted)]">
+                  Written on <span className="mono">{Math.round(c.fill * 100)}%</span> of leads
+                  {running && busy?.progress && (
+                    <>
+                      {" · sorting "}
+                      <span className="mono">{busy.progress.sent.toLocaleString()}</span> of{" "}
+                      <span className="mono">{busy.progress.total.toLocaleString()}</span>
+                    </>
+                  )}
+                  {running && !busy?.progress && " · sorting…"}
+                </span>
+              </div>
+              <button
+                type="button"
+                disabled={busy !== null}
+                onClick={() => void sort(c.column)}
+                className="shrink-0 rounded-full border border-[var(--border)] bg-[var(--surface)] px-3.5 py-1.5 text-[12.5px] font-semibold text-[var(--muted-strong)] transition-colors hover:border-[var(--primary)]/40 hover:text-[var(--foreground)] disabled:opacity-60"
+              >
+                {running ? "Sorting…" : "Sort with AI"}
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+      {error && (
+        <p role="alert" className="mt-2 text-[12.5px] text-[var(--danger)]">
+          {error}
+        </p>
+      )}
     </div>
   );
 }

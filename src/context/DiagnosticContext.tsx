@@ -21,6 +21,7 @@ import type { CurrencyPolicy } from "@/lib/mapping/toDeals";
 import type { IntakeResult } from "@/lib/intake/client";
 import { proposedOutcomes as proposedOutcomes_ } from "@/lib/intake/proposal";
 import { effectiveOutcomeOverrides as effectiveOutcomeOverrides_ } from "@/lib/mapping/outcomes";
+import { applySortedColumn, removeSortedColumn as removeSortedColumn_, type SortedColumn } from "@/lib/intake/sort";
 
 export interface UploadedFile {
   name: string;
@@ -84,6 +85,14 @@ interface DiagnosticState {
 
   file: UploadedFile | null;
   setFile: (f: UploadedFile | null) => void;
+  /**
+   * Free-text columns the advertiser chose to have sorted into buckets, and
+   * the column each became. The labels live in the file's rows; this is the
+   * record of where they came from, so the screen can say so and undo it.
+   */
+  sortedColumns: SortedColumn[];
+  addSortedColumn: (sorted: SortedColumn, byText: Record<string, string>) => void;
+  removeSortedColumn: (header: string) => void;
 
   fields: DetectedField[];
   /**
@@ -175,6 +184,27 @@ export function DiagnosticProvider({ children }: { children: ReactNode }) {
     snapshot?.file && snapshot.file.rows.length > 0 ? snapshot.file : null
   );
   const [fields, setFields] = useState<DetectedField[]>(snapshot?.fields ?? []);
+  const [sortedColumns, setSortedColumns] = useState<SortedColumn[]>(snapshot?.sortedColumns ?? []);
+  // A new file must not inherit the last file's sorted columns, or the
+  // record would name a column the rows no longer carry.
+  const replaceFile = useCallback((f: UploadedFile | null) => {
+    setFile(f);
+    setSortedColumns([]);
+  }, []);
+  const addSortedColumn = useCallback((sorted: SortedColumn, byText: Record<string, string>) => {
+    setFile((current) => (current ? { ...current, ...applySortedColumn(current, sorted.source, byText) } : current));
+    setSortedColumns((current) => [...current.filter((c) => c.header !== sorted.header), sorted]);
+    setSignalOverrides((current) => ({ ...current, [sorted.header]: true }));
+  }, []);
+  const removeSortedColumn = useCallback((header: string) => {
+    setFile((current) => (current ? { ...current, ...removeSortedColumn_(current, header) } : current));
+    setSortedColumns((current) => current.filter((c) => c.header !== header));
+    setSignalOverrides((current) => {
+      const next = { ...current };
+      delete next[header];
+      return next;
+    });
+  }, []);
   const proposedOutcomes = useMemo(() => {
     const col = (key: string) => fields.find((f) => f.key === key)?.column ?? null;
     return proposedOutcomes_(intake?.status === "ready" ? intake.proposal : null, col("outcome") ?? col("stage"));
@@ -218,9 +248,9 @@ export function DiagnosticProvider({ children }: { children: ReactNode }) {
     }
     saveFlow({
       audience, businessContext, statedCycleDays, statedSizeBands, signalOverrides, outcomeOverrides, modelSource,
-      file, fields, issues, stageTiming, currency, intake,
+      file, sortedColumns, fields, issues, stageTiming, currency, intake,
     });
-  }, [audience, businessContext, statedCycleDays, statedSizeBands, signalOverrides, outcomeOverrides, modelSource, file, fields, issues, stageTiming, currency, intake]);
+  }, [audience, businessContext, statedCycleDays, statedSizeBands, signalOverrides, outcomeOverrides, modelSource, file, sortedColumns, fields, issues, stageTiming, currency, intake]);
 
   const reset = useCallback(() => {
     clearFlow();
@@ -235,6 +265,7 @@ export function DiagnosticProvider({ children }: { children: ReactNode }) {
     setStatedCycleDays(null);
     setStatedSizeBands([]);
     setFile(null);
+    setSortedColumns([]);
     setFields([]);
     setIssues([]);
     setStageTiming([]);
@@ -252,7 +283,8 @@ export function DiagnosticProvider({ children }: { children: ReactNode }) {
       businessContext, setBusinessContext,
       statedCycleDays, setStatedCycleDays,
       statedSizeBands, setStatedSizeBands,
-      file, setFile,
+      file, setFile: replaceFile,
+      sortedColumns, addSortedColumn, removeSortedColumn,
       fields, setFields,
       issues, setIssues,
       stageTiming, setStageTiming,
@@ -261,7 +293,7 @@ export function DiagnosticProvider({ children }: { children: ReactNode }) {
       restored, needsFile,
       reset,
     }),
-    [audience, businessContext, statedCycleDays, statedSizeBands, signalOverrides, setSignalOverride, outcomeOverrides, setOutcomeOverride, proposedOutcomes, effectiveOutcomeOverrides, modelSource, file, fields, issues, stageTiming, currency, intake, restored, needsFile, reset]
+    [audience, businessContext, statedCycleDays, statedSizeBands, signalOverrides, setSignalOverride, outcomeOverrides, setOutcomeOverride, proposedOutcomes, effectiveOutcomeOverrides, modelSource, file, replaceFile, sortedColumns, addSortedColumn, removeSortedColumn, fields, issues, stageTiming, currency, intake, restored, needsFile, reset]
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

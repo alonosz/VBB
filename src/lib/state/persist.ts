@@ -2,6 +2,7 @@ import type { Audience } from "@/lib/analysis/types";
 import type { DetectedField, FileIssue, StageTimingColumn } from "@/lib/mapping/detect";
 import type { CurrencyPolicy } from "@/lib/mapping/toDeals";
 import type { IntakeResult } from "@/lib/intake/client";
+import type { SortedColumn } from "@/lib/intake/sort";
 import type { OutcomeOverrides } from "@/lib/mapping/outcomes";
 
 /**
@@ -62,6 +63,8 @@ export interface PersistedFlow {
   stageTiming: StageTimingColumn[];
   currency: CurrencyPolicy;
   intake: IntakeResult | null;
+  /** Free-text columns sorted into buckets, and the column each became. */
+  sortedColumns: SortedColumn[];
 }
 
 export type FlowSnapshot = Omit<PersistedFlow, "version" | "savedAt" | "rowsDropped">;
@@ -171,6 +174,12 @@ export function loadFlow(): PersistedFlow | null {
           ? (parsed.currency as CurrencyPolicy)
           : { reportingCurrency: "USD", rates: {}, excludeUnconvertible: true },
       intake: (parsed.intake as IntakeResult | null) ?? null,
+      sortedColumns: Array.isArray(parsed.sortedColumns)
+        ? parsed.sortedColumns.filter(
+            (c): c is SortedColumn =>
+              !!c && typeof c === "object" && typeof c.source === "string" && typeof c.header === "string"
+          )
+        : [],
     };
   } catch {
     clearFlow();

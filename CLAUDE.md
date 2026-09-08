@@ -87,7 +87,9 @@ description: the column profiles alone carry (a) and (c).
   so a status column can be read whole, a few otherwise. Never emails, names,
   phone numbers, addresses, click IDs, deal amounts (not even as a range), or
   free text. Any new field added to `ColumnProfile` must be checked against
-  this list.
+  this list. The one exception is the opt-in sorting of a free-text column
+  (scope guardrails below), which sends that column's scrubbed text and
+  nothing else, and only when the advertiser switched it on.
 - The call never blocks. The flow waits `INTAKE_GRACE_MS` (3s) at most, then
   moves on; the request keeps going and merges into the mapping when it lands,
   respecting any column the user has already set by hand. Every failure path
@@ -370,9 +372,17 @@ which prices tomorrow's leads. Emitting a late adjustment would tell the adverti
 moved a bid we did not move. The server cannot price anything: rows are built in
 the browser from the model on screen and posted finished.
 
-**LLM calls**: exactly one, the assisted intake described in principle 5. It is
-bounded to column mapping and claim extraction. Do not add a second LLM call,
-and do not widen this one to compute, rank, or value anything. That boundary
-is the product's credibility. Configuration is `ANTHROPIC_API_KEY` and an
-optional `VBB_INTAKE_MODEL`; with no key set the product runs unchanged on
-header heuristics.
+**LLM calls**: two, and no third. The assisted intake described in principle
+5, bounded to column mapping, status words and claim extraction. And an
+opt-in sorting of one free-text column into a few buckets
+(`src/app/api/intake/sort/route.ts`, `src/lib/intake/sort.ts`), which is the
+one place text from the file reaches a server: off until the advertiser
+switches it on for a named column on the mapping screen, scrubbed of
+addresses, phone numbers, identifiers and links in the browser and again on
+the server, never stored, and answered with a label per message and nothing
+else. The label becomes a column the engine tests like any other and drops
+with a reason when it carries nothing. Neither call may compute, rank, or
+value anything. That boundary is the product's credibility. Configuration is
+`ANTHROPIC_API_KEY` and an optional `VBB_INTAKE_MODEL`; with no key set the
+product runs unchanged on header heuristics, and the sorting is refused with
+a reason.
