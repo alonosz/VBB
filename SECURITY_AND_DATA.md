@@ -93,9 +93,9 @@ model vanished. Only the complete absence of a key means "new visitor".
 
 ### The one route CRM records pass through
 
-`POST /api/crm/hubspot/deals` reads twelve months of deals from a connected
-portal so step 2 can replace the CSV export. Those records pass **through** the
-server; none of them stay.
+`POST /api/crm/hubspot/deals` reads twelve months of contacts and deals from
+a connected portal so step 2 can replace the CSV export. Those records pass
+**through** the server; none of them stay.
 
 They exist in one function's memory for the length of one request and are
 handed to the browser, which is where the CSV path already keeps them. Nothing

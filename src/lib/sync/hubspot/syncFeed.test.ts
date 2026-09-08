@@ -58,6 +58,11 @@ function portal(over: { dealsStatus?: number; tokenStatus?: number } = {}) {
       );
     }
 
+    // No contact was created inside the window: the deal's contact is older.
+    if (path.endsWith("/contacts/search")) {
+      return new Response(JSON.stringify({ results: [] }));
+    }
+
     if (path === "/crm/v4/associations/deals/contacts/batch/read") {
       return new Response(JSON.stringify({ results: [{ from: { id: "d1" }, to: [{ toObjectId: "c1" }] }] }));
     }

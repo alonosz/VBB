@@ -5,7 +5,10 @@ import {
   currenciesInPull,
   googleClickIdProperties,
   hubspotToDeals,
+  isLeadContact,
+  leadOutcomeOf,
   outcomeOf,
+  populationOf,
   signalPropertiesOf,
   signalsOf,
   stageDurationsOf,
@@ -450,5 +453,129 @@ describe("what a pull carries through to the deal", () => {
   it("reads durations in seconds from HubSpot's milliseconds", () => {
     expect(stageDurationsOf({ id: "d", properties: { hs_time_in_x: "9000" } })).toEqual({ x: 9 });
     expect(stageDurationsOf({ id: "d", properties: { hs_time_in_x: "-1" } })).toBeUndefined();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Contacts as leads
+// ---------------------------------------------------------------------------
+
+/*
+ * A consumer business opens a deal for a fraction of its leads. Reading
+ * deals alone counted the close rate against the leads somebody had opened
+ * a deal for, dated each one from the deal rather than from the click, and
+ * never priced the rest at all.
+ */
+describe("the window's contacts as leads", () => {
+  const ARRIVED = "2026-05-01T09:00:00.000Z";
+  const contact = (id: string, props: Record<string, string | null> = {}): HubSpotObject => ({
+    id,
+    properties: { createdate: ARRIVED, email: `${id}@example.com`, ...props },
+  });
+  const withLeads = (leads: HubSpotObject[], deals: HubSpotObject[] = [], companies: HubSpotObject[] = []): HubSpotPull => ({
+    deals,
+    leads,
+    contactsById: new Map(leads.map((c) => [c.id, c])),
+    companiesById: new Map(companies.map((c) => [c.id, c])),
+    stageLabels: new Map([["stage-2", "Qualified"], ["stage-9", "Closed Won"]]),
+  });
+
+  it("is one lead per contact, open until something says otherwise", () => {
+    const [lead] = hubspotToDeals(withLeads([contact("c1")]));
+    expect(lead).toMatchObject({ id: "contact-c1", outcome: "open", amount: null, email: "c1@example.com" });
+    expect(lead.createdAt?.toISOString()).toBe(ARRIVED);
+  });
+
+  it("reads the contact's own fate when no deal was ever opened", () => {
+    expect(leadOutcomeOf(contact("c", { lifecyclestage: "customer" }), [])).toBe("won");
+    expect(leadOutcomeOf(contact("c", { hs_lead_status: "UNQUALIFIED" }), [])).toBe("lost");
+    expect(leadOutcomeOf(contact("c", { hs_lead_status: "BAD_TIMING" }), [])).toBe("lost");
+    expect(leadOutcomeOf(contact("c", { hs_lead_status: "IN_PROGRESS" }), [])).toBe("open");
+  });
+
+  it("lets the deal outrank the contact's flags", () => {
+    const wonDeal = deal({ hs_is_closed_won: "true", hs_is_closed: "true" });
+    expect(leadOutcomeOf(contact("c", { hs_lead_status: "UNQUALIFIED" }), [wonDeal])).toBe("won");
+    const lostDeal = deal({ hs_is_closed: "true", hs_is_closed_won: "false" });
+    expect(leadOutcomeOf(contact("c", { lifecyclestage: "customer" }), [lostDeal])).toBe("lost");
+    expect(leadOutcomeOf(contact("c"), [lostDeal, deal({})])).toBe("open");
+  });
+
+  it("dates the lead from the click, not from the deal, and takes the deal's money", () => {
+    const won = {
+      ...deal({ amount: "1200", hs_is_closed_won: "true", hs_is_closed: "true", closedate: "2026-06-04T00:00:00Z",
+        createdate: "2026-05-10T00:00:00Z", dealstage: "stage-9" }),
+      associations: { contacts: { results: [{ id: "c1" }] } },
+    };
+    const leads = hubspotToDeals(withLeads([contact("c1")], [won]));
+    expect(leads).toHaveLength(1);
+    expect(leads[0]).toMatchObject({ id: "contact-c1", outcome: "won", amount: 1200, stage: "Closed Won" });
+    expect(leads[0].createdAt?.toISOString()).toBe(ARRIVED);
+    expect(leads[0].closedAt?.toISOString()).toBe("2026-06-04T00:00:00.000Z");
+  });
+
+  it("adds up several won deals and takes the stage off the newest", () => {
+    const first = { ...deal({ amount: "100", hs_is_closed_won: "true", hs_is_closed: "true", createdate: "2026-05-02T00:00:00Z", dealstage: "stage-9" }),
+      id: "d-a", associations: { contacts: { results: [{ id: "c1" }] } } };
+    const second = { ...deal({ amount: "250", hs_is_closed_won: "true", hs_is_closed: "true", createdate: "2026-05-20T00:00:00Z", dealstage: "stage-2" }),
+      id: "d-b", associations: { contacts: { results: [{ id: "c1" }] } } };
+    const [lead] = hubspotToDeals(withLeads([contact("c1")], [first, second]));
+    expect(lead.amount).toBe(350);
+    expect(lead.stage).toBe("Qualified");
+  });
+
+  it("keeps a deal whose contact arrived before the window as a deal of its own", () => {
+    const older = { ...deal({}), id: "d-old", associations: { contacts: { results: [{ id: "c-old" }] } } };
+    const mapped = hubspotToDeals(withLeads([contact("c1")], [older]));
+    expect(mapped.map((d) => d.id).sort()).toEqual(["contact-c1", "d-old"]);
+  });
+
+  it("counts a deal on one lead only", () => {
+    const shared = { ...deal({ hs_is_closed_won: "true", hs_is_closed: "true", amount: "500" }),
+      associations: { contacts: { results: [{ id: "c1" }, { id: "c2" }] } } };
+    const mapped = hubspotToDeals(withLeads([contact("c1"), contact("c2")], [shared]));
+    expect(mapped.filter((d) => d.outcome === "won")).toHaveLength(1);
+  });
+
+  it("leaves a newsletter subscriber out unless a deal says it was a lead", () => {
+    expect(isLeadContact(contact("c", { lifecyclestage: "subscriber" }))).toBe(false);
+    expect(isLeadContact(contact("c", { lifecyclestage: "lead" }))).toBe(true);
+    const sub = contact("s1", { lifecyclestage: "subscriber" });
+    expect(hubspotToDeals(withLeads([sub]))).toHaveLength(0);
+    const dealt = { ...deal({}), associations: { contacts: { results: [{ id: "s1" }] } } };
+    expect(hubspotToDeals(withLeads([sub], [dealt]))).toHaveLength(1);
+  });
+
+  it("finds the company through the contact when no deal names one", () => {
+    const co: HubSpotObject = { id: "77", properties: { industry: "Insurance", numberofemployees: "12" } };
+    const [lead] = hubspotToDeals(withLeads([contact("c1", { associatedcompanyid: "77" })], [], [co]));
+    expect(lead.industry).toBe("Insurance");
+    expect(lead.employeeCount).toBe(12);
+  });
+
+  it("carries the contact's own dropdowns as signals with no deal at all", () => {
+    const pullWith = withLeads([contact("c1", { insured: "yes" })]);
+    pullWith.signalProperties = signalPropertiesOf([
+      { name: "insured", label: "Currently insured", type: "enumeration", fieldType: "radio",
+        options: [{ value: "yes", label: "Yes" }] },
+    ], "contacts");
+    const [lead] = hubspotToDeals(pullWith);
+    expect(lead.signals).toEqual({ "Currently insured": "Yes" });
+  });
+
+  it("is the deals alone when the pull could not read contacts", () => {
+    const p = pull(deal({}));
+    expect(p.leads).toBeUndefined();
+    expect(hubspotToDeals(p).map((d) => d.id)).toEqual(["deal-1"]);
+  });
+
+  it("says what the window held", () => {
+    const older = { ...deal({}), id: "d-old", associations: { contacts: { results: [{ id: "c-old" }] } } };
+    const sub = contact("s1", { lifecyclestage: "subscriber" });
+    expect(populationOf(withLeads([contact("c1"), sub], [older]))).toEqual({
+      leads: 1,
+      dealsWithoutLead: 1,
+      subscribersSkipped: 1,
+    });
   });
 });

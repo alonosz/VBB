@@ -97,6 +97,13 @@ export const DEAL_PROPERTIES = [
  */
 export const CONTACT_PROPERTIES = ["email", "jobtitle", "hs_analytics_source", ...CLICK_ID_PROPERTIES];
 
+/**
+ * What a contact needs to carry to be a lead in its own right: when it
+ * arrived, what HubSpot thinks became of it, and which company it belongs to
+ * when no deal says so.
+ */
+export const LEAD_PROPERTIES = ["createdate", "lifecyclestage", "hs_lead_status", "associatedcompanyid"];
+
 export const COMPANY_PROPERTIES = ["numberofemployees", "industry", "name"];
 
 /**
@@ -368,41 +375,206 @@ function convertAmount(
   return Math.round(amount * rate * 100) / 100;
 }
 
+/**
+ * A contact's fate, read from its deals first and HubSpot's own flags after.
+ *
+ * A deal is the stronger word: a contact whose deal closed won is a customer
+ * whatever its lifecycle stage says. With no deal at all, "customer" on the
+ * contact is a sale the portal records without a deal record (common in
+ * consumer businesses that never open one), and "unqualified" or "bad
+ * timing" is a lead that is gone. Anything else is still open, which is the
+ * only reading that invents nothing.
+ */
+export function leadOutcomeOf(contact: HubSpotObject, deals: readonly HubSpotObject[]): DealOutcome {
+  if (deals.length > 0) {
+    const outcomes = deals.map(outcomeOf);
+    if (outcomes.includes("won")) return "won";
+    if (outcomes.includes("open")) return "open";
+    return "lost";
+  }
+  const lifecycle = (text(contact, "lifecyclestage") ?? "").toLowerCase();
+  if (lifecycle === "customer" || lifecycle === "evangelist") return "won";
+  const status = (text(contact, "hs_lead_status") ?? "").toUpperCase();
+  if (status === "UNQUALIFIED" || status === "BAD_TIMING") return "lost";
+  return "open";
+}
+
+/**
+ * Whether a contact is a lead at all.
+ *
+ * HubSpot files a newsletter signup as a "subscriber", and a form that
+ * creates one is not a form an ad click was bought for. Everything else the
+ * window created is a lead until its fate says otherwise.
+ */
+export function isLeadContact(contact: HubSpotObject): boolean {
+  return (text(contact, "lifecyclestage") ?? "").toLowerCase() !== "subscriber";
+}
+
+function amountOf(deal: HubSpotObject, currency: CurrencyPolicy | null | undefined): number | null {
+  const raw = number(deal, "amount");
+  if (raw === null) return null;
+  return convertAmount(raw, text(deal, "deal_currency_code"), currency);
+}
+
+function stageLabel(deal: HubSpotObject | undefined, pull: HubSpotPull): string | null {
+  const stageId = text(deal, "dealstage");
+  return stageId ? pull.stageLabels?.get(stageId) ?? stageId : null;
+}
+
+/** Newest first, so "the deal" for a lead with several is the latest one. */
+function newestFirst(deals: readonly HubSpotObject[]): HubSpotObject[] {
+  return [...deals].sort(
+    (a, b) => (date(b, "createdate")?.getTime() ?? 0) - (date(a, "createdate")?.getTime() ?? 0)
+  );
+}
+
+function dealToMapped(deal: HubSpotObject, pull: HubSpotPull, currency: CurrencyPolicy | null | undefined): MappedDeal {
+  const contact = firstAssociated(deal, "contacts", pull.contactsById);
+  const company = firstAssociated(deal, "companies", pull.companiesById);
+  const createdAt = date(deal, "createdate");
+
+  return {
+    id: deal.id,
+    createdAt,
+    closedAt: date(deal, "closedate"),
+    outcome: outcomeOf(deal),
+    amount: amountOf(deal, currency),
+    stage: stageLabel(deal, pull),
+    // HubSpot's own attribution, not ours to infer.
+    source: text(contact, "hs_analytics_source") ?? null,
+    email: text(contact, "email"),
+    clickId: clickIdOf(contact, pull.clickIdProperties ?? CLICK_ID_PROPERTIES),
+    employeeCount: number(company, "numberofemployees"),
+    industry: text(company, "industry"),
+    contactTitle: text(contact, "jobtitle"),
+    signals: signalsOf(deal, contact, pull.signalProperties ?? []),
+    stageReachedAfterDays: stageTimingOf(deal, createdAt, pull.stageLabels),
+    stageDurations: stageDurationsOf(deal, pull.stageLabels),
+  };
+}
+
+/**
+ * One lead per contact, carrying whatever its deals add.
+ *
+ * Day-0 is the contact's creation, because that is when the ad click became
+ * a lead; a deal opened nine days later is a fact about the pipeline, not
+ * about arrival. The amount is the sum of what its won deals were worth, the
+ * stage and timing come off the newest deal, and the company comes off the
+ * deal where there is one and off the contact's own link where there is not.
+ */
+function leadToMapped(
+  contact: HubSpotObject,
+  deals: readonly HubSpotObject[],
+  pull: HubSpotPull,
+  currency: CurrencyPolicy | null | undefined
+): MappedDeal {
+  const ordered = newestFirst(deals);
+  const newest = ordered[0];
+  const won = ordered.filter((d) => outcomeOf(d) === "won");
+  const closed = ordered.filter((d) => outcomeOf(d) !== "open");
+  const createdAt = date(contact, "createdate");
+
+  const company =
+    (newest && firstAssociated(newest, "companies", pull.companiesById)) ??
+    pull.companiesById.get(text(contact, "associatedcompanyid") ?? "");
+
+  let amount: number | null = null;
+  for (const d of won) {
+    const a = amountOf(d, currency);
+    if (a !== null) amount = (amount ?? 0) + a;
+  }
+
+  const closedAt =
+    (won.length > 0 ? won : closed)
+      .map((d) => date(d, "closedate"))
+      .filter((d): d is Date => d !== null)
+      .sort((a, b) => a.getTime() - b.getTime())[0] ?? null;
+
+  return {
+    id: `contact-${contact.id}`,
+    createdAt,
+    closedAt,
+    outcome: leadOutcomeOf(contact, deals),
+    amount,
+    stage: stageLabel(newest, pull),
+    source: text(contact, "hs_analytics_source") ?? null,
+    email: text(contact, "email"),
+    clickId: clickIdOf(contact, pull.clickIdProperties ?? CLICK_ID_PROPERTIES),
+    employeeCount: number(company, "numberofemployees"),
+    industry: text(company, "industry"),
+    contactTitle: text(contact, "jobtitle"),
+    signals: signalsOf(newest ?? { id: "", properties: {} }, contact, pull.signalProperties ?? []),
+    stageReachedAfterDays: newest ? stageTimingOf(newest, createdAt, pull.stageLabels) : undefined,
+    stageDurations: newest ? stageDurationsOf(newest, pull.stageLabels) : undefined,
+  };
+}
+
+/**
+ * The population the engine prices.
+ *
+ * Deals only, when the pull read deals only (`leads` absent): the shape this
+ * always had. With the window's contacts read as well, every one of them is
+ * a lead whether or not a deal followed, because a lead that never became a
+ * deal is the commonest outcome in consumer lead generation and leaving it
+ * out counts a close rate against the wrong denominator and never prices
+ * the lead at all. A deal whose contacts all arrived before the window, or
+ * that has none, is still emitted as a deal, so nothing that was counted
+ * before is lost.
+ */
 export function hubspotToDeals(
   pull: HubSpotPull,
   currency?: CurrencyPolicy | null
 ): MappedDeal[] {
-  const deals: MappedDeal[] = [];
-
-  for (const deal of pull.deals) {
-    const contact = firstAssociated(deal, "contacts", pull.contactsById);
-    const company = firstAssociated(deal, "companies", pull.companiesById);
-    const createdAt = date(deal, "createdate");
-    const stageId = text(deal, "dealstage");
-
-    deals.push({
-      id: deal.id,
-      createdAt,
-      closedAt: date(deal, "closedate"),
-      outcome: outcomeOf(deal),
-      amount: (() => {
-        const raw = number(deal, "amount");
-        if (raw === null) return null;
-        return convertAmount(raw, text(deal, "deal_currency_code"), currency);
-      })(),
-      stage: stageId ? pull.stageLabels?.get(stageId) ?? stageId : null,
-      // HubSpot's own attribution, not ours to infer.
-      source: text(contact, "hs_analytics_source") ?? null,
-      email: text(contact, "email"),
-      clickId: clickIdOf(contact, pull.clickIdProperties ?? CLICK_ID_PROPERTIES),
-      employeeCount: number(company, "numberofemployees"),
-      industry: text(company, "industry"),
-      contactTitle: text(contact, "jobtitle"),
-      signals: signalsOf(deal, contact, pull.signalProperties ?? []),
-      stageReachedAfterDays: stageTimingOf(deal, createdAt, pull.stageLabels),
-      stageDurations: stageDurationsOf(deal, pull.stageLabels),
-    });
+  const out: MappedDeal[] = [];
+  const leads = pull.leads;
+  if (!leads) {
+    for (const deal of pull.deals) out.push(dealToMapped(deal, pull, currency));
+    return out;
   }
 
-  return deals;
+  const leadIds = new Set(leads.map((c) => c.id));
+  const dealsByContact = new Map<string, HubSpotObject[]>();
+  for (const deal of pull.deals) {
+    let claimed = false;
+    for (const { id } of deal.associations?.contacts?.results ?? []) {
+      if (!leadIds.has(id)) continue;
+      claimed = true;
+      const list = dealsByContact.get(id) ?? [];
+      list.push(deal);
+      dealsByContact.set(id, list);
+      // One deal is one sale. It counts on its first lead, never on two.
+      break;
+    }
+    if (!claimed) out.push(dealToMapped(deal, pull, currency));
+  }
+
+  for (const contact of leads) {
+    const deals = dealsByContact.get(contact.id) ?? [];
+    if (deals.length === 0 && !isLeadContact(contact)) continue;
+    out.push(leadToMapped(contact, deals, pull, currency));
+  }
+
+  return out;
+}
+
+/** What the window held, for a screen to say rather than a caller to guess. */
+export function populationOf(pull: HubSpotPull): {
+  leads: number;
+  dealsWithoutLead: number;
+  subscribersSkipped: number;
+} {
+  const leads = pull.leads ?? [];
+  const leadIds = new Set(leads.map((c) => c.id));
+  const claimed = new Set<string>();
+  for (const deal of pull.deals) {
+    const owner = (deal.associations?.contacts?.results ?? []).find(({ id }) => leadIds.has(id));
+    if (owner) claimed.add(owner.id);
+  }
+  return {
+    leads: leads.filter((c) => claimed.has(c.id) || isLeadContact(c)).length,
+    dealsWithoutLead: pull.deals.filter(
+      (d) => !(d.associations?.contacts?.results ?? []).some(({ id }) => leadIds.has(id))
+    ).length,
+    subscribersSkipped: leads.filter((c) => !claimed.has(c.id) && !isLeadContact(c)).length,
+  };
 }

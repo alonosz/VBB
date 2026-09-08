@@ -139,14 +139,14 @@ export function ConnectHubSpot({
           return;
         }
         if (!res.ok || !data.ok) {
-          setError(data.error ?? "We couldn't read your deals.");
+          setError(data.error ?? "We couldn't read your leads.");
           setNeedsKey(res.status === 401);
           setPhase("idle");
           return;
         }
         if (!data.dealCount) {
           setError(
-            "That portal has no deals created in the last 12 months, so there is " +
+            "That portal has no leads or deals created in the last 12 months, so there is " +
               "nothing to fit a model on yet."
           );
           setPhase("idle");
@@ -251,7 +251,7 @@ export function ConnectHubSpot({
     phase === "connecting"
       ? "Opening HubSpot…"
       : phase === "importing"
-        ? "Reading your deals…"
+        ? "Reading your leads…"
         : phase === "saving"
           ? "Checking the token…"
           : "Connect HubSpot";

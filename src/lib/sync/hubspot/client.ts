@@ -4,6 +4,7 @@ import {
   COMPANY_PROPERTIES,
   CONTACT_PROPERTIES,
   DEAL_PROPERTIES,
+  LEAD_PROPERTIES,
   MAX_SIGNAL_PROPERTIES,
   googleClickIdProperties,
   signalPropertiesOf,
@@ -176,11 +177,34 @@ export class HubSpotClient {
    *   search endpoint returns only what is asked for.
    */
   async listRecentDeals(extraProperties: readonly string[] = []): Promise<HubSpotObject[]> {
+    return this.searchWindow("deals", [...new Set([...DEAL_PROPERTIES, ...extraProperties])]);
+  }
+
+  /**
+   * Contacts created inside the window: the leads themselves.
+   *
+   * A deal is opened for some leads and not others, and in a consumer
+   * business mostly not. Reading deals alone priced only the leads somebody
+   * had opened a deal for, days after they arrived, against a close rate
+   * whose denominator was missing everyone else. The contact is where the ad
+   * click landed, so the contact is the lead.
+   *
+   * @param extraProperties The click-ID properties the portal actually uses
+   *   and its own contact dropdowns, discovered before this is called.
+   */
+  async listRecentContacts(extraProperties: readonly string[] = []): Promise<HubSpotObject[]> {
+    return this.searchWindow("contacts", [
+      ...new Set([...CONTACT_PROPERTIES, ...LEAD_PROPERTIES, ...extraProperties]),
+    ]);
+  }
+
+  /** Records of one kind created inside the window, newest pages first as HubSpot orders them. */
+  private async searchWindow(kind: "deals" | "contacts", properties: string[]): Promise<HubSpotObject[]> {
     const now = this.opts.now ?? new Date();
     const windowDays = this.opts.windowDays ?? DEFAULT_WINDOW_DAYS;
     const since = now.getTime() - windowDays * 86_400_000;
 
-    const deals: HubSpotObject[] = [];
+    const found: HubSpotObject[] = [];
     let after: string | undefined;
 
     for (let page = 0; page < MAX_PAGES; page++) {
@@ -188,22 +212,22 @@ export class HubSpotClient {
         filterGroups: [
           { filters: [{ propertyName: "createdate", operator: "GTE", value: String(since) }] },
         ],
-        properties: [...new Set([...DEAL_PROPERTIES, ...extraProperties])],
+        properties,
         limit: PAGE_SIZE,
         sorts: [{ propertyName: "createdate", direction: "DESCENDING" }],
       };
       if (after) body.after = after;
 
-      const result = await this.request<HubSpotPage>("/crm/v3/objects/deals/search", body);
-      deals.push(...(result.results ?? []));
+      const result = await this.request<HubSpotPage>(`/crm/v3/objects/${kind}/search`, body);
+      found.push(...(result.results ?? []));
 
       after = result.paging?.next?.after;
-      if (!after) return deals;
+      if (!after) return found;
     }
 
     // Hitting the cap means the window is wider than a nightly run should be.
     // Returning what we have beats failing, and the count makes it visible.
-    return deals;
+    return found;
   }
 
   /**
@@ -346,12 +370,45 @@ export async function pullFromHubSpot(client: HubSpotClient): Promise<HubSpotPul
   );
   const signalProperties = [...dealSignals, ...contactSignals];
 
-  const deals = await client.listRecentDeals([
-    ...dealSignals.map((s) => s.name),
-    ...stageTimingProperties(stageLabels.keys()),
+  // Where the portal keeps the click ID, read off the same property list, so
+  // both contact reads include it. With no definitions the known names stand.
+  let clickIdProperties = [...CLICK_ID_PROPERTIES];
+  const discovered = googleClickIdProperties(contactDefs);
+  if (discovered.length > 0) clickIdProperties = discovered;
+
+  const contactProperties = [
+    ...new Set([
+      ...CONTACT_PROPERTIES,
+      ...clickIdProperties,
+      ...contactSignals.map((s) => s.name),
+    ]),
+  ];
+
+  /*
+   * Deals and contacts of the window, side by side. The contacts are the
+   * leads; the deals say what became of them. A portal whose token cannot
+   * search contacts is priced on its deals alone, the way it always was,
+   * rather than not at all: `leads` stays absent and the mapper knows what
+   * that means.
+   */
+  const [deals, leads] = await Promise.all([
+    client.listRecentDeals([
+      ...dealSignals.map((s) => s.name),
+      ...stageTimingProperties(stageLabels.keys()),
+    ]),
+    client.listRecentContacts(contactProperties).catch(() => undefined),
   ]);
+
   if (deals.length === 0) {
-    return { deals, contactsById: new Map(), companiesById: new Map(), stageLabels, signalProperties };
+    return {
+      deals,
+      leads,
+      contactsById: new Map((leads ?? []).map((c) => [c.id, c])),
+      companiesById: await companiesOf(client, leads ?? []),
+      clickIdProperties,
+      stageLabels,
+      signalProperties,
+    };
   }
 
   const dealIds = deals.map((d) => d.id);
@@ -375,24 +432,16 @@ export async function pullFromHubSpot(client: HubSpotClient): Promise<HubSpotPul
     };
   }
 
-  // Where the portal keeps the click ID, read off the same property list, so
-  // the batch request includes it. With no definitions the known names stand.
-  let clickIdProperties = [...CLICK_ID_PROPERTIES];
-  const discovered = googleClickIdProperties(contactDefs);
-  if (discovered.length > 0) clickIdProperties = discovered;
-
-  const contactProperties = [
-    ...new Set([
-      ...CONTACT_PROPERTIES,
-      ...clickIdProperties,
-      ...contactSignals.map((s) => s.name),
-    ]),
+  // A contact the window already produced is not read twice. The ones left
+  // are older contacts a new deal points at: read as they always were.
+  const contactsById = new Map<string, HubSpotObject>((leads ?? []).map((c) => [c.id, c]));
+  const contactIds = [...contactLinks.values()].flat().filter((id) => !contactsById.has(id));
+  const companyIds = [
+    ...[...companyLinks.values()].flat(),
+    ...(leads ?? []).map((c) => c.properties?.associatedcompanyid?.trim() ?? "").filter(Boolean),
   ];
 
-  const contactIds = [...contactLinks.values()].flat();
-  const companyIds = [...companyLinks.values()].flat();
-
-  const [contactsById, companiesById] = await Promise.all([
+  const [olderContacts, companiesById] = await Promise.all([
     contactIds.length > 0
       ? client.readBatch("contacts", contactIds, contactProperties)
       : Promise.resolve(new Map<string, HubSpotObject>()),
@@ -400,6 +449,14 @@ export async function pullFromHubSpot(client: HubSpotClient): Promise<HubSpotPul
       ? client.readBatch("companies", companyIds, COMPANY_PROPERTIES)
       : Promise.resolve(new Map<string, HubSpotObject>()),
   ]);
+  for (const [id, contact] of olderContacts) contactsById.set(id, contact);
 
-  return { deals, contactsById, companiesById, clickIdProperties, stageLabels, signalProperties };
+  return { deals, leads, contactsById, companiesById, clickIdProperties, stageLabels, signalProperties };
+}
+
+/** The companies the window's contacts belong to, when no deal names one. */
+async function companiesOf(client: HubSpotClient, leads: HubSpotObject[]): Promise<Map<string, HubSpotObject>> {
+  const ids = leads.map((c) => c.properties?.associatedcompanyid?.trim() ?? "").filter(Boolean);
+  if (ids.length === 0) return new Map();
+  return client.readBatch("companies", ids, COMPANY_PROPERTIES);
 }

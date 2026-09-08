@@ -56,15 +56,15 @@ export default async function CrmConnectedPage({ searchParams }: Props) {
         {connected ? (
           <>
             <p className="mt-3 max-w-[66ch] text-[15px] text-[var(--muted)]">
-              From tonight, your feed refreshes itself. We read your deals once a
-              day, price the new ones with your saved model, and add them for
-              Google to collect - no export, nothing to remember.
+              From tonight, your feed refreshes itself. We read your new leads once
+              a day, price them with your saved model, and add them for Google to
+              collect - no export, nothing to remember.
             </p>
             <div className="card mt-6 p-5">
               <p className="text-[14px] font-bold">What happens next</p>
               <ul className="mt-2 grid gap-2 text-[13.5px] text-[var(--muted)]">
                 {[
-                  "We read deals, and the contacts and companies attached to them. Read-only - nothing in your CRM is ever changed.",
+                  "We read the contacts the day created, the deals that follow them, and the companies they belong to. Read-only - nothing in your CRM is ever changed.",
                   "Your saved model prices them exactly as it does on screen. Nothing is refitted behind you.",
                   "A lead already sent is not sent again. A value that moved is only restated while Google will still act on it.",
                 ].map((line) => (

@@ -121,7 +121,8 @@ describe("HubSpotClient", () => {
 
 /** A portal that answers each endpoint the way HubSpot documents it. */
 function portal(over: {
-  deals?: unknown; contactLinks?: unknown; companyLinks?: unknown; contacts?: unknown; companies?: unknown;
+  deals?: unknown; leads?: unknown; leadsStatus?: number;
+  contactLinks?: unknown; companyLinks?: unknown; contacts?: unknown; companies?: unknown;
   dealProperties?: unknown; contactProperties?: unknown; pipelines?: unknown;
 } = {}) {
   const paths: string[] = [];
@@ -135,10 +136,14 @@ function portal(over: {
       : path === "/crm/v3/properties/contacts" ? over.contactProperties ?? { results: [] }
       : path === "/crm/v3/pipelines/deals" ? over.pipelines ?? { results: [] }
       : path.endsWith("/deals/search") ? over.deals ?? { results: [] }
+      : path.endsWith("/contacts/search") ? over.leads ?? { results: [] }
       : path === "/crm/v4/associations/deals/contacts/batch/read" ? over.contactLinks ?? { results: [] }
       : path === "/crm/v4/associations/deals/companies/batch/read" ? over.companyLinks ?? { results: [] }
       : path === "/crm/v3/objects/contacts/batch/read" ? over.contacts ?? { results: [] }
       : over.companies ?? { results: [] };
+    if (path.endsWith("/contacts/search") && over.leadsStatus) {
+      return new Response("no", { status: over.leadsStatus });
+    }
     return new Response(JSON.stringify(body));
   }) as unknown as typeof fetch;
   return { fetchImpl, paths, bodies };
@@ -181,8 +186,77 @@ describe("pullFromHubSpot", () => {
     const pull = await pullFromHubSpot(client(fetchImpl));
     expect(pull.deals).toHaveLength(0);
     // The portal's vocabulary is read before the deals, because the search
-    // returns only what is asked for. Nothing after the search runs.
-    expect(paths.filter((p) => !METADATA.includes(p))).toEqual(["/crm/v3/objects/deals/search"]);
+    // returns only what is asked for. Nothing after the two searches runs.
+    expect(paths.filter((p) => !METADATA.includes(p)).sort()).toEqual([
+      "/crm/v3/objects/contacts/search",
+      "/crm/v3/objects/deals/search",
+    ]);
+  });
+
+  /*
+   * The population used to be the deals. A consumer business opens a deal
+   * for a fraction of its leads, so most of what the ads bought was never
+   * read, never counted against the close rate, and never priced.
+   */
+  describe("the window's contacts as leads", () => {
+    it("reads them with the same window and asks for what a lead needs", async () => {
+      const { fetchImpl, bodies, paths } = portal({
+        deals: { results: [] },
+        leads: { results: [{ id: "c9", properties: { createdate: "2026-06-10T00:00:00Z" } }] },
+        contactProperties: { results: [
+          { name: "insured", label: "Currently insured", type: "enumeration", fieldType: "radio" },
+          { name: "google_click", label: "Google Click ID", type: "string", fieldType: "text" },
+        ] },
+      });
+      const pull = await pullFromHubSpot(client(fetchImpl));
+
+      const search = bodies[paths.indexOf("/crm/v3/objects/contacts/search")];
+      const filter = (search.filterGroups as { filters: { propertyName: string; value: string }[] }[])[0].filters[0];
+      expect(filter.propertyName).toBe("createdate");
+      expect(Number(filter.value)).toBe(NOW.getTime() - 30 * 86_400_000);
+      expect(search.properties as string[]).toEqual(expect.arrayContaining([
+        "email", "createdate", "lifecyclestage", "hs_lead_status", "associatedcompanyid",
+        "hs_analytics_source", "insured", "google_click",
+      ]));
+      expect(pull.leads?.map((c) => c.id)).toEqual(["c9"]);
+      expect(pull.contactsById.get("c9")).toBeDefined();
+    });
+
+    it("does not read a contact twice when a deal points at one the window produced", async () => {
+      const { fetchImpl, paths, bodies } = portal({
+        deals: { results: [{ id: "d1", properties: {} }] },
+        leads: { results: [{ id: "c1", properties: { email: "in@window.com" } }] },
+        contactLinks: { results: [{ from: { id: "d1" }, to: [{ toObjectId: "c1" }, { toObjectId: "c-old" }] }] },
+        contacts: { results: [{ id: "c-old", properties: { email: "old@window.com" } }] },
+      });
+      const pull = await pullFromHubSpot(client(fetchImpl));
+      const batch = bodies[paths.indexOf("/crm/v3/objects/contacts/batch/read")];
+      expect(batch.inputs).toEqual([{ id: "c-old" }]);
+      expect(pull.contactsById.get("c1")?.properties.email).toBe("in@window.com");
+      expect(pull.contactsById.get("c-old")?.properties.email).toBe("old@window.com");
+    });
+
+    it("reads the company a contact belongs to when no deal names one", async () => {
+      const { fetchImpl, paths, bodies } = portal({
+        deals: { results: [] },
+        leads: { results: [{ id: "c1", properties: { associatedcompanyid: "77" } }] },
+        companies: { results: [{ id: "77", properties: { industry: "Insurance" } }] },
+      });
+      const pull = await pullFromHubSpot(client(fetchImpl));
+      const batch = bodies[paths.indexOf("/crm/v3/objects/companies/batch/read")];
+      expect(batch.inputs).toEqual([{ id: "77" }]);
+      expect(pull.companiesById.get("77")?.properties.industry).toBe("Insurance");
+    });
+
+    it("falls back to deals alone when the portal will not search contacts", async () => {
+      const { fetchImpl } = portal({
+        deals: { results: [{ id: "d1", properties: {} }] },
+        leadsStatus: 403,
+      });
+      const pull = await pullFromHubSpot(client(fetchImpl));
+      expect(pull.leads).toBeUndefined();
+      expect(pull.deals).toHaveLength(1);
+    });
   });
 
   /*

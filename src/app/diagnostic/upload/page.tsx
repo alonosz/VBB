@@ -52,7 +52,7 @@ export default function UploadPage() {
             currencies.map((c) => `${c.code} (${c.count})`).join(", ")
         );
       }
-      appendLog(`Read ${dealCount.toLocaleString()} deals from HubSpot`);
+      appendLog(`Read ${dealCount.toLocaleString()} leads from HubSpot`);
       void ingest({
         name: "HubSpot · last 12 months",
         sizeBytes: 0,

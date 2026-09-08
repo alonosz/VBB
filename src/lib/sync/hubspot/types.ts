@@ -64,4 +64,10 @@ export interface HubSpotPull {
    * definitions rather than assumed. Absent means none were read.
    */
   signalProperties?: SignalProperty[];
+  /**
+   * Contacts created inside the window: the leads, whether or not a deal
+   * followed. Absent when the pull could read deals only, in which case the
+   * deals are the population, as they always were.
+   */
+  leads?: HubSpotObject[];
 }

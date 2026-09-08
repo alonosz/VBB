@@ -315,6 +315,18 @@ back rather than fails: a token that cannot see property definitions still
 prices on the standard fields. The nightly sync reads the same properties
 under the same labels, which is what lets the saved model's rules apply.
 
+**The population is the contacts, not the deals.** A lead is a contact the
+window created; a deal is what became of some of them. The pull reads both
+(`listRecentContacts()`, `hubspotToDeals()`): each contact is one lead dated
+from its own creation, which is when the click became a lead, with the
+outcome, amount, stage and timing of the deals that point at it, and with
+HubSpot's own "customer" or "unqualified" read when no deal was ever opened.
+Reading deals alone priced only the leads somebody had opened a deal for,
+days after they arrived, against a close rate missing everyone else. A deal
+whose contact predates the window is still a deal of its own, a newsletter
+"subscriber" with no deal is not a lead, and a token that cannot search
+contacts falls back to deals alone rather than to nothing.
+
 ---
 
 # Scope guardrails

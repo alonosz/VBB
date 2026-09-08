@@ -159,7 +159,7 @@ export function EvaluationView() {
         return;
       }
       if (!dealsRes.ok || !deals.ok) {
-        setError(deals.error ?? "We couldn't read your deals.");
+        setError(deals.error ?? "We couldn't read your leads.");
         setPhase("error");
         return;
       }

@@ -7,7 +7,7 @@ import { CrmConnectionStore } from "@/lib/sync/connections";
 import { keyFromEnv } from "@/lib/sync/secrets";
 import { freshAccessToken } from "@/lib/sync/hubspot/accessToken";
 import { HubSpotClient, pullFromHubSpot } from "@/lib/sync/hubspot/client";
-import { currenciesInPull, hubspotToDeals } from "@/lib/sync/hubspot/map";
+import { currenciesInPull, hubspotToDeals, populationOf } from "@/lib/sync/hubspot/map";
 import { dealsToRows } from "@/lib/sync/hubspot/rows";
 import { oauthConfigFromEnv } from "@/lib/sync/hubspot/oauth";
 
@@ -131,6 +131,9 @@ export async function POST(request: Request) {
       headers,
       rows,
       dealCount: deals.length,
+      // What the window held, so the screen can say "leads" when it read
+      // leads and "deals" when the token let it read only those.
+      population: { ...populationOf(pull), readLeads: pull.leads !== undefined },
       windowDays: HISTORY_DAYS,
       currencies,
     });

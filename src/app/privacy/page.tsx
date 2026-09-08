@@ -90,7 +90,7 @@ export default function PrivacyPage() {
                   you connect
                 </td>
                 <td>
-                  Encrypted at rest. Needed to read your deals on a schedule and to
+                  Encrypted at rest. Needed to read your leads on a schedule and to
                   send values on your behalf.
                 </td>
               </tr>

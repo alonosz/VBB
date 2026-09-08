@@ -45,6 +45,12 @@ function hubspot() {
   return (async (url: string | URL | Request) => {
     const path = new URL(String(url)).pathname;
 
+    // The deal's contact arrived before the window, so the window's own
+    // contacts are none: the population is the one deal, as it always was.
+    if (path.endsWith("/contacts/search")) {
+      return new Response(JSON.stringify({ results: [] }));
+    }
+
     if (path.endsWith("/deals/search")) {
       return new Response(JSON.stringify({
         results: [{
