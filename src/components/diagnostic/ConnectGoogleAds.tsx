@@ -31,12 +31,20 @@ import { StrategyPanel } from "@/components/report/campaignStrategy";
  */
 
 interface PublishResult {
-  /** True when Google checked the batch and deliberately recorded nothing. */
+  /** True when this was a test and nothing was recorded. */
   validateOnly: boolean;
+  /**
+   * Whether Google itself checked the rows. A dry run on an account with no
+   * conversion action yet checks them here and creates nothing, because a
+   * test must not change the account.
+   */
+  checkedByGoogle?: boolean;
   account: { customerId: string; name: string; displayId: string };
   conversionAction: {
     name: string;
     existed: boolean;
+    /** True on a dry run when the action is not there yet and was not made. */
+    pending?: boolean;
     /** Settings on an action we found that will stop the values working. */
     problems?: { title: string; fix: string }[];
   };
@@ -604,6 +612,7 @@ function Sent({
    */
   const landed = !result.validateOnly;
   const problems = result.conversionAction.problems ?? [];
+  const checkedByGoogle = result.checkedByGoogle !== false;
 
   const mark = result.validateOnly
     ? { glyph: "✓", bg: "var(--primary)", title: "Checked, and nothing was sent" }
@@ -632,7 +641,9 @@ function Sent({
         <li className="text-[var(--muted)]">
           Conversion action{" "}
           <span className="mono">&ldquo;{result.conversionAction.name}&rdquo;</span>{" "}
-          {!result.conversionAction.existed
+          {result.conversionAction.pending
+            ? "is not in the account yet. The real send creates it, set to take a different value for each lead."
+            : !result.conversionAction.existed
             ? "created and configured to take a different value for each lead."
             : problems.length === 0
               ? "was already there, and its settings were checked."
@@ -700,9 +711,9 @@ function Sent({
       {result.validateOnly && (
         <>
           <p className="mt-3 max-w-[68ch] text-[13px] text-[var(--muted-strong)]">
-            Nothing was recorded. Google accepted the format of every row, which
-            is the part worth knowing before a real send - it rejects an entire
-            batch over one bad row.
+            {checkedByGoogle
+              ? "Nothing was recorded. Google accepted the format of every row, which is the part worth knowing before a real send - it rejects an entire batch over one bad row."
+              : "Nothing was changed in the account. Google checks the rows against the conversion action, so that check runs on the real send, right after it creates the action."}
           </p>
           {onSendForReal && (
             <button

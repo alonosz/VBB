@@ -249,3 +249,29 @@ export async function ensureConversionAction(
   // Nothing to judge on one we just made: the payload above is the standard.
   return { resourceName, name, existed: false, problems: [] };
 }
+
+/**
+ * The action a send should go against, or, on a dry run, the one it would.
+ *
+ * A dry run used to create the action first and validate the rows second, so
+ * "check without changing anything" changed the account: a new conversion
+ * action appeared in it, and one that Google then treats as the goal every
+ * campaign's reports show. A test on an account that is not ours to touch
+ * must read and never write. On a dry run this only looks; when nothing is
+ * there it says so (`pending`) rather than making it, and the row check waits
+ * for the real send, which is the first call that is allowed to write.
+ */
+export type ConversionActionLookup =
+  | { pending: false; action: ConversionActionRef }
+  | { pending: true; name: string };
+
+export async function conversionActionFor(
+  client: AdsClient,
+  customerId: string,
+  opts: { dryRun: boolean },
+  name: string = CONVERSION_ACTION_NAME
+): Promise<ConversionActionLookup> {
+  if (!opts.dryRun) return { pending: false, action: await ensureConversionAction(client, customerId, name) };
+  const existing = await findConversionAction(client, customerId, name);
+  return existing ? { pending: false, action: existing } : { pending: true, name };
+}

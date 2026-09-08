@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { adsSession, refuse } from "@/lib/sync/google/session";
 import { describeAccount, checkAccount } from "@/lib/sync/google/accounts";
-import { ensureConversionAction } from "@/lib/sync/google/conversionAction";
+import { conversionActionFor } from "@/lib/sync/google/conversionAction";
 import { auditStrategies, readCampaigns } from "@/lib/sync/google/campaigns";
 import {
   IngestError,
@@ -89,7 +89,37 @@ export async function POST(request: Request) {
     const usable = checkAccount(account, currencyCode);
     if (!usable.ok) return bad(usable.reason);
 
-    const action = await ensureConversionAction(session.client, customerId);
+    /*
+     * A dry run reads and never writes. The action is looked up, not made,
+     * and when the account has none the rows cannot be checked against it:
+     * the screen says so and the real send, the first call allowed to
+     * change anything, creates it and runs Google's check then.
+     */
+    const lookup = await conversionActionFor(session.client, customerId, { dryRun: validateOnly });
+    if (lookup.pending) {
+      let strategies = null;
+      try {
+        strategies = auditStrategies(await readCampaigns(session.client, customerId));
+      } catch (error) {
+        console.error("reading campaigns during a dry run failed:", error);
+      }
+      return NextResponse.json({
+        ok: true,
+        validateOnly: true,
+        checkedByGoogle: false,
+        account: { customerId: account.customerId, name: account.name, displayId: account.displayId },
+        conversionAction: { name: lookup.name, existed: false, pending: true, problems: [] },
+        submitted: rows.length,
+        requestId: null,
+        fieldWarnings: [],
+        summary:
+          `All ${rows.length.toLocaleString()} rows are well-formed. Nothing was changed - ` +
+          `this was a test, and the account has no "${lookup.name}" action yet for Google to check them against. ` +
+          `The real send creates it and Google checks the rows then.`,
+        strategies,
+      });
+    }
+    const { action } = lookup;
 
     /*
      * The Data Manager API, because Google closed the Ads API upload to new
@@ -161,6 +191,7 @@ export async function POST(request: Request) {
     return NextResponse.json({
       ok: true,
       validateOnly,
+      checkedByGoogle: true,
       account: { customerId: account.customerId, name: account.name, displayId: account.displayId },
       conversionAction: {
         name: action.name,

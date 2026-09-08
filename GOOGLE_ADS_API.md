@@ -46,7 +46,10 @@ working. Existing connections carry only `adwords` and must reconnect.
 **The wiring is done.** `publish/route.ts` calls `ingestEvents`. The screen no
 longer claims per-row counts, and a dry run sits beside the send button
 because under fast-fail checking first costs one click and losing a batch to
-one malformed row does not.
+one malformed row does not. The dry run reads and never writes: it looks the
+conversion action up rather than creating it, and on an account that has none
+yet it checks the rows locally, says so, and leaves the creation and Google's
+own row check to the real send.
 
 `upload.ts` is now unreferenced by the route and kept only so the old
 behaviour is readable while this is proven. Delete it once a real send lands.

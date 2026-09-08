@@ -4,6 +4,7 @@ import { fakeAds, type FakeAdsOptions } from "./fakeAds";
 import {
   CLICK_LOOKBACK_DAYS,
   CONVERSION_ACTION_NAME,
+  conversionActionFor,
   conversionActionPayload,
   ensureConversionAction,
   findConversionAction,
@@ -218,6 +219,47 @@ describe("ensuring it is there", () => {
  * else. Each of these breaks the product in the one way that looks like
  * success - values arrive, are stored, are reported, and move no bid.
  */
+/*
+ * "Check without changing anything" once created the action first and
+ * checked the rows second, so the one call that promised to touch nothing
+ * left a new conversion action in an account that was not ours to change.
+ */
+describe("what a dry run is allowed to do", () => {
+  it("reads and never writes, saying so when the action is not there yet", async () => {
+    const { fake, client } = ads({ [SEARCH]: { results: [] } });
+    const lookup = await conversionActionFor(client, CUSTOMER, { dryRun: true });
+    expect(lookup).toEqual({ pending: true, name: CONVERSION_NAME });
+    expect(fake.calls.map((c) => c.path)).toEqual([SEARCH]);
+  });
+
+  it("uses the action that is already there, with its settings judged", async () => {
+    const { fake, client } = ads({
+      [SEARCH]: {
+        results: [{ conversionAction: { resourceName: RESOURCE, name: CONVERSION_NAME, primaryForGoal: false } }],
+      },
+    });
+    const lookup = await conversionActionFor(client, CUSTOMER, { dryRun: true });
+    expect(lookup.pending).toBe(false);
+    if (lookup.pending) return;
+    expect(lookup.action.existed).toBe(true);
+    expect(lookup.action.problems).toHaveLength(1);
+    expect(fake.calls.map((c) => c.path)).not.toContain(MUTATE);
+  });
+
+  it("creates the action only on the real send", async () => {
+    const { fake, client } = ads({
+      [SEARCH]: { results: [] },
+      [MUTATE]: { results: [{ resourceName: RESOURCE }] },
+    });
+    const lookup = await conversionActionFor(client, CUSTOMER, { dryRun: false });
+    expect(lookup).toEqual({
+      pending: false,
+      action: { resourceName: RESOURCE, name: CONVERSION_NAME, existed: false, problems: [] },
+    });
+    expect(fake.calls.map((c) => c.path)).toEqual([SEARCH, MUTATE]);
+  });
+});
+
 describe("judging settings on an action somebody else made", () => {
   const good = {
     status: "ENABLED",
