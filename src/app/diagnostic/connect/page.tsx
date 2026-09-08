@@ -722,7 +722,10 @@ export default function ConnectPage() {
                         </span>{" "}
                         {feed.gateAdjustments === 1 ? "lead" : "leads"} reached{" "}
                         <span className="mono">{feed.gateStage}</span> in time and went
-                        up in value.{" "}
+                        up in value. The file carries one value per lead: a lead Google
+                        has not collected yet lands at the higher value, and one it
+                        already has keeps the value it first saw, with the rise going
+                        into the next refit.{" "}
                       </>
                     )}
                     {feed.gateTooLate > 0 && (

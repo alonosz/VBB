@@ -11,7 +11,7 @@ import { InMemoryFeedRepository } from "./repository";
 import { assertStorableRow, type FeedRow } from "./types";
 import { generateFeedToken, hashToken, hashIp, TOKEN_PREFIX } from "./token";
 import type { ValuedLead } from "@/lib/analysis/valueModel";
-import { conversionOrderId } from "@/lib/export/googleAds";
+import { conversionOrderId, formatConversionTime } from "@/lib/export/googleAds";
 import type { MappedDeal } from "@/lib/analysis/types";
 
 const NOW = new Date("2026-06-15T12:00:00Z");
@@ -293,6 +293,31 @@ describe("buildFeedCsv", () => {
       lead({ id: "1", value: 1200, clickId: "Cj0aaaaaaaaa", createdAt: new Date("2026-05-01T09:07:05Z") }),
     ]);
     expect(buildFeedCsv(rows, "clickId", "VBB Lead Value")).toMatch(/2026-05-01 09:07:05\+00:00/);
+  });
+
+  /*
+   * Google ignores a second line under an Order ID it has already imported,
+   * so an adjustment written as one never landed while the screen said it
+   * had. The file carries one line per lead, at the latest value the rules
+   * let through, on the lead's original conversion time.
+   */
+  it("carries a raised value as the lead's one line, never as a second line", async () => {
+    const createdAt = day(2);
+    const previous = await publish([lead({ id: "1", value: 1000, clickId: "Cj0aaaaaaaaa", createdAt })]);
+    const { rows } = await publish(
+      [lead({ id: "1", value: 3000, clickId: "Cj0aaaaaaaaa", createdAt })],
+      { previous: previous.rows }
+    );
+    const all = [...previous.rows, ...rows];
+    expect(all.map((r) => r.kind)).toEqual(["conversion", "adjustment"]);
+
+    const lines = buildFeedCsv(all, "clickId", "VBB Lead Value").split(/\r?\n/);
+    expect(lines).toHaveLength(2);
+    expect(lines[1]).toContain("3000.00");
+    expect(lines[1]).toContain(formatConversionTime(createdAt));
+    expect(lines[1]).toContain(previous.rows[0].rowKey);
+    // Whichever order the rows come back in.
+    expect(buildFeedCsv([...all].reverse(), "clickId", "VBB Lead Value")).toBe(lines.join("\r\n"));
   });
 
   it("orders rows oldest first, as an import expects", async () => {

@@ -87,6 +87,17 @@ The field mappings cover `UploadClickConversionRequest` only. Whether
 `ConversionAdjustmentUploadService` has a Data Manager equivalent, and what a
 restatement looks like there, is not answered by that page and is still open.
 
+The file route cannot restate at all. A conversions file has no adjustment
+columns, and a second line under an Order ID Google has already imported is
+ignored, so writing an adjustment as one (which the feed did until 8 Sept
+2026) delivered nothing while the screen counted it as sent. `buildFeedCsv`
+now writes one line per lead at the latest value the rules let through, on
+the original conversion time: a lead Google has not collected yet lands at
+the higher value, one it already has keeps the first. Restating those needs
+Google's separate conversion-adjustments import with its own file layout,
+which is worth adding once its template is checked against Google's page
+rather than recalled.
+
 ## Blocked: UploadClickConversions is closed to new integrations
 
 1 Sept 2026, first real upload. Google created the conversion action exactly
