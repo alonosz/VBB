@@ -25,12 +25,27 @@ function points(n: number): string {
   return `${n > 0 ? "+" : n < 0 ? "-" : ""}${(Math.abs(n) * 100).toFixed(0)} pts`;
 }
 
+/**
+ * Which model scored the two cohorts.
+ *
+ * The saved one is the honest yardstick: it is what Google was told, and it
+ * is the same rule set on both sides of the switch. A fresh fit is what the
+ * screen falls back to when there is no saved model or it cannot read this
+ * pull, and that has to be said, because a yardstick that moved between
+ * visits is a different measurement each time.
+ */
+export type Yardstick =
+  | { kind: "saved"; fittedAt: string; modelId: string }
+  | { kind: "fresh"; reason: string };
+
 export function MixShiftPanel({
   verdict,
   currency,
+  yardstick = null,
 }: {
   verdict: MixVerdict;
   currency: string;
+  yardstick?: Yardstick | null;
 }) {
   if (verdict.kind === "no-baseline") return null;
 
@@ -43,6 +58,24 @@ export function MixShiftPanel({
         answers in weeks what closed deals take a year to prove. It is pipeline,
         not banked revenue - the comparison above is the money.
       </p>
+
+      {yardstick && (
+        <p className="mt-2 max-w-[72ch] text-[12.5px] text-[var(--muted)]">
+          {yardstick.kind === "saved" ? (
+            <>
+              Scored with the model you saved on{" "}
+              <span className="mono">{yardstick.fittedAt.slice(0, 10)}</span>, the same rules
+              Google was sent, applied to both sides.
+            </>
+          ) : (
+            <>
+              Scored with a model fitted on today&apos;s pull, not the one Google was sent:{" "}
+              {yardstick.reason} A fresh fit moves between visits, so treat this as a sketch
+              until a saved model is published.
+            </>
+          )}
+        </p>
+      )}
 
       {verdict.kind === "flat-model" && (
         <p className="mt-3 max-w-[70ch] text-[13px] text-[var(--muted-strong)]">

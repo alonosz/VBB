@@ -12,6 +12,13 @@ import { rowsToDeals } from "@/lib/mapping/toDeals";
 import { runDiagnostic } from "@/lib/analysis";
 import { didItWork, type ProofVerdict } from "@/lib/analysis/didItWork";
 import { mixShift, type MixVerdict } from "@/lib/analysis/mixShift";
+import {
+  checkApplicability,
+  loadSavedModel,
+  savedModelToValueModel,
+  type SavedValueModel,
+} from "@/lib/model/savedModel";
+import type { Yardstick } from "@/components/report/mixShift";
 import { readWorkspaceKey } from "@/lib/workspace/clientKey";
 import type { MappedDeal } from "@/lib/analysis/types";
 import type { StrategyAudit } from "@/lib/sync/google/campaigns";
@@ -53,6 +60,7 @@ export function EvaluationView() {
   const [error, setError] = useState<string | null>(null);
   const [verdict, setVerdict] = useState<ProofVerdict | null>(null);
   const [mix, setMix] = useState<MixVerdict | null>(null);
+  const [yardstick, setYardstick] = useState<Yardstick | null>(null);
   const [currency, setCurrency] = useState("USD");
   const [dealCount, setDealCount] = useState(0);
   const [switchedAt, setSwitchedAt] = useState<Date | null>(null);
@@ -120,6 +128,23 @@ export function EvaluationView() {
       // questions and neither should wait on the other's network.
       void loadAds(key);
 
+      /*
+       * The yardstick, fetched alongside the deals rather than after them.
+       *
+       * The mix-shift check is only honest against a fixed model applied
+       * identically to both cohorts, and the fixed model is the one frozen
+       * with the feed: the one Google was actually told about. This screen
+       * used to fit a fresh model on the pull instead, with no audience and
+       * none of the discovered signals, which priced a consumer file flat
+       * and any file with a different stack from the one that was sent.
+       */
+      type ModelAnswer = { ok?: boolean; model?: unknown; reason?: string };
+      const modelPromise: Promise<ModelAnswer> = fetch(
+        `/api/workspace/model?workspaceKey=${encodeURIComponent(key)}`
+      )
+        .then(async (r) => (await r.json()) as ModelAnswer)
+        .catch(() => ({ ok: false, reason: "We couldn't read your saved model." }));
+
       const dealsRes = await fetch("/api/crm/hubspot/deals", {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -147,20 +172,37 @@ export function EvaluationView() {
         (deals.currencies as { code: string; count: number }[] | undefined)?.[0]?.code ?? "USD";
       setCurrency(reporting);
 
+      const modelData = await modelPromise;
+      const loaded = modelData.ok && modelData.model ? loadSavedModel(modelData.model) : null;
+      let saved: SavedValueModel | null = loaded?.model ?? null;
+      let notSaved: string | null = loaded?.error ?? modelData.reason ?? null;
+
       // Mapped in the browser, exactly as an upload is. Nothing about these
-      // rows is sent anywhere.
+      // rows is sent anywhere. The saved model's own signal columns are
+      // mapped with it, or its custom rules would have nothing to read.
       const detected = detectColumns(headers, rows);
       const mapped = rowsToDeals({
         rows,
         fields: detected.fields,
         currency: { reportingCurrency: reporting, rates: {}, excludeUnconvertible: false },
         stageTiming: detectStageTimingColumns(headers, rows),
+        signalColumns: saved?.customSignalKeys ?? [],
       });
+
+      if (saved) {
+        const fit = checkApplicability(saved, mapped.deals, reporting, saved.audience ?? "b2b");
+        if (fit.unusableBecause) {
+          notSaved = fit.unusableBecause;
+          saved = null;
+        }
+      }
 
       const diagnostic = runDiagnostic({
         deals: mapped.deals,
         excluded: mapped.excluded,
         currencyCode: reporting,
+        customSignalKeys: saved?.customSignalKeys ?? [],
+        audience: saved?.audience,
       });
 
       setVerdict(
@@ -176,9 +218,14 @@ export function EvaluationView() {
       setMix(
         mixShift({
           deals: mapped.deals as MappedDeal[],
-          model: diagnostic.valueModel,
+          model: saved ? savedModelToValueModel(saved) : diagnostic.valueModel,
           switchedAt: at,
         })
+      );
+      setYardstick(
+        saved
+          ? { kind: "saved", fittedAt: saved.fittedAt, modelId: saved.modelId }
+          : { kind: "fresh", reason: notSaved ?? "No saved model was found for this workspace." }
       );
       setPhase("ready");
     } catch {
@@ -262,7 +309,7 @@ export function EvaluationView() {
         </div>
         {mix && (
           <div className="mt-4">
-            <MixShiftPanel verdict={mix} currency={currency} />
+            <MixShiftPanel verdict={mix} currency={currency} yardstick={yardstick} />
           </div>
         )}
 
