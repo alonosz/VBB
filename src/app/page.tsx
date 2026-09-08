@@ -60,6 +60,34 @@ const AI_JOBS = [
   },
 ];
 
+/**
+ * Five questions, easy to hard. The qualifying one sits fourth so a visitor
+ * understands what the thing does before being told whether it is for them.
+ * Every answer is true of the product as built; none promises a result.
+ */
+const FAQ = [
+  {
+    q: "Why bid on value instead of conversions?",
+    a: "Google can only optimise for what you tell it. Tell it every lead is worth the same and it buys the cheapest ones. Tell it what each lead is likely to be worth and it buys the ones that pay.",
+  },
+  {
+    q: "Where do the values come from?",
+    a: "From your own history: how often each kind of lead closed, times what it was worth when it did. AI reads your file and your description. It never sets a number.",
+  },
+  {
+    q: "What happens in my Google Ads account?",
+    a: "One conversion action is created, called VBB Lead Value, and each lead is sent to it with its own value. Nothing else is touched. Switching a campaign to value-based bidding is a change you make, and we show you where.",
+  },
+  {
+    q: "Is my account ready for this?",
+    a: "Three things need to be true. Roughly 30 to 50 conversions a month per campaign, which is Google's own guidance for value-based bidding. A year of CRM history with a few hundred closed leads, so the tool has about 25 closed deals in each group it prices. And real differences between your leads: this suits insurance, lending, legal, home services, education and B2B software, and not a single product at a single price.",
+  },
+  {
+    q: "How will I know it worked?",
+    a: "Once connected, the tool keeps reading your CRM and compares the leads Google buys after the switch against the ones before, measured in real outcomes, not in the numbers we sent.",
+  },
+];
+
 const NEEDED = [
   "A CSV of deals from your CRM - HubSpot, Salesforce, Pipedrive, Close, or a plain spreadsheet.",
   "Create dates and deal amounts in it. Close dates and email addresses make the analysis sharper.",
@@ -264,6 +292,31 @@ export default function Home() {
               values Google receives - hashed identifiers, timestamps and amounts - are
               ever stored, and never a name, an address or a deal size.
             </p>
+          </div>
+        </section>
+
+        {/* ---------------------------------------------------------------- */}
+        {/* Questions                                                         */}
+        {/* ---------------------------------------------------------------- */}
+        <section className="page-wide pt-14">
+          <h2 className="h2">Questions</h2>
+          <div className="card mt-5 divide-y divide-[var(--border)] px-6 sm:px-7">
+            {FAQ.map((item) => (
+              <details key={item.q} className="group py-4">
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-[15px] font-bold [&::-webkit-details-marker]:hidden">
+                  <span>{item.q}</span>
+                  <span
+                    aria-hidden
+                    className="flex size-6 shrink-0 items-center justify-center rounded-full bg-[var(--primary-soft)] text-[14px] font-bold text-[var(--primary-deep)] transition-transform duration-200 group-open:rotate-45"
+                  >
+                    +
+                  </span>
+                </summary>
+                <p className="mt-2.5 max-w-[68ch] text-[14px] leading-relaxed text-[var(--muted)]">
+                  {item.a}
+                </p>
+              </details>
+            ))}
           </div>
         </section>
 
