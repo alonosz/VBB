@@ -23,7 +23,7 @@ const STAGES = [
   {
     n: "1",
     title: "Measure",
-    body: "Upload a CRM export. We work out what your leads were actually worth from your own closed deals - win rates and deal sizes, nothing invented.",
+    body: "Upload a CRM export. AI reads your columns and your description of a good lead, then the values come from your own win rates and deal sizes. Nothing invented.",
   },
   {
     n: "2",
@@ -75,7 +75,7 @@ export default function Home() {
             <div className="grid items-center gap-8 p-7 sm:p-9 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,.95fr)] lg:gap-12 lg:p-11">
               <div className="min-w-0">
                 <p className="label" style={{ color: "var(--on-navy-muted)" }}>
-                  Value-based bidding for lead gen
+                  Feed Google&apos;s AI the signal it is missing
                 </p>
 
                 <h1
