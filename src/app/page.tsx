@@ -89,11 +89,10 @@ export default function Home() {
                   className="lede mt-5 max-w-[54ch]"
                   style={{ color: "var(--on-navy-muted)" }}
                 >
-                  They aren&apos;t. Some close for six figures and some never answer
-                  the phone, and Smart Bidding is optimising as though there&apos;s no
-                  difference. This works out what each lead is really worth from your
-                  own closed deals, then feeds those numbers back to Google so it bids
-                  for the ones that pay.
+                  When every form fill counts the same, a dead-end enquiry looks as
+                  valuable as your next premium customer. Use your sales history and
+                  AI to teach Google which leads are likely to be worth more, with
+                  lead values sent directly to Google Ads.
                 </p>
 
                 <div className="mt-8 flex flex-wrap items-center gap-x-5 gap-y-3">
