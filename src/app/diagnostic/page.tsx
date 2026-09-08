@@ -260,7 +260,6 @@ export default function IntakePage() {
             value={businessContext}
             onChange={(e) => setBusinessContext(e.target.value)}
             placeholder={
-              "Use this neutral business-description template:\n\n" +
               "\u201cWe sell [product or service] to [type of customer]. People enquire through [form, call or booking]. " +
               "We believe enquiries about [option or need] are more valuable because [reason]. " +
               "Our [field name] records [what it means when someone first enquires].\u201d"
