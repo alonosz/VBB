@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { profileColumns } from "./profile";
-import { sanitizeProposal, EMPTY_PROPOSAL, type IntakeProposal } from "./proposal";
+import { COMPLETE_LIST_MAX, completeValuesByColumn, profileColumns } from "./profile";
+import { proposedOutcomes, sanitizeProposal, EMPTY_PROPOSAL, type IntakeProposal } from "./proposal";
 import { applyProposal, resolveHypotheses, HEURISTIC_TRUST_FLOOR } from "./merge";
 import { buildIntakeUserMessage } from "./prompt";
 import type { DetectedField } from "@/lib/mapping/detect";
@@ -345,5 +345,90 @@ describe("profileColumns date classification", () => {
       { when: "2026-01-04" }, { when: "2026-03-19T08:00:00Z" }, { when: "12/03/2026" },
     ]);
     expect(p[0].kind).toBe("date");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Reading the file's own status words
+// ---------------------------------------------------------------------------
+
+describe("what a status column sends", () => {
+  it("sends every label of a short category column, and says the list is whole", () => {
+    const rows = ["Bound", "NTU", "Quoted", "Declined"].flatMap((v) => Array(5).fill({ Status: v }));
+    const [p] = profileColumns(["Status"], rows);
+    expect(p.complete).toBe(true);
+    expect(p.exampleValues?.sort()).toEqual(["Bound", "Declined", "NTU", "Quoted"]);
+    expect(completeValuesByColumn([p])).toEqual({ Status: p.exampleValues });
+  });
+
+  it("sends a sample of a longer one, and does not call it whole", () => {
+    const rows = Array.from({ length: COMPLETE_LIST_MAX + 2 }, (_, i) => ({ Region: `Region ${i}` }))
+      .flatMap((r) => Array(6).fill(r));
+    const [p] = profileColumns(["Region"], rows);
+    expect(p.complete).toBeUndefined();
+    expect(p.exampleValues).toHaveLength(8);
+    expect(completeValuesByColumn([p])).toEqual({});
+  });
+
+  it("marks the whole list as such in the prompt", () => {
+    const rows = Array(6).fill({ Status: "Bound" });
+    const msg = buildIntakeUserMessage("", profileColumns(["Status"], rows));
+    expect(msg).toContain('all values=["Bound"]');
+  });
+});
+
+describe("sanitizing outcome readings", () => {
+  const listed = { Status: ["Bound", "NTU", "Quoted"] };
+  const reading = (over: Record<string, unknown>) => ({
+    outcomeReadings: [{ column: "Status", value: "NTU", outcome: "lost", why: "not taken up", ...over }],
+  });
+
+  it("keeps a reading of a listed value", () => {
+    const p = sanitizeProposal(reading({}), ["Status"], listed);
+    expect(p.outcomeReadings).toEqual([{ column: "Status", value: "NTU", outcome: "lost", why: "not taken up" }]);
+  });
+
+  it("drops a reading of a value the file does not hold", () => {
+    expect(sanitizeProposal(reading({ value: "Cancelled" }), ["Status"], listed).outcomeReadings).toEqual([]);
+  });
+
+  it("drops a reading of a column whose values were not all sent", () => {
+    expect(sanitizeProposal(reading({}), ["Status"], {}).outcomeReadings).toEqual([]);
+  });
+
+  it("drops an outcome that is not one of ours", () => {
+    expect(sanitizeProposal(reading({ outcome: "maybe" }), ["Status"], listed).outcomeReadings).toEqual([]);
+  });
+
+  it("matches the value however it is capitalised, and keeps one reading per value", () => {
+    const p = sanitizeProposal(
+      { outcomeReadings: [
+        { column: "Status", value: "ntu", outcome: "lost", why: "" },
+        { column: "Status", value: "NTU ", outcome: "open", why: "" },
+      ] },
+      ["Status"],
+      listed
+    );
+    expect(p.outcomeReadings).toHaveLength(1);
+    expect(p.outcomeReadings[0].outcome).toBe("lost");
+  });
+
+  it("is empty on a proposal saved before readings existed", () => {
+    const old = { ...EMPTY_PROPOSAL } as Partial<IntakeProposal>;
+    delete old.outcomeReadings;
+    expect(proposedOutcomes(old as IntakeProposal, "Status")).toEqual({});
+  });
+
+  it("only applies to the column that decides the outcome", () => {
+    const p = sanitizeProposal(
+      { outcomeReadings: [
+        { column: "Status", value: "NTU", outcome: "lost", why: "" },
+        { column: "Other", value: "NTU", outcome: "won", why: "" },
+      ] },
+      ["Status", "Other"],
+      { ...listed, Other: ["NTU"] }
+    );
+    expect(proposedOutcomes(p, "Status")).toEqual({ ntu: "lost" });
+    expect(proposedOutcomes(p, null)).toEqual({});
   });
 });

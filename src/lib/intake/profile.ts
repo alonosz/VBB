@@ -30,10 +30,14 @@ export interface ColumnProfile {
   /** Distinct values as a share of filled rows, 0-1. */
   distinctShare: number;
   /**
-   * A few distinct values, present only for low-cardinality categorical
-   * columns whose header does not name a person, company or contact detail.
+   * Distinct values, present only for low-cardinality categorical columns
+   * whose header does not name a person, company or contact detail. The
+   * whole list for a column short enough to be a status column, a few
+   * otherwise.
    */
   exampleValues?: string[];
+  /** True when `exampleValues` is every distinct value the column holds. */
+  complete?: boolean;
   /** Digit counts for numeric columns - enough to tell an amount from a headcount. */
   numericShape?: { minDigits: number; maxDigits: number; hasDecimals: boolean };
   /** ISO days, so create dates and close dates are distinguishable. */
@@ -57,6 +61,14 @@ const SENSITIVE_HEADER_HINTS = [
 const MAX_EXAMPLES = 8;
 const MAX_CATEGORICAL_DISTINCT = 30;
 const MAX_EXAMPLE_LENGTH = 40;
+/**
+ * A column with this few distinct labels is sent whole. That is what lets
+ * the assistant read every status word in the file rather than a sample of
+ * them: a reading of "Bound" is no use if "NTU" was the one left out. The
+ * labels are the same kind of thing the sample always was - short, repeated,
+ * under a header that names no person - so nothing new leaves the machine.
+ */
+export const COMPLETE_LIST_MAX = 24;
 
 function normalizeHeader(h: string): string {
   return h.toLowerCase().replace(/[_\-.]+/g, " ").trim();
@@ -161,11 +173,13 @@ export function profileColumns(
     } else if (kind === "freeText") {
       profile.withheld = "values are free text and may contain anything";
     } else if (kind === "categorical" && distinct.size <= MAX_CATEGORICAL_DISTINCT) {
-      const examples = [...distinct]
-        .filter((v) => v.length <= MAX_EXAMPLE_LENGTH)
-        .slice(0, MAX_EXAMPLES);
-      if (examples.length > 0) profile.exampleValues = examples;
-      else profile.withheld = "values are too long to be category labels";
+      const short = [...distinct].filter((v) => v.length <= MAX_EXAMPLE_LENGTH);
+      const whole = distinct.size <= COMPLETE_LIST_MAX && short.length === distinct.size;
+      const examples = whole ? short : short.slice(0, MAX_EXAMPLES);
+      if (examples.length > 0) {
+        profile.exampleValues = examples;
+        if (whole) profile.complete = true;
+      } else profile.withheld = "values are too long to be category labels";
     } else if (kind === "categorical") {
       profile.withheld = `${distinct.size} distinct values - too many to be category labels`;
     }
@@ -185,4 +199,13 @@ export function describeWhatIsSent(profiles: ColumnProfile[]): {
     withExamples: profiles.filter((p) => p.exampleValues?.length).length,
     withheld: profiles.filter((p) => p.withheld).length,
   };
+}
+
+/** The columns whose every value was sent, so a reading of one can be checked. */
+export function completeValuesByColumn(profiles: ColumnProfile[]): Record<string, string[]> {
+  const out: Record<string, string[]> = {};
+  for (const p of profiles) {
+    if (p.complete && p.exampleValues?.length) out[p.name] = p.exampleValues;
+  }
+  return out;
 }

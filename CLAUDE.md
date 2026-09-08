@@ -56,8 +56,10 @@ card-dragging that produces 9-second stage transitions.
 
 One LLM call runs, at upload, in `src/app/api/intake/route.ts`. Its job is to
 read the user's free-text description against a *description of each column*
-and propose (a) which column is which and (b) which claims the user made about
-their buyers. That is the whole remit.
+and propose (a) which column is which, (b) which claims the user made about
+their buyers and (c) what each status word in the outcome column means in
+the advertiser's trade. That is the whole remit. It runs with or without a
+description: the column profiles alone carry (a) and (c).
 
 - It **never** returns a value, multiplier, score, weight or close rate. Every
   figure in the product comes from the deterministic engine reading the user's
@@ -66,13 +68,23 @@ their buyers. That is the whole remit.
 - Its output is untrusted input. Everything passes through
   `sanitizeProposal()`, which drops columns that aren't in the file, field keys
   we don't have, duplicate claims and impossible numbers.
+- **Its reading of a status word fills a gap, never overrules the list.**
+  `effectiveOutcomeOverrides()`: the advertiser's own word first, then the
+  built-in won/lost list, then the assistant where the list knows nothing.
+  A reading the list disagrees with is shown as a disagreement on the
+  mapping screen and the list is kept, the same rule `applyProposal()`
+  follows for a confident column match. Readings are accepted only for
+  values that were actually sent (`sanitizeProposal()` checks them against
+  the complete list) and only on the column that decides the outcome.
 - Candidate factors are **hypotheses to test**, never rules to apply. They clear
   the same sample-size and lift thresholds as every other factor, and they are
   reported whether they survive or not. A refuted claim is the most valuable
   line in the report.
 - **No raw rows leave the browser.** `profileColumns()` sends header names,
   value kinds, fill rates, cardinality, digit counts, and (for short
-  low-cardinality category columns only) a few labels. Never emails, names,
+  low-cardinality category columns only) the labels: every one of them when
+  the column holds at most `COMPLETE_LIST_MAX` (24) distinct short labels,
+  so a status column can be read whole, a few otherwise. Never emails, names,
   phone numbers, addresses, click IDs, deal amounts (not even as a range), or
   free text. Any new field added to `ColumnProfile` must be checked against
   this list.

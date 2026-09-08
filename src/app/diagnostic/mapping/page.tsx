@@ -190,7 +190,7 @@ function RowPreview({
 
 export default function MappingPage() {
   const router = useRouter();
-  const { audience, file, fields, setFields, issues, currency, setCurrency, stageTiming, intake, restored, setSignalOverride, outcomeOverrides, setOutcomeOverride } =
+  const { audience, file, fields, setFields, issues, currency, setCurrency, stageTiming, intake, restored, setSignalOverride, outcomeOverrides, setOutcomeOverride, proposedOutcomes, effectiveOutcomeOverrides, businessContext } =
     useDiagnostic();
 
   useEffect(() => {
@@ -218,15 +218,15 @@ export default function MappingPage() {
       currency,
       stageTiming,
       signalColumns: customSignalKeys,
-      outcomeOverrides,
+      outcomeOverrides: effectiveOutcomeOverrides,
     });
-  }, [file, fields, currency, stageTiming, customSignalKeys, outcomeOverrides]);
+  }, [file, fields, currency, stageTiming, customSignalKeys, effectiveOutcomeOverrides]);
 
   const vocabulary = useMemo(() => {
     if (!file) return null;
     const col = (key: string) => fields.find((f) => f.key === key)?.column ?? null;
-    return outcomeVocabulary(file.rows, col("outcome"), col("stage"), outcomeOverrides);
-  }, [file, fields, outcomeOverrides]);
+    return outcomeVocabulary(file.rows, col("outcome"), col("stage"), outcomeOverrides, proposedOutcomes);
+  }, [file, fields, outcomeOverrides, proposedOutcomes]);
 
   // Same markup on the server and during hydration; the restored flow only
   // exists in the browser and appears on the pass after.
@@ -461,8 +461,9 @@ export default function MappingPage() {
             <div className="mb-4 flex flex-wrap items-baseline justify-between gap-3">
               <h2 className="h2">What counts as a sale</h2>
               <span className="text-[12.5px] text-[var(--muted)]">
-                Read from <span className="mono">{vocabulary.column}</span> - every close rate
-                rests on this
+                Read from <span className="mono">{vocabulary.column}</span> by our word list
+                {vocabulary.values.some((v) => v.by === "assistant" || v.disagreement) ? " and by AI" : ""}
+                {" "}- every close rate rests on this
               </span>
             </div>
 
@@ -495,7 +496,26 @@ export default function MappingPage() {
                           </button>
                         </>
                       )}
+                      {v.by === "assistant" && (
+                        <>
+                          {" · "}
+                          <span className="badge badge-primary">AI read this</span>
+                          {" · "}
+                          <button
+                            type="button"
+                            onClick={() => setOutcomeOverride(v.value, v.rule)}
+                            className="font-semibold text-[var(--primary)] underline underline-offset-[3px]"
+                          >
+                            use the word list
+                          </button>
+                        </>
+                      )}
                     </span>
+                    {v.disagreement && (
+                      <span className="mt-1 block max-w-[60ch] text-[12px] text-[var(--warn)]">
+                        {v.disagreement}
+                      </span>
+                    )}
                   </div>
                   <div
                     role="group"
@@ -515,7 +535,7 @@ export default function MappingPage() {
                           key={o}
                           type="button"
                           aria-pressed={on}
-                          onClick={() => setOutcomeOverride(v.value, o === v.rule ? null : o)}
+                          onClick={() => setOutcomeOverride(v.value, o === v.auto ? null : o)}
                           className={
                             "rounded-full border px-3 py-1 text-[12px] font-semibold transition-colors " +
                             (on
@@ -773,9 +793,9 @@ export default function MappingPage() {
             ) : hypotheses.length === 0 ? (
               <div className="card p-4">
                 <p className="max-w-[74ch] text-[13.5px] text-[var(--muted)]">
-                  Nothing in your description pointed at a column in this file that we
-                  could test. The model will be fitted on the lead attributes we found
-                  on their own.
+                  {businessContext.trim()
+                    ? "Nothing in your description pointed at a column in this file that we could test. The model will be fitted on the lead attributes we found on their own."
+                    : "You did not describe your business, so there are no claims to test. AI still read your columns and status words; the model is fitted on the attributes found in the file."}
                 </p>
               </div>
             ) : (

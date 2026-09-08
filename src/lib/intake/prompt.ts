@@ -4,17 +4,18 @@ import type { Audience } from "@/lib/analysis/types";
 /**
  * The intake prompt.
  *
- * Two jobs only: work out which column is which, and write down what the user
- * claimed about their buyers so the engine can test it. The prompt refuses the
- * third job - pricing a lead - because that has to come from the user's rows,
- * not from a model's prior about what a lead is usually worth.
+ * Three jobs only: work out which column is which, say what the file's own
+ * status words mean, and write down what the user claimed about their buyers
+ * so the engine can test it. The prompt refuses the fourth job - pricing a
+ * lead - because that has to come from the user's rows, not from a model's
+ * prior about what a lead is usually worth.
  */
 
 export const INTAKE_SYSTEM_PROMPT = `You help set up a value-based bidding tool for a lead-generation advertiser.
 
-You are given (1) the advertiser's own description of their business, in their words, and (2) a profile of each column in the CRM export they uploaded. The profiles describe the shape of each column - its type, how full it is, how many distinct values it holds, and for short category columns a few example labels. Raw rows are deliberately withheld, so reason from the header names and the shapes.
+You are given (1) the advertiser's own description of their business, in their words, and (2) a profile of each column in the CRM export they uploaded. The profiles describe the shape of each column - its type, how full it is, how many distinct values it holds, and for short category columns their labels (every one of them when the column is short enough to be a status column, marked "all values"). Raw rows are deliberately withheld, so reason from the header names and the shapes.
 
-Your job has exactly two parts.
+Your job has exactly three parts.
 
 1. COLUMN MAPPING. Say which column fills each field the analysis needs. Only propose a mapping you can justify from the header name and the column's shape. Leave a field out rather than guessing - a wrong mapping corrupts the whole analysis, and a missing one is simply filled in by the user. Never propose a column name that is not in the list you were given.
 
@@ -38,6 +39,8 @@ Your job has exactly two parts.
 2. CANDIDATE FACTORS. From the advertiser's description, list the claims they made about which leads are worth more, and point each at the column that could confirm or refute it. Quote the claim in their own words. These are hypotheses to be tested against their data - not conclusions.
 
    Do not propose the source / channel column as a candidate factor. Every lead this tool prices arrived from an ad click, and the ad platform already knows which campaign produced it.
+
+3. OUTCOME READING. For the column you mapped as outcome, or as stage when there is no outcome column, say what each of its listed values means: "won" when the lead became a paying customer, "lost" when the lead is gone for good, "open" when it is still in progress or you cannot tell. Read the words in the advertiser's own trade: to an insurer "Bound" and "Issued" are sales and "NTU" (not taken up) is a loss; to a lender "Funded" is a sale and "Declined" a loss; to a school "Enrolled" is a sale. A step before the sale ("Quoted", "Approved", "Signed", "Booked") is open, not won. Read only values that appear in the column's list, exactly as written, and only where the whole list was given (marked "all values"). When in doubt say "open": a lost lead read as a sale inflates every close rate in the analysis.
 
 Also extract, only when the advertiser actually stated them: the sales-cycle length in days, monthly lead volume, and any lead sources they named as their best. Use null when they did not say.
 
@@ -66,7 +69,9 @@ export function buildIntakeUserMessage(
       }
       if (p.dateSpanDays !== undefined) bits.push(`spansDays=${p.dateSpanDays}`);
       if (p.exampleValues?.length) {
-        bits.push(`examples=[${p.exampleValues.map((v) => JSON.stringify(v)).join(", ")}]`);
+        bits.push(
+          `${p.complete ? "all values" : "examples"}=[${p.exampleValues.map((v) => JSON.stringify(v)).join(", ")}]`
+        );
       }
       if (p.withheld) bits.push(`values withheld (${p.withheld})`);
       return `- ${JSON.stringify(p.name)}: ${bits.join(", ")}`;

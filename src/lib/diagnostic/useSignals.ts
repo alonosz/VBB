@@ -35,7 +35,7 @@ export interface SignalColumns {
 }
 
 export function useSignalColumns(): SignalColumns {
-  const { audience, file, fields, intake, signalOverrides, outcomeOverrides } = useDiagnostic();
+  const { audience, file, fields, intake, signalOverrides, effectiveOutcomeOverrides: outcomeOverrides } = useDiagnostic();
 
   return useMemo(() => {
     const fromIntake =

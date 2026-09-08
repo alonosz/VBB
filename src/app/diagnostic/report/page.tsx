@@ -52,7 +52,7 @@ export default function ReportPage() {
   const router = useRouter();
   const {
     file, fields, currency, businessContext, stageTiming, intake,
-    statedCycleDays, statedSizeBands, restored, audience, outcomeOverrides, modelSource, setModelSource } = useDiagnostic();
+    statedCycleDays, statedSizeBands, restored, audience, effectiveOutcomeOverrides: outcomeOverrides, modelSource, setModelSource } = useDiagnostic();
   const signals = useSignalColumns();
 
   // A saved model is the difference between a diagnostic and a daily loop: it

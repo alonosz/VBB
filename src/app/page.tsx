@@ -37,6 +37,29 @@ const STAGES = [
   },
 ];
 
+/**
+ * Where the AI actually works, said plainly, and the one thing it never does.
+ *
+ * A visitor in 2026 has been sold "AI-powered" bidding by everyone. What
+ * earns trust is naming the jobs: reading a messy export, reading the file's
+ * own status words, and turning a belief into a test. And the boundary: the
+ * values come from the advertiser's rows, never from a model.
+ */
+const AI_JOBS = [
+  {
+    title: "Reads your export",
+    body: "Whatever your CRM calls its columns, it works out which is the create date, the outcome, the amount. You confirm, it does not guess.",
+  },
+  {
+    title: "Reads your status words",
+    body: "\u201cBound\u201d, \u201cNTU\u201d, \u201cFunded\u201d, \u201cEnrolled\u201d. It reads what a sale and a loss are called in your trade, so every close rate starts from the right rows.",
+  },
+  {
+    title: "Turns your beliefs into tests",
+    body: "\u201cSwitchers close more often.\u201d That becomes a hypothesis checked against your own deals, and the report says whether it held up.",
+  },
+];
+
 const NEEDED = [
   "A CSV of deals from your CRM - HubSpot, Salesforce, Pipedrive, Close, or a plain spreadsheet.",
   "Create dates and deal amounts in it. Close dates and email addresses make the analysis sharper.",
@@ -186,6 +209,29 @@ export default function Home() {
               </div>
             ))}
           </div>
+        </section>
+
+        {/* ---------------------------------------------------------------- */}
+        {/* Where AI does the work                                            */}
+        {/* ---------------------------------------------------------------- */}
+        <section className="page-wide pt-14">
+          <div className="flex flex-wrap items-baseline justify-between gap-3">
+            <h2 className="h2">Where AI does the work</h2>
+            <span className="text-[13px] text-[var(--muted)]">And the one thing it never does</span>
+          </div>
+          <div className="mt-5 grid gap-4 md:grid-cols-3">
+            {AI_JOBS.map((job) => (
+              <div key={job.title} className="card p-6">
+                <p className="text-[16px] font-bold">{job.title}</p>
+                <p className="mt-1.5 text-[14px] leading-relaxed text-[var(--muted)]">{job.body}</p>
+              </div>
+            ))}
+          </div>
+          <p className="mt-4 max-w-[72ch] text-[14px] leading-relaxed text-[var(--muted-strong)]">
+            It never sets a value. Every number Google receives is your own close rate
+            times your own deal size, per segment, and every rule that produced it is on
+            screen. AI reads; your data decides.
+          </p>
         </section>
 
         {/* ---------------------------------------------------------------- */}

@@ -70,10 +70,12 @@ export function useIngest(onLog?: (line: string) => void) {
       setIssues(issues);
       setStageTiming(stageTiming);
 
-      if (description) {
-        log("Reading your description against these columns…");
+      // With or without a description: the profiles alone carry the mapping
+      // and the file's own status words, and the description adds claims.
+      {
+        log(description ? "Reading your description against these columns…" : "Reading these columns…");
 
-        const pending = requestIntakeProposal({ businessContext: description, headers, rows, audience })
+        const pending = requestIntakeProposal({ businessContext: description ?? "", headers, rows, audience })
           .then((intake) => {
             setIntake(intake);
             if (intake.status === "ready") {

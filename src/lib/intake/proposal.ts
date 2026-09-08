@@ -1,4 +1,6 @@
 import type { FieldKey } from "@/lib/mapping/detect";
+import type { DealOutcome } from "@/lib/analysis/types";
+import { outcomeKey, type OutcomeOverrides } from "@/lib/mapping/outcomes";
 
 /**
  * The intake proposal: what the assistant suggests, before anything is
@@ -43,9 +45,23 @@ export interface CandidateFactor {
   userClaim: string;
 }
 
+/**
+ * What one status word in the file means, read in the advertiser's own
+ * vertical. "Bound" is a sale to an insurer, "NTU" a loss, "Issued" a sale
+ * and "Quoted" still open; the built-in list cannot know every trade's
+ * words, and a word it does not know reads as open, which prices nothing.
+ */
+export interface OutcomeReading {
+  column: string;
+  value: string;
+  outcome: DealOutcome;
+  why: string;
+}
+
 export interface IntakeProposal {
   columnMapping: MappingSuggestion[];
   candidateFactors: CandidateFactor[];
+  outcomeReadings: OutcomeReading[];
   statedCycleDaysMin: number | null;
   statedCycleDaysMax: number | null;
   /** The user's own phrasing, e.g. "2–3 months". */
@@ -58,6 +74,7 @@ export interface IntakeProposal {
 export const EMPTY_PROPOSAL: IntakeProposal = {
   columnMapping: [],
   candidateFactors: [],
+  outcomeReadings: [],
   statedCycleDaysMin: null,
   statedCycleDaysMax: null,
   statedCycleLabel: null,
@@ -81,6 +98,9 @@ export interface IntakeOutcome {
 
 const MAX_FACTORS = 6;
 const MAX_LEVELS = 12;
+/** Status columns are short. Past this, the readings are of something else. */
+const MAX_READINGS = 24;
+const OUTCOMES = new Set<string>(["won", "lost", "open"]);
 const MAX_TEXT = 240;
 const MAX_CYCLE_DAYS = 3650;
 const MAX_LEADS_PER_MONTH = 1_000_000;
@@ -105,7 +125,14 @@ function positive(v: unknown, max: number): number | null {
  */
 export function sanitizeProposal(
   raw: unknown,
-  headers: string[]
+  headers: string[],
+  /**
+   * The values each column was described with, where the whole list was
+   * sent. A reading of a value the file does not hold is a reading of
+   * nothing, and a reading of a column whose values were withheld cannot
+   * be checked, so both are dropped.
+   */
+  valuesByColumn: Record<string, string[]> = {}
 ): IntakeProposal {
   if (!raw || typeof raw !== "object") return EMPTY_PROPOSAL;
   const r = raw as Record<string, unknown>;
@@ -163,6 +190,32 @@ export function sanitizeProposal(
     }
   }
 
+  const outcomeReadings: OutcomeReading[] = [];
+  const seenReadings = new Set<string>();
+  if (Array.isArray(r.outcomeReadings)) {
+    for (const entry of r.outcomeReadings) {
+      if (outcomeReadings.length >= MAX_READINGS) break;
+      if (!entry || typeof entry !== "object") continue;
+      const e = entry as Record<string, unknown>;
+      const column = typeof e.column === "string" ? e.column.trim() : null;
+      const value = text(e.value, 60);
+      const outcome = typeof e.outcome === "string" ? e.outcome : null;
+      if (!column || !value || !outcome) continue;
+      if (!known.has(column) || !OUTCOMES.has(outcome)) continue;
+      const listed = valuesByColumn[column];
+      if (!listed || !listed.some((v) => outcomeKey(v) === outcomeKey(value))) continue;
+      const key = `${column}\u0000${outcomeKey(value)}`;
+      if (seenReadings.has(key)) continue;
+      seenReadings.add(key);
+      outcomeReadings.push({
+        column,
+        value,
+        outcome: outcome as DealOutcome,
+        why: text(e.why, 160) ?? "Read from your file",
+      });
+    }
+  }
+
   let cycleMin = positive(r.statedCycleDaysMin, MAX_CYCLE_DAYS);
   let cycleMax = positive(r.statedCycleDaysMax, MAX_CYCLE_DAYS);
   if (cycleMin !== null && cycleMax !== null && cycleMax < cycleMin) {
@@ -180,6 +233,7 @@ export function sanitizeProposal(
   return {
     columnMapping,
     candidateFactors,
+    outcomeReadings,
     statedCycleDaysMin: cycleMin,
     statedCycleDaysMax: cycleMax,
     statedCycleLabel: text(r.statedCycleLabel, 60),
@@ -192,4 +246,26 @@ export function sanitizeProposal(
           .slice(0, 8)
       : [],
   };
+}
+
+/**
+ * The assistant's readings of the column that decides the outcome, keyed
+ * the way overrides are.
+ *
+ * Only that column. A reading of some other column's "Closed" must not
+ * attach itself to the same word in the status column by coincidence, so
+ * anything read off a column that is not the deciding one is left where it
+ * is. A proposal saved before readings existed has none.
+ */
+export function proposedOutcomes(
+  proposal: IntakeProposal | null | undefined,
+  decidingColumn: string | null
+): OutcomeOverrides {
+  const out: OutcomeOverrides = {};
+  if (!proposal || !decidingColumn) return out;
+  for (const r of proposal.outcomeReadings ?? []) {
+    if (r.column !== decidingColumn) continue;
+    out[outcomeKey(r.value)] = r.outcome;
+  }
+  return out;
 }

@@ -214,7 +214,7 @@ const BID_STEPS = [
 
 export default function ConnectPage() {
   const router = useRouter();
-  const { file, fields, currency, businessContext, stageTiming, restored, audience, outcomeOverrides, modelSource } = useDiagnostic();
+  const { file, fields, currency, businessContext, stageTiming, restored, audience, effectiveOutcomeOverrides: outcomeOverrides, modelSource } = useDiagnostic();
 
   const [feed, setFeed] = useState<Published | null>(null);
   const [publishing, setPublishing] = useState(false);

@@ -2,9 +2,11 @@ import { describe, expect, it } from "vitest";
 import {
   MAX_LISTED,
   deriveOutcome,
+  effectiveOutcomeOverrides,
   outcomeKey,
   outcomeVocabulary,
   readOutcome,
+  ruleOutcome,
 } from "./outcomes";
 
 describe("the built-in reading", () => {
@@ -107,5 +109,60 @@ describe("the vocabulary shown on the mapping screen", () => {
     const v = outcomeVocabulary(many, "status", null)!;
     expect(v.values).toHaveLength(MAX_LISTED);
     expect(v.more).toBe(200 - MAX_LISTED);
+  });
+});
+
+/*
+ * The assistant reads the file's own status words in the advertiser's
+ * trade. Its reading fills what the built-in list does not know and never
+ * overrules a word the list does, the same way a confident column match
+ * holds against a proposal. The advertiser's own word wins over both.
+ */
+describe("the assistant's reading", () => {
+  it("is told apart from a word the list knows", () => {
+    expect(ruleOutcome("Closed Won")).toBe("won");
+    expect(ruleOutcome("NTU")).toBeNull();
+    expect(ruleOutcome("  ")).toBeNull();
+  });
+
+  it("fills a word the list does not know", () => {
+    const effective = effectiveOutcomeOverrides({}, { ntu: "lost", issued: "won" });
+    expect(effective).toEqual({ ntu: "lost", issued: "won" });
+    expect(readOutcome("NTU", undefined, effective)).toBe("lost");
+  });
+
+  it("never overrules a word the list knows", () => {
+    const effective = effectiveOutcomeOverrides({}, { cancelled: "won", quoted: "won" });
+    expect(effective).toEqual({ quoted: "won" });
+  });
+
+  it("loses to the advertiser's own word", () => {
+    expect(effectiveOutcomeOverrides({ ntu: "open" }, { ntu: "lost" })).toEqual({ ntu: "open" });
+  });
+
+  it("is shown on the mapping screen as its own voice, with a way back", () => {
+    const rows = [
+      ...Array(10).fill({ status: "NTU" }),
+      ...Array(5).fill({ status: "Cancelled" }),
+      ...Array(3).fill({ status: "Issued" }),
+    ];
+    const v = outcomeVocabulary(rows, "status", null, {}, { ntu: "lost", cancelled: "won", issued: "won" })!;
+    const ntu = v.values.find((x) => x.value === "NTU")!;
+    expect(ntu).toMatchObject({ read: "lost", rule: "open", auto: "lost", by: "assistant" });
+    expect(ntu.disagreement).toBeUndefined();
+
+    // The list knew "Cancelled" and disagreed: kept, and said so.
+    const cancelled = v.values.find((x) => x.value === "Cancelled")!;
+    expect(cancelled).toMatchObject({ read: "lost", rule: "lost", auto: "lost", by: "rule" });
+    expect(cancelled.disagreement).toMatch(/AI read this as a sale/);
+
+    expect(v.won).toBe(3);
+    expect(v.lost).toBe(15);
+  });
+
+  it("steps aside once the advertiser has spoken", () => {
+    const rows = Array(4).fill({ status: "NTU" });
+    const v = outcomeVocabulary(rows, "status", null, { ntu: "open" }, { ntu: "lost" })!;
+    expect(v.values[0]).toMatchObject({ read: "open", auto: "lost", by: "you" });
   });
 });

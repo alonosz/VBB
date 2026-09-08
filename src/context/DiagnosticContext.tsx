@@ -19,6 +19,8 @@ import type { DealOutcome } from "@/lib/analysis/types";
 import type { DetectedField, FileIssue, StageTimingColumn } from "@/lib/mapping/detect";
 import type { CurrencyPolicy } from "@/lib/mapping/toDeals";
 import type { IntakeResult } from "@/lib/intake/client";
+import { proposedOutcomes as proposedOutcomes_ } from "@/lib/intake/proposal";
+import { effectiveOutcomeOverrides as effectiveOutcomeOverrides_ } from "@/lib/mapping/outcomes";
 
 export interface UploadedFile {
   name: string;
@@ -49,6 +51,16 @@ interface DiagnosticState {
    */
   outcomeOverrides: OutcomeOverrides;
   setOutcomeOverride: (value: string, outcome: DealOutcome | null) => void;
+  /**
+   * The assistant's reading of the deciding column's values, keyed like the
+   * overrides. Shown on the mapping screen as its own voice.
+   */
+  proposedOutcomes: OutcomeOverrides;
+  /**
+   * The reading every screen prices on: the advertiser's word, then the
+   * built-in list, then the assistant where the list knows nothing.
+   */
+  effectiveOutcomeOverrides: OutcomeOverrides;
 
   /**
    * Saved model or fresh fit, as chosen on the report. Null until chosen.
@@ -148,6 +160,7 @@ export function DiagnosticProvider({ children }: { children: ReactNode }) {
       return next;
     });
   }, []);
+  const [intake, setIntake] = useState<IntakeResult | null>(snapshot?.intake ?? null);
   const [modelSource, setModelSource] = useState<"fresh" | "saved" | null>(
     snapshot?.modelSource ?? null
   );
@@ -162,6 +175,14 @@ export function DiagnosticProvider({ children }: { children: ReactNode }) {
     snapshot?.file && snapshot.file.rows.length > 0 ? snapshot.file : null
   );
   const [fields, setFields] = useState<DetectedField[]>(snapshot?.fields ?? []);
+  const proposedOutcomes = useMemo(() => {
+    const col = (key: string) => fields.find((f) => f.key === key)?.column ?? null;
+    return proposedOutcomes_(intake?.status === "ready" ? intake.proposal : null, col("outcome") ?? col("stage"));
+  }, [intake, fields]);
+  const effectiveOutcomeOverrides = useMemo(
+    () => effectiveOutcomeOverrides_(outcomeOverrides, proposedOutcomes),
+    [outcomeOverrides, proposedOutcomes]
+  );
   const [issues, setIssues] = useState<FileIssue[]>(snapshot?.issues ?? []);
   const [stageTiming, setStageTiming] = useState<StageTimingColumn[]>(
     snapshot?.stageTiming ?? []
@@ -169,7 +190,6 @@ export function DiagnosticProvider({ children }: { children: ReactNode }) {
   const [currency, setCurrency] = useState<CurrencyPolicy>(
     snapshot?.currency ?? DEFAULT_CURRENCY
   );
-  const [intake, setIntake] = useState<IntakeResult | null>(snapshot?.intake ?? null);
 
   const [needsFile, setNeedsFile] = useState(
     !!snapshot?.rowsDropped && !!snapshot?.file
@@ -227,6 +247,7 @@ export function DiagnosticProvider({ children }: { children: ReactNode }) {
       audience, setAudience,
       signalOverrides, setSignalOverride,
       outcomeOverrides, setOutcomeOverride,
+      proposedOutcomes, effectiveOutcomeOverrides,
       modelSource, setModelSource,
       businessContext, setBusinessContext,
       statedCycleDays, setStatedCycleDays,
@@ -240,7 +261,7 @@ export function DiagnosticProvider({ children }: { children: ReactNode }) {
       restored, needsFile,
       reset,
     }),
-    [audience, businessContext, statedCycleDays, statedSizeBands, signalOverrides, setSignalOverride, outcomeOverrides, setOutcomeOverride, modelSource, file, fields, issues, stageTiming, currency, intake, restored, needsFile, reset]
+    [audience, businessContext, statedCycleDays, statedSizeBands, signalOverrides, setSignalOverride, outcomeOverrides, setOutcomeOverride, proposedOutcomes, effectiveOutcomeOverrides, modelSource, file, fields, issues, stageTiming, currency, intake, restored, needsFile, reset]
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

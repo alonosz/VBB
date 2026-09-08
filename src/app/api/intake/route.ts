@@ -7,14 +7,17 @@ import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { z } from "zod";
 import { INTAKE_SYSTEM_PROMPT, buildIntakeUserMessage } from "@/lib/intake/prompt";
 import { EMPTY_PROPOSAL, FIELD_KEYS, sanitizeProposal } from "@/lib/intake/proposal";
-import type { ColumnProfile } from "@/lib/intake/profile";
+import { completeValuesByColumn, type ColumnProfile } from "@/lib/intake/profile";
 
 /**
  * One assisted-intake call per upload.
  *
- * It proposes a column mapping and writes down the advertiser's claims. It
- * never returns a value, and nothing it returns is used without passing
- * through sanitizeProposal first. Every failure path returns 200 with a
+ * It proposes a column mapping, reads what the file's own status words mean,
+ * and writes down the advertiser's claims. It runs with or without a
+ * description: the column profiles alone carry the mapping and the status
+ * words, and the description only adds the claims. It never returns a value,
+ * and nothing it returns is used without passing through sanitizeProposal
+ * first. Every failure path returns 200 with a
  * reason: the diagnostic runs on header heuristics alone, so an outage here
  * must never stop someone from getting their report.
  */
@@ -52,6 +55,16 @@ const ProposalSchema = z.object({
       })
     )
     .describe("Claims the advertiser made about which leads are worth more."),
+  outcomeReadings: z
+    .array(
+      z.object({
+        column: z.string(),
+        value: z.string(),
+        outcome: z.enum(["won", "lost", "open"]),
+        why: z.string(),
+      })
+    )
+    .describe("What each listed value of the outcome (or stage) column means. Only values from the list."),
   statedCycleDaysMin: z.number().nullable(),
   statedCycleDaysMax: z.number().nullable(),
   statedCycleLabel: z.string().nullable().describe("Their own phrasing, e.g. '2-3 months'."),
@@ -125,9 +138,6 @@ export async function POST(request: Request) {
     : [];
 
   if (columns.length === 0) return fail("No columns were sent.", 400);
-  if (!businessContext.trim()) {
-    return fail("You skipped the description, so there was nothing to match columns against.");
-  }
 
   const headers = columns.map((c) => c.name).filter((n): n is string => typeof n === "string");
   // Anything but the one other value is businesses, which is what it always was.
@@ -156,7 +166,7 @@ export async function POST(request: Request) {
     return NextResponse.json({
       ok: true,
       reason: null,
-      proposal: sanitizeProposal(response.parsed_output, headers),
+      proposal: sanitizeProposal(response.parsed_output, headers, completeValuesByColumn(columns)),
       model: response.model,
       // The one moment a minted key exists outside a hash. The browser has
       // to keep it now or the workspace is unreachable.

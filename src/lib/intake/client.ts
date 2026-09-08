@@ -1,5 +1,5 @@
 import type { Audience } from "@/lib/analysis/types";
-import { profileColumns, type ColumnProfile } from "./profile";
+import { completeValuesByColumn, profileColumns, type ColumnProfile } from "./profile";
 import { readWorkspaceKey, rememberWorkspaceKey } from "@/lib/workspace/clientKey";
 import {
   EMPTY_PROPOSAL,
@@ -40,13 +40,11 @@ export interface IntakeResult extends IntakeOutcome {
 export async function requestIntakeProposal(req: IntakeRequest): Promise<IntakeResult> {
   const sent = profileColumns(req.headers, req.rows);
 
-  if (!req.businessContext.trim()) {
-    return {
-      status: "skipped",
-      proposal: EMPTY_PROPOSAL,
-      reason: "You skipped the description, so we matched columns by name only.",
-      sent,
-    };
+  // A file with no columns to read has nothing to ask about. A missing
+  // description is not that: the profiles alone carry the mapping and the
+  // status words, and the description only adds claims to test.
+  if (sent.length === 0) {
+    return { status: "skipped", proposal: EMPTY_PROPOSAL, reason: "The file has no columns to read.", sent };
   }
 
   const controller = new AbortController();
@@ -90,7 +88,7 @@ export async function requestIntakeProposal(req: IntakeRequest): Promise<IntakeR
     // no un-checked model output can reach the mapping screen.
     return {
       status: "ready",
-      proposal: sanitizeProposal(d.proposal, req.headers),
+      proposal: sanitizeProposal(d.proposal, req.headers, completeValuesByColumn(sent)),
       reason: null,
       sent,
     };

@@ -50,6 +50,47 @@ export function outcomeKey(value: string): string {
 }
 
 /**
+ * What the built-in list says about one value, or null when it says nothing.
+ *
+ * Distinct from `deriveOutcome`, which folds "nothing" into "open": the
+ * difference matters when a second reader is in the room. A word the list
+ * knows is kept against the assistant; a word it does not know is where the
+ * assistant is allowed to fill in.
+ */
+export function ruleOutcome(value: string): DealOutcome | null {
+  if (!value.trim()) return null;
+  if (LOST_PATTERNS.test(value)) return "lost";
+  if (WON_PATTERNS.test(value)) return "won";
+  return null;
+}
+
+/**
+ * The reading in force, with two readers and the advertiser above both.
+ *
+ * The assistant reads the file's own status words in the advertiser's
+ * vertical ("NTU" is not taken up, "Issued" is a policy in force) and
+ * proposes what each means. Its reading fills the gaps the built-in list
+ * leaves and never overrules a word the list knows: the same rule the
+ * column mapping follows, where a confident heuristic holds against a
+ * proposal and the disagreement is shown rather than settled in silence.
+ * The advertiser's own word wins over both.
+ */
+export function effectiveOutcomeOverrides(
+  user: OutcomeOverrides,
+  proposed: OutcomeOverrides = {}
+): OutcomeOverrides {
+  const out: OutcomeOverrides = {};
+  for (const [key, outcome] of Object.entries(proposed)) {
+    if (key in user) continue;
+    if (ruleOutcome(key) !== null) continue;
+    // "Open" is what an unknown word reads as anyway: nothing to apply.
+    if (outcome === "open") continue;
+    out[key] = outcome;
+  }
+  return { ...out, ...user };
+}
+
+/**
  * Derives outcome from an explicit outcome column when present, otherwise
  * from the stage name. Anything unrecognized is "open" rather than a guess in
  * either direction.
@@ -91,8 +132,15 @@ export interface OutcomeValue {
   read: DealOutcome;
   /** What the built-in list says, so a correction can be undone. */
   rule: DealOutcome;
-  /** Whether the reading came from the built-in list or the advertiser. */
-  by: "rule" | "you";
+  /** The reading with the advertiser's word removed: the list's, or the assistant's. */
+  auto: DealOutcome;
+  /** Who the reading in force came from. */
+  by: "rule" | "you" | "assistant";
+  /**
+   * Set when the assistant read a word the built-in list already knew, and
+   * differently. The list was kept; the advertiser decides.
+   */
+  disagreement?: string;
 }
 
 export interface OutcomeVocabulary {
@@ -109,6 +157,8 @@ export interface OutcomeVocabulary {
 /** Values listed on the mapping screen. Past this it is not a status column. */
 export const MAX_LISTED = 24;
 
+const WORD: Record<DealOutcome, string> = { won: "a sale", lost: "lost", open: "still open" };
+
 /**
  * Every value in the deciding column with how it is read, most common
  * first, for the mapping screen to show and the advertiser to correct.
@@ -120,7 +170,8 @@ export function outcomeVocabulary(
   rows: Record<string, string>[],
   outcomeColumn: string | null,
   stageColumn: string | null,
-  overrides: OutcomeOverrides = {}
+  overrides: OutcomeOverrides = {},
+  proposed: OutcomeOverrides = {}
 ): OutcomeVocabulary | null {
   const column = outcomeColumn ?? stageColumn;
   if (!column) return null;
@@ -137,10 +188,21 @@ export function outcomeVocabulary(
 
   const all = [...counts.entries()]
     .sort((a, b) => b[1].count - a[1].count)
-    .map(([key, { value, count }]) => {
+    .map(([key, { value, count }]): OutcomeValue => {
       const set = overrides[key];
-      const rule = outcomeColumn ? deriveOutcome(value, undefined) : deriveOutcome(undefined, value);
-      return { value, count, read: set ?? rule, rule, by: set ? ("you" as const) : ("rule" as const) };
+      const known = ruleOutcome(value);
+      const rule = known ?? "open";
+      const assistant = proposed[key];
+      const auto = known ?? assistant ?? "open";
+      // The assistant's voice is shown only where it changed the reading. An
+      // unknown word it also calls open is the list's reading either way.
+      const by = set ? "you" : known === null && assistant && assistant !== "open" ? "assistant" : "rule";
+      const entry: OutcomeValue = { value, count, read: set ?? auto, rule, auto, by };
+      if (known !== null && assistant && assistant !== known) {
+        entry.disagreement =
+          `AI read this as ${WORD[assistant]} from your file. We kept ${WORD[known]} because the word is on our list - change it if we got it wrong.`;
+      }
+      return entry;
     });
 
   const values = all.slice(0, MAX_LISTED);
