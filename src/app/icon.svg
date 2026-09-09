@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <!-- The ValueBasedBidding mark, centred in a square. Colours are the brand
+       tokens written out, because an icon cannot read CSS variables. -->
+  <defs>
+    <linearGradient id="g" x1="27" y1="4" x2="6" y2="46" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#4340e8"/>
+      <stop offset="1" stop-color="#2733c4"/>
+    </linearGradient>
+  </defs>
+  <g transform="translate(13.5 2) scale(1.25)">
+    <path d="M13 12.5H8.6A6.6 6.6 0 0 0 2 19.1v13.3a6.6 6.6 0 0 0 6.6 6.6H13V12.5Z" fill="#7d5bea"/>
+    <path d="M27 9.5C27 6.46 24.54 4 21.5 4h-3C15.46 4 13 6.46 13 9.5V30.6C13 38.4 9.3 43.4 4.6 47h3.8C18.7 47 27 38.7 27 28.4V9.5Z" fill="url(#g)"/>
+  </g>
+</svg>
