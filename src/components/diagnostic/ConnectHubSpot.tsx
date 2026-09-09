@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ArrowIcon } from "@/components/ArrowIcon";
 import { forgetWorkspaceKey, readWorkspaceKey, rememberWorkspaceKey } from "@/lib/workspace/clientKey";
 import { readContactEmail } from "@/lib/leads/contactEmail";
-import { ConnectIdentity } from "@/components/leads/ConnectIdentity";
+import { AccountGate } from "@/components/workspace/AccountGate";
 
 /**
  * The way in that cannot be got wrong.
@@ -62,7 +62,7 @@ export function ConnectHubSpot({
   const [phase, setPhase] = useState<"idle" | "connecting" | "importing" | "saving">("idle");
   const [error, setError] = useState<string | null>(null);
   const [tokenInput, setTokenInput] = useState("");
-  const [contactEmail, setContactEmail] = useState<string | null>(() =>
+  const [contactEmail] = useState<string | null>(() =>
     typeof window === "undefined" ? null : readContactEmail()
   );
   const started = useRef(false);
@@ -291,7 +291,7 @@ export function ConnectHubSpot({
         </a>
       </p>
 
-      <ConnectIdentity email={contactEmail} onChange={setContactEmail} />
+      <AccountGate email={contactEmail} next="/diagnostic/upload" what="HubSpot" />
 
       <button
         type="button"

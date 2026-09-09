@@ -353,14 +353,16 @@ multi-tenancy (though schemas carry `client_id` for later).
 visitor at the first server call (`authorizeOrCreateWorkspace()` - the intake
 suggestion, a connection, or a publish) and the key goes into that browser
 and nowhere on screen. A presented key that does not work is refused, never
-replaced: that is a returning customer with a problem, not a stranger. An
-email address is asked for once, at the moment a credential is handed over
-(`ConnectIdentity`, in front of the HubSpot and Google Ads connect buttons),
-and attached to the workspace (`attachContactEmail()`); the send step asks
-for it too. It is how the operator tells self-serve workspaces apart and how
-the advertiser is let back in from another device. It is never asked of
-somebody who only uploads a file, because the file never leaves their
-browser. There are no accounts and no passwords.
+replaced: that is a returning customer with a problem, not a stranger. The
+signup (`/signup`, `completeSignup()`) is a name and a work email on the
+workspace this browser holds, or on a new one, and no password. It is asked
+for once, on its own page, at the first moment something needs an owner: the
+`AccountGate` in front of the HubSpot and Google Ads connect buttons sends
+them there and brings them back. The address rides along on every connect
+request (`attachContactEmail()`). It is how the operator tells self-serve
+workspaces apart and how the advertiser is let back in from another device.
+It is never asked of somebody who only uploads a file, because the file
+never leaves their browser. There are no passwords.
 
 **Server-side storage**: the feed tables only (`supabase/README.md`). Hashed
 identifiers, timestamps, values, currency, model id. Never CRM records, names,

@@ -6,6 +6,7 @@ import { useDiagnostic } from "@/context/DiagnosticContext";
 import { Stepper } from "@/components/diagnostic/Stepper";
 import { Alert, PageHead } from "@/components/ui";
 import { EmailCapture } from "@/components/leads/EmailCapture";
+import { readContactEmail } from "@/lib/leads/contactEmail";
 import { VolumeFloorPanel } from "@/components/report/volumeFloor";
 import { DidItWorkPanel } from "@/components/report/didItWork";
 import { ConnectGoogleAds } from "@/components/diagnostic/ConnectGoogleAds";
@@ -274,6 +275,9 @@ export default function ConnectPage() {
   // Fixed for the life of the screen, so re-rendering cannot hand two halves
   // of the same publish two different model ids.
   const [freshModelId] = useState(() => `fresh-${new Date().toISOString().slice(0, 10)}`);
+  // Somebody who signed up has already left an address. Asking twice reads
+  // as not having listened the first time.
+  const [signedUp] = useState(() => typeof window !== "undefined" && !!readContactEmail());
 
   /*
    * The same choice the report made, for the same reasons. This screen used
@@ -956,6 +960,7 @@ export default function ConnectPage() {
           screens of "your data stays in your browser" it is the thing they will
           wonder about.
         */}
+        {!signedUp && (
         <section className="well mt-4 p-5">
           <EmailCapture
             source="flow"
@@ -965,6 +970,7 @@ export default function ConnectPage() {
             cta="Send me the link"
           />
         </section>
+        )}
 
         <div className="mt-8 flex flex-wrap items-center justify-between gap-4 border-t border-[var(--border)] pt-6">
           <p className="max-w-[56ch] text-[13px] text-[var(--muted)]">

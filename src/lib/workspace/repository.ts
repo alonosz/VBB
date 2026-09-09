@@ -94,6 +94,8 @@ export interface WorkspaceRepository {
   setSwitchedAt(id: string, at: Date | null): Promise<void>;
   /** The address the advertiser left, replacing any earlier one. */
   setContactEmail(id: string, email: string): Promise<void>;
+  /** What the workspace is called, once its owner has said. */
+  setName(id: string, name: string): Promise<void>;
   /**
    * How many workspaces this caller has minted since `since`.
    *
@@ -188,6 +190,11 @@ export class SupabaseWorkspaceRepository implements WorkspaceRepository {
     if (error) throw new Error(error.message);
   }
 
+  async setName(id: string, name: string): Promise<void> {
+    const { error } = await this.client.from("workspaces").update({ name }).eq("id", id);
+    if (error) throw new Error(error.message);
+  }
+
   async countCreatedSince(ipHash: string | null, since: Date): Promise<number> {
     if (!ipHash) return 0;
 
@@ -259,6 +266,11 @@ export class InMemoryWorkspaceRepository implements WorkspaceRepository {
   async setContactEmail(id: string, email: string): Promise<void> {
     const row = this.rows.get(id);
     if (row) row.contactEmail = email;
+  }
+
+  async setName(id: string, name: string): Promise<void> {
+    const row = this.rows.get(id);
+    if (row) row.name = name;
   }
 
   async rotateKey(id: string, keyHash: string, keyPrefix: string): Promise<void> {
