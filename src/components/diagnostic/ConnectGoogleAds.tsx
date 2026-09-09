@@ -151,6 +151,12 @@ export function ConnectGoogleAds({
    */
   const loadAccounts = useCallback(async () => {
     setError(null);
+    // A browser with no key has no connection to list. The handshake is the
+    // first thing to do, and it is where a workspace is made.
+    if (!readWorkspaceKey()) {
+      await beginOAuth();
+      return;
+    }
     setPhase("listing");
     try {
       const res = await fetch("/api/ads/google/accounts", {
@@ -167,7 +173,11 @@ export function ConnectGoogleAds({
         return;
       }
       if (!res.ok || !data.ok) {
-        setError(data.error ?? "We couldn't read your Google Ads accounts.");
+        setError(
+          res.status === 401
+            ? "This browser's access no longer works. Open the link we sent you to get back into your workspace."
+            : data.error ?? "We couldn't read your Google Ads accounts."
+        );
         setPhase("idle");
         return;
       }

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ArrowIcon } from "@/components/ArrowIcon";
-import { readWorkspaceKey, rememberWorkspaceKey } from "@/lib/workspace/clientKey";
+import { forgetWorkspaceKey, readWorkspaceKey, rememberWorkspaceKey } from "@/lib/workspace/clientKey";
 import { readContactEmail } from "@/lib/leads/contactEmail";
 import { ConnectIdentity } from "@/components/leads/ConnectIdentity";
 
@@ -44,6 +44,13 @@ export interface ImportedRows {
   currencies: { code: string; count: number }[];
 }
 
+/**
+ * Said once, the same way everywhere a dead key is met. Never "find your
+ * key": nobody was ever given one to find.
+ */
+const REFUSED =
+  "This browser's access no longer works. Open the link we sent you, or start fresh here and we will set up a new workspace.";
+
 export function ConnectHubSpot({
   onImported,
   busy,
@@ -54,7 +61,6 @@ export function ConnectHubSpot({
 }) {
   const [phase, setPhase] = useState<"idle" | "connecting" | "importing" | "saving">("idle");
   const [error, setError] = useState<string | null>(null);
-  const [keyInput, setKeyInput] = useState("");
   const [tokenInput, setTokenInput] = useState("");
   const [contactEmail, setContactEmail] = useState<string | null>(() =>
     typeof window === "undefined" ? null : readContactEmail()
@@ -77,9 +83,12 @@ export function ConnectHubSpot({
       return false;
     }
   });
-  const [needsKey, setNeedsKey] = useState(
-    () => resuming && typeof window !== "undefined" && !readWorkspaceKey()
-  );
+  /*
+   * The browser holds a key that no longer works. Not a stranger, and not
+   * somebody to hand a second empty workspace to: a returning customer with
+   * a problem, told so, with the one thing they can do about it.
+   */
+  const [refused, setRefused] = useState(false);
 
   /**
    * Keep a key the server just minted for us.
@@ -104,8 +113,8 @@ export function ConnectHubSpot({
       });
       const data = await res.json();
       if (!res.ok || !data.ok) {
-        setError(data.error ?? "We couldn't start the connection.");
-        setNeedsKey(res.status === 401);
+        setError(res.status === 401 ? REFUSED : data.error ?? "We couldn't start the connection.");
+        setRefused(res.status === 401);
         setPhase("idle");
         return;
       }
@@ -128,6 +137,12 @@ export function ConnectHubSpot({
   const importDeals = useCallback(
     async (workspaceKey: string) => {
       setError(null);
+      // A browser with no key has no connection to read from. The handshake
+      // is the first thing to do, and it is where a workspace is made.
+      if (!workspaceKey) {
+        await beginOAuth("");
+        return;
+      }
       setPhase("importing");
       try {
         const res = await fetch("/api/crm/hubspot/deals", {
@@ -144,8 +159,8 @@ export function ConnectHubSpot({
           return;
         }
         if (!res.ok || !data.ok) {
-          setError(data.error ?? "We couldn't read your leads.");
-          setNeedsKey(res.status === 401);
+          setError(res.status === 401 ? REFUSED : data.error ?? "We couldn't read your leads.");
+          setRefused(res.status === 401);
           setPhase("idle");
           return;
         }
@@ -213,8 +228,8 @@ export function ConnectHubSpot({
       });
       const data = await res.json();
       if (!res.ok || !data.ok) {
-        setError(data.error ?? "That token was refused.");
-        setNeedsKey(res.status === 401);
+        setError(res.status === 401 ? REFUSED : data.error ?? "That token was refused.");
+        setRefused(res.status === 401);
         setPhase("idle");
         return;
       }
@@ -229,22 +244,20 @@ export function ConnectHubSpot({
   }
 
   /**
-   * Whichever button they pressed, it needs a workspace key first.
-   *
-   * Saying so matters more than it looks. Revealing the field is a useful
-   * answer the first time and no answer at all the second: the field is
-   * already on screen, so the click does nothing visible and the button reads
-   * as broken. That is exactly how it was reported.
+   * Whichever button they pressed, it runs with the key this browser holds,
+   * or with none. Empty is a valid request: the server mints a workspace and
+   * hands the key back, and the visitor is never shown a credential.
    */
   function withKey(run: (key: string) => void) {
-    const key = (keyInput.trim() || readWorkspaceKey() || "").trim();
-    if (keyInput.trim()) rememberWorkspaceKey(keyInput.trim());
     setError(null);
-    // Empty is a valid request now: the server mints a workspace and hands the
-    // key back, and the visitor is never shown a credential. The field below
-    // stays for the other case - somebody who has a key and is on a new
-    // machine, who must not be given a second empty workspace instead.
-    run(key);
+    run((readWorkspaceKey() ?? "").trim());
+  }
+
+  /** The one thing a refused browser can do: forget the dead key and begin again. */
+  function startFresh() {
+    forgetWorkspaceKey();
+    setRefused(false);
+    setError(null);
   }
 
   function onClick() {
@@ -270,26 +283,6 @@ export function ConnectHubSpot({
         your CRM is changed, and no CRM record is stored on our side.
       </p>
 
-      {needsKey && (
-        <div className="mt-3">
-          <label htmlFor="ws-key" className="label block">
-            Your workspace key
-          </label>
-          <p className="mt-1 max-w-[58ch] text-[12.5px] text-[var(--muted)]">
-            It starts <span className="mono">vbb_ws_</span>. You only need this if
-            you already have a workspace and are on a new machine. Leave it empty
-            and we will set one up for you.
-          </p>
-          <input
-            id="ws-key"
-            value={keyInput}
-            onChange={(e) => setKeyInput(e.target.value)}
-            placeholder="vbb_ws_…"
-            className="input mono mt-2 w-full max-w-[26rem] text-[13px]"
-          />
-        </div>
-      )}
-
       <ConnectIdentity email={contactEmail} onChange={setContactEmail} />
 
       <button
@@ -310,8 +303,20 @@ export function ConnectHubSpot({
       )}
 
       {error && (
-        <p role="alert" className="mt-2.5 max-w-[62ch] text-[13px] text-[var(--danger)]">
+        <p role="alert" className="mt-2.5 max-w-[64ch] text-[13px] text-[var(--danger)]">
           {error}
+          {refused && (
+            <>
+              {" "}
+              <button
+                type="button"
+                onClick={startFresh}
+                className="font-semibold underline underline-offset-[3px]"
+              >
+                Start fresh in this browser
+              </button>
+            </>
+          )}
         </p>
       )}
 
