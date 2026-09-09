@@ -109,6 +109,7 @@ export async function POST(request: Request) {
   return NextResponse.json({
     ok: true,
     workspaceName: workspace.name,
+    contactEmail: workspace.contactEmail ?? null,
     returning,
     // The one time this value exists outside the customer's browser.
     key: generated.key,

@@ -77,6 +77,8 @@ export interface WorkspaceRepository {
   create(workspace: NewWorkspace): Promise<Workspace>;
   findByKey(key: string): Promise<Workspace | null>;
   findById(id: string): Promise<Workspace | null>;
+  /** The newest workspace carrying this address, for signing in by it. */
+  findByContactEmail(email: string): Promise<Workspace | null>;
   /** Operator-only, used by the console script rather than any route. */
   list(): Promise<Workspace[]>;
   suspend(id: string): Promise<void>;
@@ -131,6 +133,19 @@ export class SupabaseWorkspaceRepository implements WorkspaceRepository {
       .from("workspaces")
       .select(COLUMNS)
       .eq("key_hash", await hashWorkspaceKey(key))
+      .maybeSingle();
+
+    if (error) throw new Error(error.message);
+    return data ? toWorkspace(data as WorkspaceDto) : null;
+  }
+
+  async findByContactEmail(email: string): Promise<Workspace | null> {
+    const { data, error } = await this.client
+      .from("workspaces")
+      .select(COLUMNS)
+      .eq("contact_email", email)
+      .order("created_at", { ascending: false })
+      .limit(1)
       .maybeSingle();
 
     if (error) throw new Error(error.message);
@@ -242,6 +257,13 @@ export class InMemoryWorkspaceRepository implements WorkspaceRepository {
     const hash = await hashWorkspaceKey(key);
     const found = [...this.rows.values()].find((w) => w.keyHash === hash);
     return found ? { ...found } : null;
+  }
+
+  async findByContactEmail(email: string): Promise<Workspace | null> {
+    const matches = [...this.rows.values()]
+      .filter((r) => r.contactEmail === email)
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+    return matches[0] ? { ...matches[0] } : null;
   }
 
   async findById(id: string): Promise<Workspace | null> {

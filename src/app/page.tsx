@@ -3,6 +3,7 @@ import { ArrowIcon } from "@/components/ArrowIcon";
 import { Logo } from "@/components/brand/Logo";
 import { SiteFooter } from "@/components/legal/SiteFooter";
 import { WorkspaceReadyBar } from "@/components/workspace/WorkspaceReadyBar";
+import { LoginLink } from "@/components/workspace/LoginLink";
 
 /**
  * What this is, before anyone is asked to do anything.
@@ -84,9 +85,12 @@ export default function Home() {
     <div className="animate-page-in flex min-h-screen flex-col">
       <header className="page-wide flex items-center justify-between gap-4 py-5">
         <Logo size={34} showDotCom />
-        <Link href="/diagnostic" className="btn btn-secondary btn-sm">
-          Start
-        </Link>
+        <div className="flex items-center gap-4">
+          <LoginLink className="text-[13.5px] font-semibold text-[var(--muted)] hover:text-[var(--foreground)]" />
+          <Link href="/diagnostic" className="btn btn-secondary btn-sm">
+            Start
+          </Link>
+        </div>
       </header>
 
       {/*

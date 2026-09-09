@@ -112,6 +112,12 @@ HUBSPOT_CLIENT_ID              only for OAuth; private app tokens need neither
 HUBSPOT_CLIENT_SECRET
 ```
 
+Sign-in with Google reuses `GOOGLE_ADS_CLIENT_ID` and `GOOGLE_ADS_CLIENT_SECRET`.
+The OAuth client in Google Cloud needs one more authorised redirect URI beside
+the Ads one: `https://<your domain>/api/auth/google/callback`. Without it Google
+refuses the sign-in with "redirect_uri_mismatch" and the visitor lands back on
+the signup page with that reason.
+
 For the two you make yourself, use a password generator set to 40 characters.
 Anything 24 characters or longer is accepted. A developer can instead run:
 

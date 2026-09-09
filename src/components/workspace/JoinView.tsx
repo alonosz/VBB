@@ -7,6 +7,8 @@ import { ArrowIcon } from "@/components/ArrowIcon";
 import { Logo } from "@/components/brand/Logo";
 import { Alert } from "@/components/ui";
 import { rememberWorkspaceKey, rememberWorkspaceName } from "@/lib/workspace/clientKey";
+import { rememberContactEmail } from "@/lib/leads/contactEmail";
+import { safeNext } from "@/lib/workspace/signup";
 
 /**
  * Setting a customer up without asking them to handle a credential.
@@ -40,6 +42,7 @@ export function JoinView() {
   const router = useRouter();
   const params = useSearchParams();
   const token = params.get("t");
+  const next = params.get("next") ? safeNext(params.get("next")) : null;
 
   // A missing token is knowable at render, so it is the initial state rather
   // than something an effect sets - setting state synchronously inside an
@@ -78,18 +81,25 @@ export function JoinView() {
 
       rememberWorkspaceKey(data.key as string);
       rememberWorkspaceName(data.workspaceName as string);
+      if (typeof data.contactEmail === "string" && data.contactEmail) {
+        rememberContactEmail(data.contactEmail);
+      }
       /*
        * replace, not push. Back from the front page should reach wherever they
        * came from, not a spent invite that can only fail.
+       *
+       * A sign-in says where it started from; an invite does not, and goes
+       * to the overview for somebody returning or the front page for
+       * somebody new.
        */
-      router.replace(data.returning === true ? "/workspace" : "/");
+      router.replace(next ?? (data.returning === true ? "/workspace" : "/"));
     } catch {
       setState({
         phase: "failed",
         error: "We couldn't reach the server. Check your connection and open the link again.",
       });
     }
-  }, [router]);
+  }, [router, next]);
 
   useEffect(() => {
     if (!token || attempted.current) return;

@@ -345,9 +345,18 @@ contacts falls back to deals alone rather than to nothing.
 
 # Scope guardrails
 
-Not in scope unless explicitly requested: user accounts/auth, billing,
-live Google Ads / Meta API calls, CRM OAuth beyond a named phase,
-multi-tenancy (though schemas carry `client_id` for later).
+Not in scope unless explicitly requested: passwords, billing, Meta API
+calls, multi-tenancy (though schemas carry `client_id` for later).
+
+**Sign-in is Google, or an address; never a password.** "Sign up with
+Google" (`src/lib/auth/google.ts`, `/api/auth/google/start` and
+`/callback`) uses the Ads OAuth client with the identity scopes only, finds
+the workspace by its verified address or makes one, and hands the browser a
+ten-minute one-time link that the join page spends for a fresh key, exactly
+as an invite does. Signing in again from any device is the same button,
+which is what lets a workspace outlive the browser it started in. The
+email path stays for anyone who would rather not, and becomes a one-time
+link by email when a sending service exists.
 
 **Nobody is ever asked for a workspace key.** A workspace is minted for a new
 visitor at the first server call (`authorizeOrCreateWorkspace()` - the intake

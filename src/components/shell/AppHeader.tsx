@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { Logo, LogoMark } from "@/components/brand/Logo";
+import { LoginLink } from "@/components/workspace/LoginLink";
 
 /**
  * The bar every screen sits under.
@@ -49,6 +50,7 @@ export function AppHeader({
         {!center && <div className="flex-1" />}
 
         <div className="flex shrink-0 items-center gap-2">
+          <LoginLink className="hidden text-[13px] font-semibold text-[var(--muted)] hover:text-[var(--foreground)] sm:inline" />
           {right}
           <span
             className="mono hidden text-[10px] tracking-wide text-[var(--muted)] sm:inline"
