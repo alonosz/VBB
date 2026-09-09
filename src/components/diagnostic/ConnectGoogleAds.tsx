@@ -4,6 +4,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { ArrowIcon } from "@/components/ArrowIcon";
 import { readWorkspaceKey, rememberWorkspaceKey } from "@/lib/workspace/clientKey";
+import { readContactEmail } from "@/lib/leads/contactEmail";
+import { ConnectIdentity } from "@/components/leads/ConnectIdentity";
 import type { AdsAccount } from "@/lib/sync/google/accounts";
 import type { StrategyAudit } from "@/lib/sync/google/campaigns";
 import type { AccountReadiness } from "@/lib/sync/google/readiness";
@@ -74,6 +76,9 @@ export function ConnectGoogleAds({
   disabled?: boolean;
 }) {
   const [phase, setPhase] = useState<Phase>("idle");
+  const [contactEmail, setContactEmail] = useState<string | null>(() =>
+    typeof window === "undefined" ? null : readContactEmail()
+  );
 
   /*
    * What the callback said, read before the first render rather than set from
@@ -119,7 +124,7 @@ export function ConnectGoogleAds({
       const res = await fetch("/api/ads/google/connect", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ workspaceKey: readWorkspaceKey() }),
+        body: JSON.stringify({ workspaceKey: readWorkspaceKey(), contactEmail: readContactEmail() }),
       });
       const data = await res.json();
       if (!res.ok || !data.ok) {
@@ -348,11 +353,13 @@ export function ConnectGoogleAds({
         </p>
       )}
 
+      {!accounts && <ConnectIdentity email={contactEmail} onChange={setContactEmail} />}
+
       {!accounts && (
         <button
           type="button"
           onClick={() => void loadAccounts()}
-          disabled={working || disabled}
+          disabled={working || disabled || !contactEmail}
           className="btn btn-primary mt-3.5 text-[13.5px]"
         >
           {phase === "connecting"

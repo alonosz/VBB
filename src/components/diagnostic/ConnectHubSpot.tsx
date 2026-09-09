@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ArrowIcon } from "@/components/ArrowIcon";
 import { readWorkspaceKey, rememberWorkspaceKey } from "@/lib/workspace/clientKey";
+import { readContactEmail } from "@/lib/leads/contactEmail";
+import { ConnectIdentity } from "@/components/leads/ConnectIdentity";
 
 /**
  * The way in that cannot be got wrong.
@@ -54,6 +56,9 @@ export function ConnectHubSpot({
   const [error, setError] = useState<string | null>(null);
   const [keyInput, setKeyInput] = useState("");
   const [tokenInput, setTokenInput] = useState("");
+  const [contactEmail, setContactEmail] = useState<string | null>(() =>
+    typeof window === "undefined" ? null : readContactEmail()
+  );
   const started = useRef(false);
 
   /*
@@ -95,7 +100,7 @@ export function ConnectHubSpot({
       const res = await fetch("/api/crm/hubspot/connect", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ workspaceKey }),
+        body: JSON.stringify({ workspaceKey, contactEmail: readContactEmail() }),
       });
       const data = await res.json();
       if (!res.ok || !data.ok) {
@@ -204,7 +209,7 @@ export function ConnectHubSpot({
       const res = await fetch("/api/crm/hubspot/token", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ workspaceKey, token: tokenInput.trim() }),
+        body: JSON.stringify({ workspaceKey, token: tokenInput.trim(), contactEmail: readContactEmail() }),
       });
       const data = await res.json();
       if (!res.ok || !data.ok) {
@@ -285,10 +290,12 @@ export function ConnectHubSpot({
         </div>
       )}
 
+      <ConnectIdentity email={contactEmail} onChange={setContactEmail} />
+
       <button
         type="button"
         onClick={onClick}
-        disabled={working || busy}
+        disabled={working || busy || !contactEmail}
         className="btn btn-primary mt-3.5 text-[13.5px]"
       >
         {label}

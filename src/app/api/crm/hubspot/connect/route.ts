@@ -4,6 +4,7 @@ import { feedOriginFromEnv } from "@/lib/feed/origin";
 import { keyFromEnv } from "@/lib/sync/secrets";
 import { workspaceRepositoryFromEnv } from "@/lib/workspace/env";
 import { authorizeOrCreateWorkspace } from "@/lib/workspace/selfServe";
+import { attachContactEmail } from "@/lib/workspace/contact";
 import { authorizeUrl, oauthConfigFromEnv, signState } from "@/lib/sync/hubspot/oauth";
 
 /**
@@ -65,9 +66,9 @@ export async function POST(request: Request) {
     );
   }
 
-  let body: { url?: unknown; workspaceKey?: unknown };
+  let body: { url?: unknown; workspaceKey?: unknown; contactEmail?: unknown };
   try {
-    body = (await request.json()) as { url?: unknown; workspaceKey?: unknown };
+    body = (await request.json()) as { url?: unknown; workspaceKey?: unknown; contactEmail?: unknown };
   } catch {
     return NextResponse.json({ ok: false, error: "That request could not be read." }, { status: 400 });
   }
@@ -84,6 +85,8 @@ export async function POST(request: Request) {
   if (!auth.ok) {
     return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
   }
+  // The person behind the credential, on the workspace it is about to hold.
+  await attachContactEmail(workspaces, auth.workspace.id, body.contactEmail);
 
   // No feed URL any more. A connection belongs to the customer, and the
   // workspace key already says which customer this is - which is what lets

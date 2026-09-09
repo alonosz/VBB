@@ -5,6 +5,7 @@ import { hashToken, tokenFromInput } from "@/lib/feed/token";
 import { workspaceRepositoryFromEnv } from "@/lib/workspace/env";
 import { feedInWorkspace } from "@/lib/workspace/authorize";
 import { authorizeOrCreateWorkspace } from "@/lib/workspace/selfServe";
+import { attachContactEmail } from "@/lib/workspace/contact";
 import { CrmConnectionStore } from "@/lib/sync/connections";
 import { keyFromEnv } from "@/lib/sync/secrets";
 import { HubSpotClient, verifyAccess } from "@/lib/sync/hubspot/client";
@@ -57,9 +58,9 @@ export async function POST(request: Request) {
     );
   }
 
-  let body: { url?: unknown; token?: unknown; workspaceKey?: unknown };
+  let body: { url?: unknown; token?: unknown; workspaceKey?: unknown; contactEmail?: unknown };
   try {
-    body = (await request.json()) as { url?: unknown; token?: unknown; workspaceKey?: unknown };
+    body = (await request.json()) as { url?: unknown; token?: unknown; workspaceKey?: unknown; contactEmail?: unknown };
   } catch {
     return NextResponse.json({ ok: false, error: "That request could not be read." }, { status: 400 });
   }
@@ -72,6 +73,8 @@ export async function POST(request: Request) {
   if (!auth.ok) {
     return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
   }
+  // The person behind the credential, on the workspace it is about to hold.
+  await attachContactEmail(workspaces, auth.workspace.id, body.contactEmail);
 
   // Optional, and the check below says why. This guard used to require it and
   // contradicted the comment three lines down: the feed URL stopped being
