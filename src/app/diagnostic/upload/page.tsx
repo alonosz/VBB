@@ -21,8 +21,9 @@ export default function UploadPage() {
   const router = useRouter();
   const { businessContext, needsFile, audience, restored } = useDiagnostic();
   const inputRef = useRef<HTMLInputElement>(null);
-  // A file about to be read, or a CRM about to be connected, is the moment
-  // the workspace needs an owner. The sample stays open: it is not their data.
+  // A file about to be read, a CRM about to be connected, or the sample
+  // about to run: every way into the flow starts with a workspace that has
+  // an owner.
   const signup = useSignupGate();
 
   const [dragging, setDragging] = useState(false);
@@ -327,7 +328,7 @@ export default function UploadPage() {
                 No export handy? Try it on a synthetic{" "}
                 {audience === "b2c" ? "quote funnel" : "B2B dataset"} first.
               </p>
-              <button type="button" onClick={loadDemo} className="btn btn-secondary btn-sm">
+              <button type="button" onClick={() => signup.guard(loadDemo)} className="btn btn-secondary btn-sm">
                 Use sample data
               </button>
             </div>

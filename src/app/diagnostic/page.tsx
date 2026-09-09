@@ -12,6 +12,7 @@ import { Stepper } from "@/components/diagnostic/Stepper";
 import { FlowSkeleton } from "@/components/diagnostic/FlowSkeleton";
 import { PageHead } from "@/components/ui";
 import { ArrowIcon } from "@/components/ArrowIcon";
+import { useSignupGate } from "@/components/workspace/useSignupGate";
 
 // Tuned to match the shape of the demo dataset, so the walkthrough surfaces
 // the one comparison that actually matters (cycle length) rather than a
@@ -24,6 +25,9 @@ const EXAMPLE =
 
 export default function IntakePage() {
   const router = useRouter();
+  // The sample is the first thing most visitors run, so it is where the
+  // workspace gets its owner.
+  const signup = useSignupGate();
   const {
     audience, setAudience,
     businessContext, setBusinessContext,
@@ -83,6 +87,7 @@ export default function IntakePage() {
   return (
     <div className="animate-page-in flex min-h-screen flex-col">
       <Stepper current="intake" />
+      {signup.modal}
       <main className="page animate-page-in flex-1 py-10">
         <PageHead
           eyebrow="Step 1 of 5 · Your business"
@@ -312,7 +317,7 @@ export default function IntakePage() {
           <button
             type="button"
             disabled={loadingSample}
-            onClick={() => void trySample()}
+            onClick={() => signup.guard(() => void trySample())}
             className="btn btn-secondary btn-wrap w-full sm:w-auto sm:shrink-0"
           >
             {loadingSample

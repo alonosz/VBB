@@ -367,9 +367,8 @@ signup (`/signup`, `completeSignup()`) is a name and a work email on the
 workspace this browser holds, or on a new one, and no password. It is asked
 for once, in a modal over the screen where the visitor is standing
 (`SignupModal`, `useSignupGate()`), at the first moment something needs an
-owner: choosing a file to read, or connecting HubSpot or Google Ads. Closing
-it cancels the action and nothing else. The sample dataset stays open; it is
-not their data. The address rides along on every connect request
+owner: running the sample, choosing a file to read, or connecting HubSpot
+or Google Ads. Closing it cancels the action and nothing else. The address rides along on every connect request
 (`attachContactEmail()`). It is how the operator tells self-serve workspaces
 apart and how the advertiser is let back in from another device. There are
 no passwords.
