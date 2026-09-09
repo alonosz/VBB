@@ -279,8 +279,16 @@ export function ConnectHubSpot({
       <p className="text-[15px] font-bold">Connect HubSpot</p>
       <p className="mt-1.5 max-w-[62ch] text-[13.5px] text-[var(--muted)]">
         No export to get right and no columns to map. We read twelve months of
-        deals, won and lost, straight from your portal. Read-only: nothing in
-        your CRM is changed, and no CRM record is stored on our side.
+        leads and deals, won and lost, straight from your portal.
+      </p>
+      <p className="mt-2 max-w-[62ch] text-[12.5px] text-[var(--muted)]">
+        <span className="font-semibold text-[var(--foreground)]">Read-only, through HubSpot&apos;s own login.</span>{" "}
+        Nothing in your CRM is changed. Your records pass through and are never
+        stored; the only thing kept is what Google needs to match a conversion,
+        hashed. You can revoke access in HubSpot at any time.{" "}
+        <a href="/privacy" className="font-semibold text-[var(--primary)] underline underline-offset-[3px]">
+          How we handle data
+        </a>
       </p>
 
       <ConnectIdentity email={contactEmail} onChange={setContactEmail} />
