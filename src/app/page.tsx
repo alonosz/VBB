@@ -38,8 +38,8 @@ const STAGES = [
 ];
 
 /**
- * Five questions, easy to hard. The qualifying one sits fourth so a visitor
- * understands what the thing does before being told whether it is for them.
+ * Five questions. The qualifying one sits second, so a visitor learns early
+ * whether this is for them and reads the rest knowing it.
  * Every answer is true of the product as built; none promises a result.
  */
 const FAQ = [
@@ -48,16 +48,16 @@ const FAQ = [
     a: "Google can only optimise for what you tell it. Tell it every lead is worth the same and it buys the cheapest ones. Tell it what each lead is likely to be worth and it buys the ones that pay.",
   },
   {
+    q: "Is my account ready for this?",
+    a: "Three things need to be true. Roughly 30 to 50 conversions a month per campaign, which is Google's own guidance for value-based bidding. A year of CRM history with a few hundred closed leads, so the tool has about 25 closed deals in each group it prices. And real differences between your leads: this suits insurance, lending, legal, home services, education and B2B software, and not a single product at a single price.",
+  },
+  {
     q: "Where do the values come from?",
     a: "From your own history: how often each kind of lead closed, times what it was worth when it did. AI reads your file and your description. It never sets a number.",
   },
   {
     q: "What happens in my Google Ads account?",
     a: "One conversion action is created, called VBB Lead Value, and each lead is sent to it with its own value. Nothing else is touched. Switching a campaign to value-based bidding is a change you make, and we show you where.",
-  },
-  {
-    q: "Is my account ready for this?",
-    a: "Three things need to be true. Roughly 30 to 50 conversions a month per campaign, which is Google's own guidance for value-based bidding. A year of CRM history with a few hundred closed leads, so the tool has about 25 closed deals in each group it prices. And real differences between your leads: this suits insurance, lending, legal, home services, education and B2B software, and not a single product at a single price.",
   },
   {
     q: "How will I know it worked?",
