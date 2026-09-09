@@ -356,13 +356,14 @@ and nowhere on screen. A presented key that does not work is refused, never
 replaced: that is a returning customer with a problem, not a stranger. The
 signup (`/signup`, `completeSignup()`) is a name and a work email on the
 workspace this browser holds, or on a new one, and no password. It is asked
-for once, on its own page, at the first moment something needs an owner: the
-`AccountGate` in front of the HubSpot and Google Ads connect buttons sends
-them there and brings them back. The address rides along on every connect
-request (`attachContactEmail()`). It is how the operator tells self-serve
-workspaces apart and how the advertiser is let back in from another device.
-It is never asked of somebody who only uploads a file, because the file
-never leaves their browser. There are no passwords.
+for once, in a modal over the screen where the visitor is standing
+(`SignupModal`, `useSignupGate()`), at the first moment something needs an
+owner: choosing a file to read, or connecting HubSpot or Google Ads. Closing
+it cancels the action and nothing else. The sample dataset stays open; it is
+not their data. The address rides along on every connect request
+(`attachContactEmail()`). It is how the operator tells self-serve workspaces
+apart and how the advertiser is let back in from another device. There are
+no passwords.
 
 **Server-side storage**: the feed tables only (`supabase/README.md`). Hashed
 identifiers, timestamps, values, currency, model id. Never CRM records, names,

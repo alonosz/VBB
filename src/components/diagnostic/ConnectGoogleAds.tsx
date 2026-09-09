@@ -5,7 +5,7 @@ import Link from "next/link";
 import { ArrowIcon } from "@/components/ArrowIcon";
 import { readWorkspaceKey, rememberWorkspaceKey } from "@/lib/workspace/clientKey";
 import { readContactEmail } from "@/lib/leads/contactEmail";
-import { AccountGate } from "@/components/workspace/AccountGate";
+import { useSignupGate } from "@/components/workspace/useSignupGate";
 import type { AdsAccount } from "@/lib/sync/google/accounts";
 import type { StrategyAudit } from "@/lib/sync/google/campaigns";
 import type { AccountReadiness } from "@/lib/sync/google/readiness";
@@ -76,9 +76,7 @@ export function ConnectGoogleAds({
   disabled?: boolean;
 }) {
   const [phase, setPhase] = useState<Phase>("idle");
-  const [contactEmail] = useState<string | null>(() =>
-    typeof window === "undefined" ? null : readContactEmail()
-  );
+  const signup = useSignupGate();
 
   /*
    * What the callback said, read before the first render rather than set from
@@ -363,13 +361,13 @@ export function ConnectGoogleAds({
         </p>
       )}
 
-      {!accounts && <AccountGate email={contactEmail} next="/diagnostic/connect" what="Google Ads" />}
+      {signup.modal}
 
       {!accounts && (
         <button
           type="button"
-          onClick={() => void loadAccounts()}
-          disabled={working || disabled || !contactEmail}
+          onClick={() => signup.guard(() => void loadAccounts())}
+          disabled={working || disabled}
           className="btn btn-primary mt-3.5 text-[13.5px]"
         >
           {phase === "connecting"

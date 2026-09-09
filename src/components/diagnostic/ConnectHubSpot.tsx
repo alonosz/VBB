@@ -4,7 +4,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ArrowIcon } from "@/components/ArrowIcon";
 import { forgetWorkspaceKey, readWorkspaceKey, rememberWorkspaceKey } from "@/lib/workspace/clientKey";
 import { readContactEmail } from "@/lib/leads/contactEmail";
-import { AccountGate } from "@/components/workspace/AccountGate";
 
 /**
  * The way in that cannot be got wrong.
@@ -54,17 +53,17 @@ const REFUSED =
 export function ConnectHubSpot({
   onImported,
   busy,
+  guard = (run) => run(),
 }: {
   onImported: (imported: ImportedRows) => void;
   /** The CSV path is working. Two imports at once would race for the flow. */
   busy: boolean;
+  /** Runs the action once the workspace has an owner; opens the signup first if not. */
+  guard?: (run: () => void) => void;
 }) {
   const [phase, setPhase] = useState<"idle" | "connecting" | "importing" | "saving">("idle");
   const [error, setError] = useState<string | null>(null);
   const [tokenInput, setTokenInput] = useState("");
-  const [contactEmail] = useState<string | null>(() =>
-    typeof window === "undefined" ? null : readContactEmail()
-  );
   const started = useRef(false);
 
   /*
@@ -261,7 +260,7 @@ export function ConnectHubSpot({
   }
 
   function onClick() {
-    withKey((key) => void importDeals(key));
+    guard(() => withKey((key) => void importDeals(key)));
   }
 
   const working = phase !== "idle";
@@ -291,12 +290,10 @@ export function ConnectHubSpot({
         </a>
       </p>
 
-      <AccountGate email={contactEmail} next="/diagnostic/upload" what="HubSpot" />
-
       <button
         type="button"
         onClick={onClick}
-        disabled={working || busy || !contactEmail}
+        disabled={working || busy}
         className="btn btn-primary mt-3.5 text-[13.5px]"
       >
         {label}
@@ -353,7 +350,7 @@ export function ConnectHubSpot({
           />
           <button
             type="button"
-            onClick={() => withKey((key) => void saveToken(key))}
+            onClick={() => guard(() => withKey((key) => void saveToken(key)))}
             disabled={working || busy || !tokenInput.trim()}
             className="btn btn-secondary shrink-0 text-[13px]"
           >

@@ -9,6 +9,7 @@ import { FlowSkeleton } from "@/components/diagnostic/FlowSkeleton";
 import { Alert, PageHead } from "@/components/ui";
 import { ExportGuide } from "@/components/diagnostic/ExportGuide";
 import { ConnectHubSpot, type ImportedRows } from "@/components/diagnostic/ConnectHubSpot";
+import { useSignupGate } from "@/components/workspace/useSignupGate";
 import { generateDemoDeals, demoDealsToCsvRows } from "@/lib/fixtures/demoDataset";
 import { generateConsumerDemoRows } from "@/lib/fixtures/consumerDataset";
 import { useIngest } from "@/lib/diagnostic/useIngest";
@@ -20,6 +21,9 @@ export default function UploadPage() {
   const router = useRouter();
   const { businessContext, needsFile, audience, restored } = useDiagnostic();
   const inputRef = useRef<HTMLInputElement>(null);
+  // A file about to be read, or a CRM about to be connected, is the moment
+  // the workspace needs an owner. The sample stays open: it is not their data.
+  const signup = useSignupGate();
 
   const [dragging, setDragging] = useState(false);
   const [parsing, setParsing] = useState(false);
@@ -206,7 +210,7 @@ export default function UploadPage() {
               Both land on the same rows, so nothing after this screen knows or
               cares which was used.
             */}
-            <ConnectHubSpot busy={parsing} onImported={handleImported} />
+            <ConnectHubSpot busy={parsing} onImported={handleImported} guard={signup.guard} />
 
             <div className="my-7 flex items-center gap-3">
               <span className="h-px flex-1 bg-[var(--border)]" />
@@ -217,11 +221,11 @@ export default function UploadPage() {
             <div
               role="button"
               tabIndex={0}
-              onClick={() => inputRef.current?.click()}
+              onClick={() => signup.guard(() => inputRef.current?.click())}
               onKeyDown={(e) => {
                 if (e.key === "Enter" || e.key === " ") {
                   e.preventDefault();
-                  inputRef.current?.click();
+                  signup.guard(() => inputRef.current?.click());
                 }
               }}
               onDragOver={(e) => {
@@ -233,7 +237,7 @@ export default function UploadPage() {
                 e.preventDefault();
                 setDragging(false);
                 const f = e.dataTransfer.files?.[0];
-                if (f) handleFile(f);
+                if (f) signup.guard(() => handleFile(f));
               }}
               className={
                 "cursor-pointer rounded-[var(--radius-xl)] border-2 border-dashed px-6 py-16 text-center transition-all duration-[var(--base)] ease-[var(--ease)] " +
@@ -258,6 +262,7 @@ export default function UploadPage() {
                   : "Parsed in your browser - the file never leaves your machine"}
               </p>
             </div>
+            {signup.modal}
             <input
               ref={inputRef}
               type="file"
