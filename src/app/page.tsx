@@ -86,8 +86,8 @@ const SHAPE = [34, 52, 41, 78, 46, 96, 38, 61, 44, 87, 55, 70, 40, 100, 48, 63];
  * cannot keep.
  */
 const TRUST = [
-  "Built for pipeline revenue, not lead counts",
-  "Works with HubSpot, Salesforce, Pipedrive or a CSV",
+  "Built for pipeline revenue",
+  "Works with HubSpot or a CSV export",
   "Led by ex-Googlers",
 ];
 
