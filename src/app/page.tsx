@@ -61,6 +61,10 @@ const FAQ = [
     a: "One conversion action is created, called VBB Lead Value, and each lead is sent to it with its own value. Nothing else is touched. Switching a campaign to value-based bidding is a change you make, and we show you where.",
   },
   {
+    q: "What has to be switched on in Google Ads?",
+    a: "One conversion action, which we create for you. If your leads carry a Google click ID, that is all. If we match on email instead, turn on Enhanced conversions for leads under Goals, Conversions, Settings, and make sure the Google tag on your site collects the email at the form. The Connect step tells you which case you are in.",
+  },
+  {
     q: "How will I know it worked?",
     a: "Once connected, the tool keeps reading your CRM and compares the leads Google buys after the switch against the ones before, measured in real outcomes, not in the numbers we sent.",
   },
