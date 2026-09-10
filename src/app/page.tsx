@@ -80,6 +80,17 @@ const NEEDED = [
  */
 const SHAPE = [34, 52, 41, 78, 46, 96, 38, 61, 44, 87, 55, 70, 40, 100, 48, 63];
 
+/**
+ * Three things a visitor wants settled before reading on: what it optimises
+ * for, what it plugs into, who made it. One line each, no claim the product
+ * cannot keep.
+ */
+const TRUST = [
+  "Built for pipeline revenue, not lead counts",
+  "Works with HubSpot, Salesforce, Pipedrive or a CSV",
+  "Led by ex-Googlers",
+];
+
 export default function Home() {
   return (
     <div className="animate-page-in flex min-h-screen flex-col">
@@ -202,6 +213,22 @@ export default function Home() {
             </div>
           </section>
         </div>
+
+        {/* A quiet strip under the hero. Brand blue rather than the status
+            green: these are facts about the product, not a verdict on data. */}
+        <ul className="page-wide mt-7 flex flex-wrap gap-x-8 gap-y-2.5 text-[13.5px] font-medium text-[var(--muted-strong)]">
+          {TRUST.map((line) => (
+            <li key={line} className="flex items-start gap-2.5">
+              <span
+                aria-hidden
+                className="mt-[2px] flex size-[18px] shrink-0 items-center justify-center rounded-full bg-[var(--primary-soft)] text-[11px] font-bold text-[var(--primary)]"
+              >
+                ✓
+              </span>
+              <span className="[text-wrap:balance]">{line}</span>
+            </li>
+          ))}
+        </ul>
 
         {/* ---------------------------------------------------------------- */}
         {/* How it goes                                                       */}
