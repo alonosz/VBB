@@ -173,8 +173,8 @@ export default function UploadPage() {
             parsing
               ? "Parsing rows, sampling values, and matching columns against the fields the analysis needs."
               : audience === "b2c"
-                ? "Every lead, whether it bought or not, twelve months of it. Connect HubSpot and we read it straight from your portal, or upload an export from any other CRM - we'll work out which columns are which and say straight away if anything will cause trouble."
-                : "Won and lost, twelve months of it. Connect HubSpot and we read it straight from your portal, or upload an export from any other CRM - we'll work out which columns are which and say straight away if anything will cause trouble."
+                ? "Twelve months of leads, whether they bought or not. Connect HubSpot or upload an export from any CRM. We work out the columns and flag any problem straight away."
+                : "Twelve months of deals, won and lost. Connect HubSpot or upload an export from any CRM. We work out the columns and flag any problem straight away."
           }
         />
 
