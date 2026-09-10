@@ -361,6 +361,20 @@ export function WorkspaceView() {
                 value={when(feed.lastFetchedAt)}
                 hint={ago(feed.lastFetchedAt)}
               />
+              {/* The file route's routine. A connected portal is synced
+                  nightly and needs no export, so the button would only
+                  confuse there. */}
+              {!connection.connected && (
+                <div className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-[var(--border)] pt-4">
+                  <Link href="/diagnostic/upload" className="btn btn-primary btn-sm">
+                    Upload the next export <ArrowIcon />
+                  </Link>
+                  <span className="max-w-[44ch] text-[12.5px] text-[var(--muted)]">
+                    New leads reach Google only when a fresh export is published.
+                    Twice a week keeps it current.
+                  </span>
+                </div>
+              )}
             </div>
           ) : (
             <Empty

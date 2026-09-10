@@ -13,6 +13,7 @@ import {
   useSyncExternalStore,
   type ReactNode,
 } from "react";
+import { recallModel } from "@/lib/model/storage";
 import { clearFlow, loadFlow, saveFlow } from "@/lib/state/persist";
 import { outcomeKey, type OutcomeOverrides } from "@/lib/mapping/outcomes";
 import type { DealOutcome } from "@/lib/analysis/types";
@@ -151,7 +152,16 @@ export function DiagnosticProvider({ children }: { children: ReactNode }) {
    */
   const [snapshot] = useState(() => (typeof window === "undefined" ? null : loadFlow()));
 
-  const [audience, setAudience] = useState<Audience>(snapshot?.audience ?? "b2b");
+  /**
+   * A fresh tab with a saved model in this browser is a returning customer
+   * with the next export, not a first visit. The model already knows who
+   * they sell to, so the upload step can be entered directly and step one
+   * is not asked again. Pricing lands on the saved model for the same
+   * reason: that is what a re-upload is for.
+   */
+  const [saved] = useState(() => (snapshot || typeof window === "undefined" ? null : recallModel()));
+
+  const [audience, setAudience] = useState<Audience>(snapshot?.audience ?? saved?.audience ?? "b2b");
   const [signalOverrides, setSignalOverrides] = useState<Record<string, boolean>>(
     snapshot?.signalOverrides ?? {}
   );
@@ -171,7 +181,7 @@ export function DiagnosticProvider({ children }: { children: ReactNode }) {
   }, []);
   const [intake, setIntake] = useState<IntakeResult | null>(snapshot?.intake ?? null);
   const [modelSource, setModelSource] = useState<"fresh" | "saved" | null>(
-    snapshot?.modelSource ?? null
+    snapshot?.modelSource ?? (saved ? "saved" : null)
   );
   const [businessContext, setBusinessContext] = useState(snapshot?.businessContext ?? "");
   const [statedCycleDays, setStatedCycleDays] = useState<number | null>(
