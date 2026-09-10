@@ -1,7 +1,9 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { ArrowIcon } from "@/components/ArrowIcon";
+import { AppHeader } from "@/components/shell/AppHeader";
 
 /**
  * The install page for the click-ID snippet.
@@ -59,6 +61,16 @@ export function SnippetInstaller({ origin }: { origin: string }) {
 
   return (
     <div className="animate-page-in flex min-h-screen flex-col">
+      {/* The Connect step is the one place that leads here, so back is a
+          link to it rather than a history guess that can land on a blank
+          tab. The flow itself is kept, so nothing is lost on the way. */}
+      <AppHeader
+        right={
+          <Link href="/diagnostic/connect" className="btn btn-ghost btn-sm">
+            Back to Connect
+          </Link>
+        }
+      />
       <main className="mx-auto w-full max-w-3xl flex-1 px-6 py-12">
         <p className="label mb-2">Raise your match rate</p>
         <h1 className="text-3xl font-bold tracking-tight text-balance">
