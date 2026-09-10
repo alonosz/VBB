@@ -82,13 +82,13 @@ const SHAPE = [34, 52, 41, 78, 46, 96, 38, 61, 44, 87, 55, 70, 40, 100, 48, 63];
 
 /**
  * Three things a visitor wants settled before reading on: what it optimises
- * for, what it plugs into, who made it. One line each, no claim the product
- * cannot keep.
+ * for, what it reads from, where the result goes. One line each, no claim
+ * the product cannot keep.
  */
 const TRUST = [
   "Built for pipeline revenue",
   "Works with HubSpot or a CSV export",
-  "Led by ex-Googlers",
+  "Values sent straight to Google Ads",
 ];
 
 export default function Home() {
