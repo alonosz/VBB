@@ -39,7 +39,7 @@ const STAGES = [
 ];
 
 /**
- * Five questions. The qualifying one sits second, so a visitor learns early
+ * Six questions. The qualifying one sits second, so a visitor learns early
  * whether this is for them and reads the rest knowing it.
  * Every answer is true of the product as built; none promises a result.
  */
