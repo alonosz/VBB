@@ -277,8 +277,8 @@ export function ConnectHubSpot({
     <div className="well mt-4 p-5 sm:p-6">
       <p className="text-[15px] font-bold">Connect HubSpot</p>
       <p className="mt-1.5 max-w-[62ch] text-[13.5px] text-[var(--muted)]">
-        No export to get right and no columns to map. We read twelve months of
-        leads and deals, won and lost, straight from your portal.
+        We read twelve months of leads and deals, won and lost, straight from
+        your portal.
       </p>
       <p className="mt-2 max-w-[62ch] text-[12.5px] text-[var(--muted)]">
         <span className="font-semibold text-[var(--foreground)]">Read-only, through HubSpot&apos;s own login.</span>{" "}
