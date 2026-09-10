@@ -183,6 +183,60 @@ developer account. In Vercel, add:
 
 Redeploy. The Connect HubSpot button on step 5 is now live.
 
+## Step 8 - webhooks, so a lead is priced the moment it exists
+
+Without this, a connected portal is read once a night. With it, HubSpot
+calls us the moment a contact is created or a deal moves, and the lead is
+priced and sent to Google within seconds. Same model, same rules, same rows;
+only the clock changes.
+
+Add a webhooks component next to the app component and upload again:
+
+```bash
+mkdir -p ~/Desktop/vbb-engine/*/app/webhooks
+cat > ~/Desktop/vbb-engine/*/app/webhooks/webhooks-hsmeta.json <<'JSON'
+{
+  "uid": "vbb_engine_webhooks",
+  "type": "webhooks",
+  "config": {
+    "settings": {
+      "targetUrl": "https://valuebasedbidding.com/api/crm/hubspot/webhook",
+      "maxConcurrentRequests": 10
+    },
+    "subscriptions": {
+      "crmObjects": [
+        { "subscriptionType": "object.creation", "objectTypes": ["contact"], "active": true },
+        { "subscriptionType": "object.propertyChange", "objectTypes": ["deal"], "properties": ["dealstage", "hs_is_closed", "amount"], "active": true }
+      ]
+    }
+  }
+}
+JSON
+cd ~/Desktop/vbb-engine && hs project upload
+```
+
+If `hs project upload` rejects the file, the component's exact field names
+have moved since this was written (HubSpot renames these between platform
+versions). The developer docs page for the webhooks component has the
+current shape; the three things that must survive any rename are the target
+URL, a subscription to contact creation, and a subscription to deal
+property changes.
+
+Nothing to add in Vercel: the webhook is signed with `HUBSPOT_CLIENT_SECRET`,
+which is already there from step 7, and the endpoint refuses anything not
+signed with it.
+
+**How to see it working.** Create a test contact in a connected portal.
+Within a minute the workspace page's "Last sync" reads "just now" and the
+run log has a line "Live from HubSpot: 1 lead". A feed sent through the
+Google Ads connection shows "Waiting to send: 0" once Google accepted it.
+
+**What the nightly run still does.** Everything the webhook missed: a
+delivery HubSpot gave up on, a send Google refused because the click was
+too fresh to have been recorded yet, a portal connected before webhooks
+existed. The two never disagree, because both price on the same saved model
+and a row that exists is never added twice.
+
 ---
 
 ## What a customer sees after this

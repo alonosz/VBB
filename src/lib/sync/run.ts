@@ -9,6 +9,7 @@ import {
 import { identifiersFor, buildFeedRows } from "@/lib/feed/publish";
 import type { FeedRepository } from "@/lib/feed/repository";
 import type { FeedRecord } from "@/lib/feed/types";
+import type { DeliveryOutcome } from "./google/deliver";
 
 /**
  * One scheduled run of a feed.
@@ -61,6 +62,11 @@ export interface SyncReport {
   coverage: RunCoverage | null;
   /** Set when the run refused to do anything. Nothing is written when present. */
   refusedBecause: string | null;
+  /**
+   * What reached Google, on an api feed. Absent on a url feed, which Google
+   * collects itself, and on a refusal.
+   */
+  delivery?: DeliveryOutcome | null;
 }
 
 /** Counts, never rows: how many, never which. */
@@ -98,6 +104,14 @@ export interface SyncOptions {
   /** The currency the CRM is reporting in, if it says. */
   reportingCurrency?: string;
   now?: Date;
+  /**
+   * A handful of leads rather than the window - a webhook's worth. The
+   * "no rule matches anything" refusal is a check on the CRM having stopped
+   * supplying the columns the model was fitted on, and one lead that happens
+   * to carry none of them is not that. It is priced at the base value, the
+   * way the same lead would be inside a full run.
+   */
+  partial?: boolean;
 }
 
 export async function runSync(opts: SyncOptions): Promise<SyncReport> {
@@ -117,7 +131,7 @@ export async function runSync(opts: SyncOptions): Promise<SyncReport> {
   // fitted on. Pricing anyway would send Google a flat base value for every
   // lead and call it a model.
   const live = applicability.factors.filter((f) => f.dealsCovered > 0);
-  if (model.factors.length > 0 && live.length === 0) {
+  if (!opts.partial && model.factors.length > 0 && live.length === 0) {
     return refusal(
       feed,
       model.modelId,

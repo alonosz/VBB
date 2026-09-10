@@ -29,6 +29,14 @@ export interface FeedRepository {
   addRows(feedId: string, rows: FeedRow[]): Promise<number>;
   rowsFor(feedId: string): Promise<FeedRow[]>;
   /**
+   * Rows of an API-delivered feed that have not reached Google. Every row
+   * starts here; a successful send marks it delivered. A URL feed's rows are
+   * never marked, because Google fetches those itself and tells nobody.
+   */
+  pendingRows(feedId: string): Promise<FeedRow[]>;
+  /** Google accepted these. Identified by (rowKey, kind), the row's identity. */
+  markDelivered(feedId: string, rows: Pick<FeedRow, "rowKey" | "kind">[], at: Date): Promise<void>;
+  /**
    * Freezes the model that priced this feed's rows, so a scheduled run can
    * apply it with no browser in the loop. Republishing after a refit replaces
    * it - the rows already sent keep the model_id that priced them.
@@ -62,6 +70,8 @@ export interface FeedRepository {
 export class InMemoryFeedRepository implements FeedRepository {
   private feeds = new Map<string, FeedRecord & { tokenHash: string }>();
   private rows = new Map<string, FeedRow[]>();
+  /** Keyed feedId|rowKey|kind, the row's identity. */
+  private delivered = new Map<string, Date>();
   private fetches = new Map<string, Date[]>();
   private models = new Map<string, string>();
   /** Exposed so tests can assert what was logged, not just how much. */
@@ -83,6 +93,7 @@ export class InMemoryFeedRepository implements FeedRepository {
       modelFittedAt: feed.modelFittedAt ?? null,
       currencyCode: feed.currencyCode,
       identifier: feed.identifier,
+      delivery: feed.delivery ?? "url",
       status: "active",
       createdAt: this.now(),
       publishedAt: null,
@@ -134,6 +145,21 @@ export class InMemoryFeedRepository implements FeedRepository {
 
   async rowsFor(feedId: string): Promise<FeedRow[]> {
     return (this.rows.get(feedId) ?? []).map((r) => ({ ...r }));
+  }
+
+  async pendingRows(feedId: string): Promise<FeedRow[]> {
+    return (this.rows.get(feedId) ?? [])
+      .filter((r) => !this.delivered.has(`${feedId}|${r.rowKey}|${r.kind}`))
+      .map((r) => ({ ...r }));
+  }
+
+  async markDelivered(feedId: string, rows: Pick<FeedRow, "rowKey" | "kind">[], at: Date): Promise<void> {
+    for (const r of rows) this.delivered.set(`${feedId}|${r.rowKey}|${r.kind}`, at);
+  }
+
+  /** When a row reached Google, for a test to assert. Null if it has not. */
+  deliveredAt(feedId: string, rowKey: string, kind: FeedRow["kind"] = "conversion"): Date | null {
+    return this.delivered.get(`${feedId}|${rowKey}|${kind}`) ?? null;
   }
 
   async saveModel(feedId: string, model: SavedValueModel): Promise<void> {

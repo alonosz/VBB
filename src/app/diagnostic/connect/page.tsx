@@ -562,6 +562,7 @@ export default function ConnectPage() {
             pricedLeads={priced.length}
             currencyCode={cur}
             modelId={modelId}
+            model={artifact}
             disabled={apiRows.length === 0}
           />
         </section>

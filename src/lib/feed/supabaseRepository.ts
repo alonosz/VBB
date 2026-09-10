@@ -4,6 +4,7 @@ import { loadSavedModel } from "@/lib/model/savedModel";
 import {
   assertStorableModel,
   assertStorableRow,
+  type FeedDelivery,
   type FeedRecord,
   type FeedIdentifier,
   type FeedRow,
@@ -42,10 +43,24 @@ interface FeedDto {
   model_fitted_at: string | null;
   currency_code: string;
   identifier: FeedIdentifier;
+  delivery: FeedDelivery;
   status: "active" | "revoked";
   created_at: string;
   published_at: string | null;
   rows_published: number;
+}
+
+function toRow(r: FeedRowDto): FeedRow {
+  return {
+    hashedEmail: r.hashed_email,
+    clickId: r.click_id,
+    conversionTime: new Date(r.conversion_time),
+    value: Number(r.value),
+    currencyCode: r.currency_code,
+    modelId: r.model_id,
+    kind: r.kind,
+    rowKey: r.row_key,
+  };
 }
 
 function toRecord(dto: FeedDto): FeedRecord {
@@ -58,6 +73,7 @@ function toRecord(dto: FeedDto): FeedRecord {
     modelFittedAt: dto.model_fitted_at ? new Date(dto.model_fitted_at) : null,
     currencyCode: dto.currency_code,
     identifier: dto.identifier,
+    delivery: dto.delivery === "api" ? "api" : "url",
     status: dto.status,
     createdAt: new Date(dto.created_at),
     publishedAt: dto.published_at ? new Date(dto.published_at) : null,
@@ -66,7 +82,7 @@ function toRecord(dto: FeedDto): FeedRecord {
 }
 
 const FEED_COLUMNS =
-  "id, client_id, token_prefix, label, model_id, model_fitted_at, currency_code, identifier, status, created_at, published_at, rows_published";
+  "id, client_id, token_prefix, label, model_id, model_fitted_at, currency_code, identifier, delivery, status, created_at, published_at, rows_published";
 
 export class SupabaseFeedRepository implements FeedRepository {
   constructor(private client: SupabaseClient) {}
@@ -83,6 +99,7 @@ export class SupabaseFeedRepository implements FeedRepository {
         model_fitted_at: feed.modelFittedAt?.toISOString() ?? null,
         currency_code: feed.currencyCode,
         identifier: feed.identifier,
+        delivery: feed.delivery ?? "url",
       })
       .select(FEED_COLUMNS)
       .single();
@@ -172,16 +189,35 @@ export class SupabaseFeedRepository implements FeedRepository {
       .order("conversion_time", { ascending: true });
 
     if (error) throw new Error(error.message);
-    return (data as FeedRowDto[]).map((r) => ({
-      hashedEmail: r.hashed_email,
-      clickId: r.click_id,
-      conversionTime: new Date(r.conversion_time),
-      value: Number(r.value),
-      currencyCode: r.currency_code,
-      modelId: r.model_id,
-      kind: r.kind,
-      rowKey: r.row_key,
-    }));
+    return (data as FeedRowDto[]).map(toRow);
+  }
+
+  async pendingRows(feedId: string): Promise<FeedRow[]> {
+    const { data, error } = await this.client
+      .from("feed_rows")
+      .select("hashed_email, click_id, conversion_time, value, currency_code, model_id, kind, row_key")
+      .eq("feed_id", feedId)
+      .is("delivered_at", null)
+      .order("conversion_time", { ascending: true });
+
+    if (error) throw new Error(error.message);
+    return (data as FeedRowDto[]).map(toRow);
+  }
+
+  async markDelivered(feedId: string, rows: Pick<FeedRow, "rowKey" | "kind">[], at: Date): Promise<void> {
+    // One update per kind: a lead's conversion and its adjustment share a
+    // row key, and only the kind that was sent is the one that arrived.
+    for (const kind of ["conversion", "adjustment"] as const) {
+      const keys = rows.filter((r) => r.kind === kind).map((r) => r.rowKey);
+      if (keys.length === 0) continue;
+      const { error } = await this.client
+        .from("feed_rows")
+        .update({ delivered_at: at.toISOString() })
+        .eq("feed_id", feedId)
+        .eq("kind", kind)
+        .in("row_key", keys);
+      if (error) throw new Error(error.message);
+    }
   }
 
   async saveModel(feedId: string, model: SavedValueModel): Promise<void> {

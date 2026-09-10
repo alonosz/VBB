@@ -329,6 +329,22 @@ back rather than fails: a token that cannot see property definitions still
 prices on the standard fields. The nightly sync reads the same properties
 under the same labels, which is what lets the saved model's rules apply.
 
+**A connected portal is priced as leads arrive, not once a night.** The
+HubSpot app subscribes to contact creation and deal property changes;
+`/api/crm/hubspot/webhook` verifies HubSpot's v3 signature against the
+app's client secret, answers within HubSpot's five seconds, then
+(`handleWebhookEvents()`) reads only the named records, prices them on the
+saved model through the same `runSync()` the nightly run uses, adds the
+rows to every active feed of the workspace, and sends an api feed's new
+rows to Google straight away (`deliverPending()`). Everything is keyed on
+the lead's identity, so HubSpot's retries and the night's sweep cost a read
+and never a duplicate. The nightly run stays as the sweep for anything the
+webhook missed. A value sent through the Google Ads connection is kept as
+an `api` feed with its model (`storeApiPublish()`), which is what lets the
+server price the next lead without a browser; rows on such a feed carry
+`delivered_at`, and a send Google refused stays pending for the next
+attempt.
+
 **The population is the contacts, not the deals.** A lead is a contact the
 window created; a deal is what became of some of them. The pull reads both
 (`listRecentContacts()`, `hubspotToDeals()`): each contact is one lead dated

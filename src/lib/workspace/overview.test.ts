@@ -7,6 +7,7 @@ const hoursAgo = (h: number) => new Date(NOW.getTime() - h * 3_600_000);
 
 const feed = (over: Partial<FeedSummary> = {}): FeedSummary => ({
   id: "feed-1", tokenPrefix: "vbb_live_8f2a", identifier: "clickId",
+  delivery: "url", pendingDelivery: 0,
   currencyCode: "USD", status: "active", rowsPublished: 463,
   publishedAt: hoursAgo(30), createdAt: hoursAgo(200),
   lastFetchedAt: hoursAgo(6), lastFetchStatus: 200, fetchesLast24h: 1,
@@ -147,5 +148,23 @@ describe("what the operator is told to do", () => {
   it("is only 'working' when nothing needs attention", () => {
     expect(actions().every((a) => a.severity === "info")).toBe(true);
     expect(actions({ model: null }).every((a) => a.severity === "info")).toBe(false);
+  });
+});
+
+describe("decideActions on an api feed", () => {
+  it("judges by rows waiting to send, never by Google's fetch log", () => {
+    const quiet = decideActions({
+      feed: feed({ delivery: "api", pendingDelivery: 0, lastFetchedAt: null }),
+      model: model(), connection: connected(), health: healthy,
+      tracking: { kind: "steady", matched: 0.9, baseline: 0.9, unmatchable: 20, leads: 200 }, now: NOW,
+    });
+    expect(quiet.some((a) => /collected/.test(a.title))).toBe(false);
+
+    const stuck = decideActions({
+      feed: feed({ delivery: "api", pendingDelivery: 3, lastFetchedAt: null }),
+      model: model(), connection: connected(), health: healthy,
+      tracking: { kind: "steady", matched: 0.9, baseline: 0.9, unmatchable: 20, leads: 200 }, now: NOW,
+    });
+    expect(stuck.map((a) => a.title)).toContain("3 values are waiting to be sent to Google.");
   });
 });

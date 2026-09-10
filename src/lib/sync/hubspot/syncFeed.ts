@@ -6,6 +6,7 @@ import { HubSpotClient, HubSpotError, pullFromHubSpot } from "./client";
 import { hubspotToDeals } from "./map";
 import { type OAuthConfig } from "./oauth";
 import { freshAccessToken } from "./accessToken";
+import { deliverPending, googleSenderFor } from "../google/deliver";
 
 /**
  * One feed's scheduled run, end to end.
@@ -33,6 +34,12 @@ export interface SyncFeedOptions {
    * no client credentials at all.
    */
   oauth?: OAuthConfig | null;
+  /**
+   * The Google Ads app, for renewing a customer's Google token before an api
+   * feed's rows are sent. Absent means api feeds keep their rows pending
+   * until a deployment that has it.
+   */
+  googleOauth?: OAuthConfig | null;
   fetchImpl?: typeof fetch;
   now?: Date;
   windowDays?: number;
@@ -142,6 +149,13 @@ export async function syncFeed(opts: SyncFeedOptions): Promise<FeedSyncOutcome> 
       windowDays: opts.windowDays,
       sleep: opts.sleep,
     });
+    // A connection made before portals were recorded learns its number here,
+    // so the webhook can find it from tomorrow. Once, and never on the
+    // critical path: a failure to read it costs nothing tonight.
+    if (!connection.externalAccountId) {
+      const info = await client.accountInfo();
+      if (info) await connections.setExternalAccount(workspaceId, "hubspot", info.portalId);
+    }
     // CRM records exist here and nowhere else - in memory, for the length of
     // this call. Only feed rows are written down.
     //
@@ -166,15 +180,50 @@ export async function syncFeed(opts: SyncFeedOptions): Promise<FeedSyncOutcome> 
 
   const report = await runSync({ repo, feed, model, deals, now });
 
+  /*
+   * An api feed is sent, not collected. Whatever this run added, plus
+   * anything an earlier send left pending, goes to Google now. A failure
+   * here is a delivery problem, not a pricing one: the rows are stored and
+   * the next run tries again, and the message says which it was.
+   */
+  if (!report.refusedBecause && feed.delivery === "api") {
+    report.delivery = await deliverToGoogle({ ...opts, feed, workspaceId, now });
+  }
+
+  const problem = report.refusedBecause ?? report.delivery?.error ?? null;
   await connections.recordRun(workspaceId, "hubspot", {
-    status: report.refusedBecause ? "refused" : "ok",
+    status: report.refusedBecause ? "refused" : problem ? "failed" : "ok",
     rows: report.rowsAdded,
-    error: report.refusedBecause,
+    error: problem,
     at: now,
   });
-  await record(report.refusedBecause ? "refused" : "ok", report.refusedBecause, report);
+  await record(report.refusedBecause ? "refused" : problem ? "failed" : "ok", problem, report);
 
   return { feedId, report, error: report.refusedBecause };
+}
+
+/** The send half of an api feed's run. Shared with the webhook. */
+export async function deliverToGoogle(opts: {
+  feed: Parameters<typeof deliverPending>[0]["feed"];
+  workspaceId: string;
+  repo: FeedRepository;
+  connections: CrmConnectionStore;
+  googleOauth?: OAuthConfig | null;
+  fetchImpl?: typeof fetch;
+  now?: Date;
+}) {
+  const { sender, error } = await googleSenderFor({
+    workspaceId: opts.workspaceId,
+    connections: opts.connections,
+    oauth: opts.googleOauth ?? null,
+    fetchImpl: opts.fetchImpl,
+    now: opts.now,
+  });
+  if (!sender) {
+    const pending = (await opts.repo.pendingRows(opts.feed.id)).length;
+    return { sent: 0, pending, error: pending > 0 ? error : null };
+  }
+  return deliverPending({ feed: opts.feed, repo: opts.repo, sender, now: opts.now });
 }
 
 /**

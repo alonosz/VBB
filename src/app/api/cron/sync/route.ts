@@ -4,6 +4,7 @@ import { feedRepositoryFromEnv, supabaseFromEnv } from "@/lib/feed/supabaseRepos
 import { CrmConnectionStore } from "@/lib/sync/connections";
 import { keyFromEnv } from "@/lib/sync/secrets";
 import { oauthConfigFromEnv } from "@/lib/sync/hubspot/oauth";
+import { oauthConfigFromEnv as googleOauthFromEnv } from "@/lib/sync/google/oauth";
 import { syncAllFeeds } from "@/lib/sync/hubspot/syncFeed";
 import { SupabaseSyncRunStore } from "@/lib/sync/runs";
 
@@ -39,6 +40,7 @@ export async function GET(request: Request) {
   const client = supabaseFromEnv();
   const key = keyFromEnv();
   const oauth = oauthConfigFromEnv(`${origin}/api/crm/hubspot/callback`);
+  const googleOauth = googleOauthFromEnv(`${origin}/api/ads/google/callback`);
 
   // No OAuth app is fine: a portal connected with a private app token has
   // nothing to refresh, so a run needs no client credentials.
@@ -55,6 +57,7 @@ export async function GET(request: Request) {
     connections: new CrmConnectionStore(client, key),
     runs: new SupabaseSyncRunStore(client),
     oauth,
+    googleOauth,
   });
 
   const rowsAdded = outcomes.reduce((sum, o) => sum + (o.report?.rowsAdded ?? 0), 0);

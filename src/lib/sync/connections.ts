@@ -210,6 +210,39 @@ export class CrmConnectionStore {
    * Google Ads workspace would try to pull deals out of an ads account and
    * record the failure against a connection that is working perfectly.
    */
+  /**
+   * Whose portal this is. A webhook carries the portal number and nothing
+   * else, and this is how it becomes a workspace. Several workspaces can
+   * legitimately point at one portal - an agency's test and its client's -
+   * so every one of them is returned and each prices the lead on its own.
+   */
+  async workspacesForExternalAccount(
+    provider: ConnectionProvider,
+    externalAccountId: string
+  ): Promise<string[]> {
+    const { data, error } = await this.client
+      .from("crm_connections")
+      .select("workspace_id")
+      .eq("provider", provider)
+      .eq("external_account_id", externalAccountId);
+    if (error) throw new Error(error.message);
+    return (data as { workspace_id: string }[]).map((r) => r.workspace_id);
+  }
+
+  /** The portal a connection turned out to belong to, learned after it was saved. */
+  async setExternalAccount(
+    workspaceId: string,
+    provider: ConnectionProvider,
+    externalAccountId: string
+  ): Promise<void> {
+    const { error } = await this.client
+      .from("crm_connections")
+      .update({ external_account_id: externalAccountId, updated_at: new Date().toISOString() })
+      .eq("workspace_id", workspaceId)
+      .eq("provider", provider);
+    if (error) throw new Error(error.message);
+  }
+
   async connectedWorkspaceIds(provider: ConnectionProvider): Promise<string[]> {
     const { data, error } = await this.client
       .from("crm_connections")

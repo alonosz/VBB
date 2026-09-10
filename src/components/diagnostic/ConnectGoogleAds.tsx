@@ -10,6 +10,7 @@ import type { AdsAccount } from "@/lib/sync/google/accounts";
 import type { StrategyAudit } from "@/lib/sync/google/campaigns";
 import type { AccountReadiness } from "@/lib/sync/google/readiness";
 import type { FeedRow } from "@/lib/feed/types";
+import type { SavedValueModel } from "@/lib/model/savedModel";
 import { StrategyPanel } from "@/components/report/campaignStrategy";
 
 /**
@@ -65,6 +66,7 @@ export function ConnectGoogleAds({
   pricedLeads,
   currencyCode,
   modelId,
+  model,
   disabled,
 }: {
   /** Finished rows, priced in the browser. The server prices nothing. */
@@ -73,6 +75,11 @@ export function ConnectGoogleAds({
   pricedLeads: number;
   currencyCode: string;
   modelId: string;
+  /**
+   * The frozen model that priced the rows. Sent with them so the server can
+   * price the leads that arrive after this screen is closed.
+   */
+  model?: SavedValueModel | null;
   disabled?: boolean;
 }) {
   const [phase, setPhase] = useState<Phase>("idle");
@@ -267,6 +274,7 @@ export function ConnectGoogleAds({
           modelId,
           validateOnly,
           rows: sending.map((r) => ({ ...r, conversionTime: r.conversionTime.toISOString() })),
+          model: model ?? null,
         }),
       });
       const data = await res.json();

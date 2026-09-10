@@ -40,6 +40,7 @@ interface Overview {
     tokenPrefix: string; identifier: FeedIdentifier; currencyCode: string;
     status: string; rowsPublished: number; publishedAt: string | null;
     lastFetchedAt: string | null; fetchesLast24h: number;
+    delivery?: "url" | "api"; pendingDelivery?: number;
   } | null;
   model: {
     modelId: string; fittedAt: string | null; fittedOn: number;
@@ -282,19 +283,28 @@ export function WorkspaceView() {
             value={feed ? feed.rowsPublished.toLocaleString() : "-"}
             hint={feed ? `published ${ago(feed.publishedAt)}` : "nothing published yet"}
           />
+          {feed?.delivery === "api" ? (
+            <Metric
+              onNavy={overview.working}
+              label="Waiting to send"
+              value={String(feed.pendingDelivery ?? 0)}
+              hint="sent to Google as leads arrive"
+            />
+          ) : (
+            <Metric
+              onNavy={overview.working}
+              label="Google last collected"
+              value={feed ? ago(feed.lastFetchedAt) : "-"}
+              hint={
+                feed
+                  ? `${feed.fetchesLast24h} ${feed.fetchesLast24h === 1 ? "fetch" : "fetches"} in 24h`
+                  : undefined
+              }
+            />
+          )}
           <Metric
             onNavy={overview.working}
-            label="Google last collected"
-            value={feed ? ago(feed.lastFetchedAt) : "-"}
-            hint={
-              feed
-                ? `${feed.fetchesLast24h} ${feed.fetchesLast24h === 1 ? "fetch" : "fetches"} in 24h`
-                : undefined
-            }
-          />
-          <Metric
-            onNavy={overview.working}
-            label="Last nightly sync"
+            label="Last sync"
             value={connection.connected ? ago(connection.lastSyncAt) : "not connected"}
             hint={connection.connected ? (connection.lastSyncStatus ?? undefined) : "manual publishing only"}
           />
@@ -348,6 +358,11 @@ export function WorkspaceView() {
         >
           {feed ? (
             <div>
+              <DataRow
+                label="Delivery"
+                value={feed.delivery === "api" ? "Google Ads connection" : "URL Google fetches"}
+                hint={feed.delivery === "api" ? "sent as each lead is priced" : "collected on Google's schedule"}
+              />
               <DataRow label="Key" value={`${feed.tokenPrefix}…`} />
               <DataRow
                 label="Matches on"
@@ -356,11 +371,15 @@ export function WorkspaceView() {
               <DataRow label="Currency" value={feed.currencyCode} />
               <DataRow label="Rows published" value={feed.rowsPublished.toLocaleString()} />
               <DataRow label="Last published" value={when(feed.publishedAt)} hint={ago(feed.publishedAt)} />
-              <DataRow
-                label="Google last collected"
-                value={when(feed.lastFetchedAt)}
-                hint={ago(feed.lastFetchedAt)}
-              />
+              {feed.delivery === "api" ? (
+                <DataRow label="Waiting to send" value={String(feed.pendingDelivery ?? 0)} />
+              ) : (
+                <DataRow
+                  label="Google last collected"
+                  value={when(feed.lastFetchedAt)}
+                  hint={ago(feed.lastFetchedAt)}
+                />
+              )}
               {/* The file route's routine. A connected portal is synced
                   nightly and needs no export, so the button would only
                   confuse there. */}
@@ -371,7 +390,7 @@ export function WorkspaceView() {
                   </Link>
                   <span className="max-w-[44ch] text-[12.5px] text-[var(--muted)]">
                     New leads reach Google only when a fresh export is published.
-                    Twice a week keeps it current.
+                    Daily keeps it current.
                   </span>
                 </div>
               )}

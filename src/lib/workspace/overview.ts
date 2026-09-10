@@ -1,4 +1,4 @@
-import type { FeedRecord, FeedIdentifier } from "@/lib/feed/types";
+import type { FeedRecord, FeedDelivery, FeedIdentifier } from "@/lib/feed/types";
 import type { FeedRepository } from "@/lib/feed/repository";
 import type { CrmConnectionStore } from "@/lib/sync/connections";
 import { runHealth, type RunHealth, type SyncRun, type SyncRunStore } from "@/lib/sync/runs";
@@ -36,6 +36,10 @@ export interface FeedSummary {
   id: string;
   tokenPrefix: string;
   identifier: FeedIdentifier;
+  /** How it reaches Google: a URL Google fetches, or rows we send by API. */
+  delivery: FeedDelivery;
+  /** Rows priced but not yet accepted by Google. Always 0 on a url feed. */
+  pendingDelivery: number;
   currencyCode: string;
   status: "active" | "revoked";
   rowsPublished: number;
@@ -146,10 +150,14 @@ async function summariseFeed(
   const lastSuccess = fetches.find((f) => f.status === 200) ?? null;
   const since = new Date(now.getTime() - 86_400_000);
 
+  const pendingDelivery = feed.delivery === "api" ? (await feeds.pendingRows(feed.id)).length : 0;
+
   return {
     id: feed.id,
     tokenPrefix: feed.tokenPrefix,
     identifier: feed.identifier,
+    delivery: feed.delivery,
+    pendingDelivery,
     currencyCode: feed.currencyCode,
     status: feed.status,
     rowsPublished: feed.rowsPublished,
@@ -281,7 +289,7 @@ export function decideActions(state: Decidable): ActionItem[] {
     items.push({
       severity: "attention",
       title: "No CRM is connected.",
-      action: "The feed only updates when someone publishes by hand. Connect HubSpot to have it refresh itself nightly.",
+      action: "The feed only updates when someone publishes by hand. Connect HubSpot and new leads are priced as they arrive.",
     });
   } else if (connection.lastSyncStatus === "refused" && connection.lastSyncError) {
     items.push({
@@ -324,9 +332,24 @@ export function decideActions(state: Decidable): ActionItem[] {
     items.push({ severity: "attention", ...trackingProblem });
   }
 
+  /*
+   * An api feed is sent, not collected, so Google's fetch log says nothing
+   * about it. What can go wrong there is rows we priced and Google has not
+   * accepted, and that count is the whole story.
+   */
+  if (feed.status === "active" && feed.delivery === "api") {
+    if (feed.pendingDelivery > 0) {
+      items.push({
+        severity: "attention",
+        title: `${feed.pendingDelivery} ${feed.pendingDelivery === 1 ? "value is" : "values are"} waiting to be sent to Google.`,
+        action: connection.lastSyncError ?? "The last send did not complete. The next lead or tonight's run tries again; if this keeps growing, check the Google Ads connection on the Connect step.",
+      });
+    }
+  }
+
   // Google fetching is the only proof values are arriving. Everything upstream
   // can be perfect while this is silent.
-  if (feed.status === "active") {
+  if (feed.status === "active" && feed.delivery === "url") {
     if (!feed.lastFetchedAt) {
       items.push({
         severity: "attention",

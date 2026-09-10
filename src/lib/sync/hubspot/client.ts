@@ -1,4 +1,4 @@
-import type { HubSpotObject, HubSpotPage, HubSpotPropertyDef, HubSpotPull } from "./types";
+import type { HubSpotObject, HubSpotPage, HubSpotPropertyDef, HubSpotPull, SignalProperty } from "./types";
 import {
   CLICK_ID_PROPERTIES,
   COMPANY_PROPERTIES,
@@ -247,28 +247,52 @@ export class HubSpotClient {
     kind: "contacts" | "companies",
     dealIds: string[]
   ): Promise<Map<string, string[]>> {
-    const byDeal = new Map<string, string[]>();
-    const unique = [...new Set(dealIds)];
+    return this.readLinks("deals", kind, dealIds);
+  }
+
+  /** The same batch read in any direction HubSpot offers it. */
+  async readLinks(
+    from: "deals" | "contacts",
+    to: "contacts" | "companies" | "deals",
+    ids: string[]
+  ): Promise<Map<string, string[]>> {
+    const byId = new Map<string, string[]>();
+    const unique = [...new Set(ids)];
 
     for (let i = 0; i < unique.length; i += BATCH_SIZE) {
       const chunk = unique.slice(i, i + BATCH_SIZE);
       const result = await this.request<{
         results?: { from?: { id?: string }; to?: { toObjectId?: string | number }[] }[];
-      }>(`/crm/v4/associations/deals/${kind}/batch/read`, {
+      }>(`/crm/v4/associations/${from}/${to}/batch/read`, {
         inputs: chunk.map((id) => ({ id })),
       });
 
       for (const row of result.results ?? []) {
-        const from = row.from?.id;
-        if (!from) continue;
-        const ids = (row.to ?? [])
+        const source = row.from?.id;
+        if (!source) continue;
+        const linked = (row.to ?? [])
           .map((t) => (t.toObjectId === undefined ? null : String(t.toObjectId)))
           .filter((id): id is string => !!id);
-        if (ids.length > 0) byDeal.set(from, ids);
+        if (linked.length > 0) byId.set(source, linked);
       }
     }
 
-    return byDeal;
+    return byId;
+  }
+
+  /**
+   * Which portal this token belongs to. A webhook names the portal and
+   * nothing else, so a connection has to know its own number to be found.
+   * Null rather than a throw: a token that cannot read account details can
+   * still price deals, it just cannot take webhooks until it can.
+   */
+  async accountInfo(): Promise<{ portalId: string } | null> {
+    try {
+      const info = await this.request<{ portalId?: number | string }>("/account-info/v3/details", null);
+      return info.portalId === undefined || info.portalId === null ? null : { portalId: String(info.portalId) };
+    } catch {
+      return null;
+    }
   }
 
   /**
@@ -281,7 +305,7 @@ export class HubSpotClient {
 
   /** Batch-reads the records a set of deals points at. */
   async readBatch(
-    kind: "contacts" | "companies",
+    kind: "contacts" | "companies" | "deals",
     ids: string[],
     properties: string[]
   ): Promise<Map<string, HubSpotObject>> {
@@ -343,15 +367,26 @@ export async function verifyAccess(
  * read in batches by id rather than one request per deal - a portal with a
  * thousand recent deals is 10 deal pages and 20 batch reads, not 2,000 calls.
  */
-export async function pullFromHubSpot(client: HubSpotClient): Promise<HubSpotPull> {
-  /*
-   * What the portal calls things, before a single deal is read. The search
-   * endpoint returns only the properties named in the request, so the
-   * advertiser's own dropdowns and the per-stage timing have to be known in
-   * advance to be asked for at all. None of these reads is worth losing the
-   * run over: a portal whose token cannot see property definitions still
-   * gets its deals priced on the standard fields, the way it always was.
-   */
+/** What a portal calls things: read once per pull, and once per webhook. */
+export interface PortalVocabulary {
+  stageLabels: Map<string, string>;
+  signalProperties: SignalProperty[];
+  clickIdProperties: string[];
+  /** Every contact property a read should ask for. */
+  contactProperties: string[];
+  /** Every deal property a read should ask for. */
+  dealProperties: string[];
+}
+
+/**
+ * What the portal calls things, before a single record is read. The search
+ * and batch endpoints return only the properties named in the request, so
+ * the advertiser's own dropdowns and the per-stage timing have to be known
+ * in advance to be asked for at all. None of these reads is worth losing a
+ * run over: a portal whose token cannot see property definitions still gets
+ * its deals priced on the standard fields, the way it always was.
+ */
+export async function discoverPortal(client: HubSpotClient): Promise<PortalVocabulary> {
   const [stageLabels, dealDefs, contactDefs] = await Promise.all([
     client.listPipelineStages().catch(() => new Map<string, string>()),
     client.listProperties("deals").catch(() => [] as HubSpotPropertyDef[]),
@@ -379,10 +414,77 @@ export async function pullFromHubSpot(client: HubSpotClient): Promise<HubSpotPul
   const contactProperties = [
     ...new Set([
       ...CONTACT_PROPERTIES,
+      ...LEAD_PROPERTIES,
       ...clickIdProperties,
       ...contactSignals.map((s) => s.name),
     ]),
   ];
+  const dealProperties = [
+    ...new Set([
+      ...DEAL_PROPERTIES,
+      ...dealSignals.map((s) => s.name),
+      ...stageTimingProperties(stageLabels.keys()),
+    ]),
+  ];
+
+  return { stageLabels, signalProperties, clickIdProperties, contactProperties, dealProperties };
+}
+
+/**
+ * A few named contacts, read the way a webhook needs them: each with its
+ * deals and company, in the shape the mapper already understands. The
+ * contacts are the leads; the deals say what has become of them so far.
+ */
+export async function readLeads(client: HubSpotClient, contactIds: string[]): Promise<HubSpotPull> {
+  const vocabulary = await discoverPortal(client);
+  const ids = [...new Set(contactIds)];
+
+  const contactsById = await client.readBatch("contacts", ids, vocabulary.contactProperties);
+  const leads = ids.map((id) => contactsById.get(id)).filter((c): c is HubSpotObject => !!c);
+
+  const dealLinks = await client.readLinks("contacts", "deals", leads.map((c) => c.id));
+  const dealIds = [...dealLinks.values()].flat();
+  const dealsById =
+    dealIds.length > 0
+      ? await client.readBatch("deals", dealIds, vocabulary.dealProperties)
+      : new Map<string, HubSpotObject>();
+
+  // The mapper reads a deal's contacts off the deal, so the link is written
+  // there, the way the window pull attaches it.
+  const deals: HubSpotObject[] = [];
+  for (const [contactId, linked] of dealLinks) {
+    for (const dealId of linked) {
+      const deal = dealsById.get(dealId);
+      if (!deal) continue;
+      deal.associations = {
+        ...deal.associations,
+        contacts: { results: [{ id: contactId }] },
+      };
+      deals.push(deal);
+    }
+  }
+
+  return {
+    deals,
+    leads,
+    contactsById,
+    companiesById: await companiesOf(client, leads),
+    clickIdProperties: vocabulary.clickIdProperties,
+    stageLabels: vocabulary.stageLabels,
+    signalProperties: vocabulary.signalProperties,
+  };
+}
+
+/** The contacts a set of deals belongs to, for a deal event to name its leads. */
+export async function contactIdsOfDeals(client: HubSpotClient, dealIds: string[]): Promise<string[]> {
+  if (dealIds.length === 0) return [];
+  const links = await client.readLinks("deals", "contacts", dealIds);
+  return [...new Set([...links.values()].flat())];
+}
+
+export async function pullFromHubSpot(client: HubSpotClient): Promise<HubSpotPull> {
+  const { stageLabels, signalProperties, clickIdProperties, contactProperties, dealProperties } =
+    await discoverPortal(client);
 
   /*
    * Deals and contacts of the window, side by side. The contacts are the
@@ -392,10 +494,7 @@ export async function pullFromHubSpot(client: HubSpotClient): Promise<HubSpotPul
    * that means.
    */
   const [deals, leads] = await Promise.all([
-    client.listRecentDeals([
-      ...dealSignals.map((s) => s.name),
-      ...stageTimingProperties(stageLabels.keys()),
-    ]),
+    client.listRecentDeals(dealProperties),
     client.listRecentContacts(contactProperties).catch(() => undefined),
   ]);
 

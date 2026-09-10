@@ -4,6 +4,7 @@ import { feedOriginFromEnv } from "@/lib/feed/origin";
 import { supabaseFromEnv } from "@/lib/feed/supabaseRepository";
 import { workspaceRepositoryFromEnv } from "@/lib/workspace/env";
 import { keyFromEnv } from "@/lib/sync/secrets";
+import { HubSpotClient } from "@/lib/sync/hubspot/client";
 import { CrmConnectionStore } from "@/lib/sync/connections";
 import { exchangeCode, oauthConfigFromEnv, SCOPES, verifyState } from "@/lib/sync/hubspot/oauth";
 
@@ -25,6 +26,16 @@ function back(origin: string, params: Record<string, string>): NextResponse {
   const url = new URL(`${origin}/crm/connected`);
   for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
   return NextResponse.redirect(url);
+}
+
+/**
+ * Which portal this is, so a webhook naming it can find the workspace. Best
+ * effort: a token that cannot read account details still connects, and the
+ * nightly run asks again.
+ */
+async function rememberPortal(connections: CrmConnectionStore, workspaceId: string, accessToken: string) {
+  const info = await new HubSpotClient({ accessToken }).accountInfo();
+  if (info) await connections.setExternalAccount(workspaceId, "hubspot", info.portalId);
 }
 
 export async function GET(request: Request) {
@@ -71,7 +82,8 @@ export async function GET(request: Request) {
   }
 
   try {
-    await new CrmConnectionStore(client, key).save({
+    const connections = new CrmConnectionStore(client, key);
+    await connections.save({
       workspaceId,
       provider: "hubspot",
       accessToken: tokens.accessToken,
@@ -79,6 +91,7 @@ export async function GET(request: Request) {
       expiresAt: tokens.expiresAt,
       scopes: SCOPES.join(" "),
     });
+    await rememberPortal(connections, workspaceId, tokens.accessToken);
   } catch (error) {
     console.error("storing a CRM connection failed:", error);
     return back(origin, { status: "error", reason: describeDatabaseFailure(error) });

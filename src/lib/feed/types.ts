@@ -28,6 +28,13 @@ export type FeedIdentifier = IdentifierSet;
 
 export type FeedRowKind = "conversion" | "adjustment";
 
+/**
+ * How a feed reaches Google. `url` is the file Google fetches on its own
+ * schedule; `api` is rows sent through the Data Manager API the moment they
+ * are priced, with `delivered_at` on each row saying when.
+ */
+export type FeedDelivery = "url" | "api";
+
 export interface FeedRow {
   /** SHA-256 of the lowercased, trimmed address. Never the address. */
   hashedEmail: string | null;
@@ -53,6 +60,7 @@ export interface FeedRecord {
   modelFittedAt: Date | null;
   currencyCode: string;
   identifier: FeedIdentifier;
+  delivery: FeedDelivery;
   status: "active" | "revoked";
   createdAt: Date;
   publishedAt: Date | null;
@@ -69,6 +77,8 @@ export interface NewFeed {
   modelFittedAt?: Date | null;
   currencyCode: string;
   identifier: FeedIdentifier;
+  /** Defaults to `url`, the way every feed was before the API route stored one. */
+  delivery?: FeedDelivery;
 }
 
 export interface FetchLogEntry {

@@ -105,14 +105,16 @@ export async function POST(request: Request) {
     }
   }
 
-  const verified = await verifyAccess(new HubSpotClient({ accessToken }));
+  const hubspot = new HubSpotClient({ accessToken });
+  const verified = await verifyAccess(hubspot);
   if (!verified.ok) {
     // Nothing stored. A token that cannot read is not a connection.
     return NextResponse.json({ ok: false, error: verified.error }, { status: 400 });
   }
 
   try {
-    await new CrmConnectionStore(client, key).save({
+    const connections = new CrmConnectionStore(client, key);
+    await connections.save({
       workspaceId: auth.workspace.id,
       provider: "hubspot",
       accessToken,
@@ -122,6 +124,11 @@ export async function POST(request: Request) {
       expiresAt: null,
       scopes: "private-app",
     });
+    // Which portal, so a webhook naming it can find this workspace. A token
+    // that cannot read account details still connects; the nightly run asks
+    // again.
+    const info = await hubspot.accountInfo();
+    if (info) await connections.setExternalAccount(auth.workspace.id, "hubspot", info.portalId);
   } catch (error) {
     console.error("storing a private app token failed:", error);
     return NextResponse.json(

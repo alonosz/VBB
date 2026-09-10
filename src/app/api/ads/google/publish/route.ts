@@ -10,7 +10,9 @@ import {
   ingestEvents,
 } from "@/lib/sync/google/dataManager";
 import { AdsApiError, normalizeCustomerId } from "@/lib/sync/google/client";
-import { supabaseFromEnv } from "@/lib/feed/supabaseRepository";
+import { feedRepositoryFromEnv, supabaseFromEnv } from "@/lib/feed/supabaseRepository";
+import { storeApiPublish } from "@/lib/feed/apiPublish";
+import { loadSavedModel, type SavedValueModel } from "@/lib/model/savedModel";
 import { keyFromEnv } from "@/lib/sync/secrets";
 import { CrmConnectionStore } from "@/lib/sync/connections";
 import { parseRows } from "@/lib/feed/handlers";
@@ -41,6 +43,8 @@ export async function POST(request: Request) {
     modelId?: unknown;
     rows?: unknown;
     validateOnly?: unknown;
+    /** The frozen model that priced the rows, kept so the next lead can be priced without the browser. */
+    model?: unknown;
   };
   try {
     body = (await request.json()) as typeof body;
@@ -63,6 +67,23 @@ export async function POST(request: Request) {
    * batch to one.
    */
   const validateOnly = body.validateOnly === true;
+
+  // The same checks the URL publish makes, before anything is sent: a model
+  // that does not match its rows is refused outright rather than stored.
+  let model: SavedValueModel | null = null;
+  if (body.model !== undefined && body.model !== null) {
+    const loaded = loadSavedModel(body.model);
+    if (!loaded.model) return bad(loaded.error ?? "That saved model could not be read.");
+    if (loaded.model.modelId !== modelId) {
+      return bad("The saved model does not match the model that priced these rows.");
+    }
+    if (loaded.model.currencyCode !== currencyCode) {
+      return bad(
+        `The saved model was fitted in ${loaded.model.currencyCode} and these rows are in ${currencyCode}.`
+      );
+    }
+    model = loaded.model;
+  }
 
   const session = await adsSession(request, body.workspaceKey);
   if (!session.ok) return refuse(session);
@@ -175,6 +196,34 @@ export async function POST(request: Request) {
     }
 
     /*
+     * Kept, so this is the last time a browser has to be involved. The rows
+     * and the model become an api feed the nightly run and the CRM webhook
+     * price the next lead against. A dry run stores nothing: it changed
+     * nothing at Google either.
+     */
+    let stored: { feedId: string; modelStored: boolean } | null = null;
+    if (!validateOnly) {
+      const repo = feedRepositoryFromEnv();
+      if (repo) {
+        try {
+          const kept = await storeApiPublish(repo, {
+            clientId: session.workspaceId,
+            rows,
+            modelId,
+            currencyCode,
+            model,
+          });
+          stored = { feedId: kept.feed.id, modelStored: kept.modelStored };
+        } catch (error) {
+          // The values are at Google. What did not happen is the part that
+          // lets the next lead be priced without this screen, and the
+          // response says so rather than reporting the whole thing done.
+          console.error("storing an API send failed:", error);
+        }
+      }
+    }
+
+    /*
      * The last word, and the one that decides whether any of it mattered.
      * Values landing in an account whose campaigns bid on lead count change
      * nothing, and nothing in Google Ads says so.
@@ -201,6 +250,7 @@ export async function POST(request: Request) {
       submitted: rows.length,
       requestId: ingest.requestId,
       fieldWarnings: ingest.fieldWarnings,
+      stored,
       summary: validateOnly
         ? `Google checked all ${rows.length.toLocaleString()} rows and found no problem. Nothing was recorded - this was a test.`
         : describeIngest({ submitted: rows.length, requestId: ingest.requestId }),
