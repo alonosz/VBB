@@ -132,17 +132,16 @@ export default function Home() {
                   className="display mt-4 max-w-[16ch]"
                   style={{ color: "var(--on-navy)" }}
                 >
-                  Google Ads thinks all your leads are worth the same.
+                  Turn Google Ads into a pipeline revenue engine.
                 </h1>
 
                 <p
                   className="lede mt-5 max-w-[54ch] max-sm:text-[15px]"
                   style={{ color: "var(--on-navy-muted)" }}
                 >
-                  When every form fill counts the same, a dead-end enquiry looks as
-                  valuable as your next premium customer. Use your sales history and
-                  AI to teach Google which leads are likely to be worth more, with
-                  lead values sent directly to Google Ads.
+                  Pass predicted lead values back to Google Ads, so Smart Bidding
+                  goes after the prospects who actually pay. Values come from your
+                  own CRM history, and none of it is stored.
                 </p>
 
                 <div className="mt-8 flex flex-wrap items-center gap-x-5 gap-y-3">
