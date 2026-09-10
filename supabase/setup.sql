@@ -796,9 +796,9 @@ comment on column public.workspaces.created_ip_hash is
 create index if not exists workspaces_by_creator
   on public.workspaces (created_ip_hash, created_at desc);
 
--- ---------------------------------------------------------------------------
+-- ============================================================
 -- 20260830140000_feed_identifier_both.sql
--- ---------------------------------------------------------------------------
+-- ============================================================
 
 -- VBB Engine - a feed may carry both identifier columns.
 --
@@ -825,9 +825,9 @@ alter table public.feeds
 comment on column public.feeds.identifier is
   'Which identifier columns this feed''s CSV carries: clickId, email, or both. Fixed at publish - the columns are the file''s header row, so changing it mid-life would produce a file whose values no longer line up with its columns.';
 
--- ---------------------------------------------------------------------------
+-- ============================================================
 -- 20260830160000_google_ads_connections.sql
--- ---------------------------------------------------------------------------
+-- ============================================================
 
 -- VBB Engine - a workspace can hold an ad platform connection as well as a CRM.
 --
@@ -875,9 +875,9 @@ comment on table public.crm_connections is
 comment on column public.crm_connections.external_account_id is
   'Which account these credentials reach: a HubSpot portal id, or a Google Ads customer id. Stored so a reconnection to a different account is visible rather than silently pulling or pushing against the wrong one.';
 
--- ---------------------------------------------------------------------------
+-- ============================================================
 -- 20260830190000_bid_switch_date.sql
--- ---------------------------------------------------------------------------
+-- ============================================================
 
 -- VBB Engine - the day an advertiser switched to value-based bidding.
 --
@@ -918,3 +918,114 @@ $$;
 
 comment on column public.workspaces.value_bidding_switched_at is
   'When this advertiser moved their campaigns to a value-based bid strategy. The dividing line for the before/after comparison, and the only part of it that cannot be worked out later.';
+
+-- ============================================================
+-- 20260901120000_run_tracking_coverage.sql
+-- ============================================================
+
+-- VBB Engine - how many of each night's leads Google can match.
+--
+-- The run history already answers "did it run" and "what went out". It cannot
+-- answer the question that ends a pilot quietly: the site's click-ID capture
+-- broke three weeks ago, every night since has run green, and every lead has
+-- gone out unmatchable. Nothing in the existing columns moves when that
+-- happens - the counts stay healthy, because pricing and publishing both
+-- worked. Only the share of leads carrying an identifier moves.
+--
+-- Counts, not rows. This is the same shape as everything else in this table:
+-- how many, never which. No lead, no click ID, no email, no URL.
+--
+-- Nullable on purpose. Runs recorded before this migration did not measure
+-- coverage, and writing 0 for them would say every lead that week was
+-- unmatchable, which is a fabricated number of the exact kind this product
+-- exists to refuse. Null means not measured, and the screen says so.
+alter table public.sync_runs
+  add column if not exists leads_with_click_id integer,
+  add column if not exists leads_with_email integer,
+  add column if not exists leads_with_neither integer;
+
+do $$
+begin
+  if not exists (
+    select 1 from pg_constraint where conname = 'sync_runs_coverage_is_not_negative'
+  ) then
+    alter table public.sync_runs
+      add constraint sync_runs_coverage_is_not_negative check (
+        (leads_with_click_id is null or leads_with_click_id >= 0)
+        and (leads_with_email is null or leads_with_email >= 0)
+        and (leads_with_neither is null or leads_with_neither >= 0)
+      );
+  end if;
+end $$;
+
+comment on column public.sync_runs.leads_with_click_id is
+  'Leads in this run carrying an ad click ID. Null on runs recorded before coverage was measured.';
+comment on column public.sync_runs.leads_with_email is
+  'Leads in this run carrying an email address. A lead with both is in both counts.';
+comment on column public.sync_runs.leads_with_neither is
+  'Leads Google has nothing to match on. These are the ones a broken capture script produces.';
+
+-- ============================================================
+-- 20260906230000_workspace_contact_email.sql
+-- ============================================================
+
+-- VBB Engine - an address on a workspace that came into being by itself.
+--
+-- A workspace is minted silently for a new visitor at the first server call,
+-- so nothing on screen ever mentions a key. That leaves two things missing:
+-- the operator cannot tell one self-serve workspace from another, and the
+-- visitor cannot get back in from a second device. Both are one address.
+-- Left at the send step, on purpose, after they have something worth keeping.
+--
+-- Only the address. It is the advertiser's own contact, not a CRM record;
+-- the feed tables stay the only place holding anything derived from their
+-- data.
+
+alter table public.workspaces
+  add column if not exists contact_email text;
+
+comment on column public.workspaces.contact_email is
+  'Where to send the link that opens this workspace on another device. Null until the advertiser leaves one.';
+
+-- ============================================================
+-- 20260910120000_realtime_delivery.sql
+-- ============================================================
+
+-- Real-time delivery.
+--
+-- Until now a feed was one thing: a file Google fetches on its own schedule.
+-- Values sent through the Google Ads connection were sent and forgotten -
+-- no model stored, no record of which leads went - so nothing on the server
+-- could price the next lead for that customer. A feed now says how it is
+-- delivered, and rows on an API-delivered feed carry when they reached
+-- Google, so a lead priced at three in the afternoon goes out at three in
+-- the afternoon and a send Google refused is tried again by the nightly run
+-- rather than lost.
+
+alter table public.feeds
+  add column if not exists delivery text not null default 'url';
+
+alter table public.feeds
+  drop constraint if exists feeds_delivery_known;
+alter table public.feeds
+  add constraint feeds_delivery_known check (delivery in ('url', 'api'));
+
+comment on column public.feeds.delivery is
+  'url: Google fetches the CSV at the feed URL. api: we send rows through the Data Manager API as they are priced, and delivered_at on each row says when.';
+
+alter table public.feed_rows
+  add column if not exists delivered_at timestamptz;
+
+comment on column public.feed_rows.delivered_at is
+  'When this row reached Google through the API. Null on a URL feed, and on an API feed until the send succeeds; the nightly run resends what is still null.';
+
+-- What the delivery sweep reads: the rows of one feed still waiting.
+create index if not exists feed_rows_pending_delivery
+  on public.feed_rows (feed_id)
+  where delivered_at is null;
+
+-- A webhook names the portal, not the workspace. This is how the one becomes
+-- the other.
+create index if not exists crm_connections_by_external_account
+  on public.crm_connections (provider, external_account_id);
+
