@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { ArrowIcon } from "@/components/ArrowIcon";
 import Link from "next/link";
+import { forgetEverything } from "@/lib/auth/signOut";
 import { forgetWorkspaceKey, readWorkspaceKey, rememberWorkspaceKey } from "@/lib/workspace/clientKey";
 import { LiveShell } from "@/components/shell/LiveShell";
 import { Alert, Badge, DataRow, Empty, Metric, Section, StatusDot, type Tone } from "@/components/ui";
@@ -165,7 +166,9 @@ export function WorkspaceView() {
   }, [load]);
 
   function signOut() {
-    forgetWorkspaceKey();
+    // The same forgetting the header does: address and saved model too, not
+    // just the key, or the next visitor on this machine inherits them.
+    forgetEverything();
     setOverview(null);
     setKey("");
   }

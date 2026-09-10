@@ -3,7 +3,7 @@ import { ArrowIcon } from "@/components/ArrowIcon";
 import { Logo } from "@/components/brand/Logo";
 import { SiteFooter } from "@/components/legal/SiteFooter";
 import { WorkspaceReadyBar } from "@/components/workspace/WorkspaceReadyBar";
-import { LoginLink } from "@/components/workspace/LoginLink";
+import { AccountLink } from "@/components/workspace/AccountLink";
 
 /**
  * What this is, before anyone is asked to do anything.
@@ -88,7 +88,7 @@ export default function Home() {
         <Logo size={34} showDotCom className="max-sm:hidden" />
         <Logo size={27} showDotCom className="sm:hidden" gradientId="vbb-mark-gradient-sm" />
         <div className="flex shrink-0 items-center gap-3 sm:gap-4">
-          <LoginLink className="whitespace-nowrap text-[13.5px] font-semibold text-[var(--muted)] hover:text-[var(--foreground)]" />
+          <AccountLink className="whitespace-nowrap text-[13.5px] font-semibold text-[var(--muted)] hover:text-[var(--foreground)]" />
           <Link href="/diagnostic" className="btn btn-secondary btn-sm">
             Start
           </Link>
