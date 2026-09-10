@@ -83,10 +83,12 @@ const SHAPE = [34, 52, 41, 78, 46, 96, 38, 61, 44, 87, 55, 70, 40, 100, 48, 63];
 export default function Home() {
   return (
     <div className="animate-page-in flex min-h-screen flex-col">
-      <header className="page-wide flex items-center justify-between gap-4 py-5">
-        <Logo size={34} showDotCom />
-        <div className="flex items-center gap-4">
-          <LoginLink className="text-[13.5px] font-semibold text-[var(--muted)] hover:text-[var(--foreground)]" />
+      <header className="page-wide flex items-center justify-between gap-3 py-5">
+        {/* The full lockup does not fit beside two buttons on a phone. */}
+        <Logo size={34} showDotCom className="max-sm:hidden" />
+        <Logo size={27} showDotCom className="sm:hidden" gradientId="vbb-mark-gradient-sm" />
+        <div className="flex shrink-0 items-center gap-3 sm:gap-4">
+          <LoginLink className="whitespace-nowrap text-[13.5px] font-semibold text-[var(--muted)] hover:text-[var(--foreground)]" />
           <Link href="/diagnostic" className="btn btn-secondary btn-sm">
             Start
           </Link>
@@ -105,7 +107,7 @@ export default function Home() {
         {/* ---------------------------------------------------------------- */}
         <div className="page-wide">
           <section className="panel-navy overflow-hidden">
-            <div className="grid items-center gap-8 p-7 sm:p-9 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,.95fr)] lg:gap-12 lg:p-11">
+            <div className="grid items-center gap-8 p-6 sm:p-9 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,.95fr)] lg:gap-12 lg:p-11">
               <div className="min-w-0">
                 <p className="label" style={{ color: "var(--on-navy-muted)" }}>
                   Feed Google&apos;s AI the signal it is missing
@@ -119,7 +121,7 @@ export default function Home() {
                 </h1>
 
                 <p
-                  className="lede mt-5 max-w-[54ch]"
+                  className="lede mt-5 max-w-[54ch] max-sm:text-[15px]"
                   style={{ color: "var(--on-navy-muted)" }}
                 >
                   When every form fill counts the same, a dead-end enquiry looks as

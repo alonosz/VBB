@@ -291,6 +291,10 @@ body {
   .btn-wrap {
     white-space: normal;
     text-align: center;
+    /* A label that has to wrap breaks into two even lines, not a line and
+       an orphan word. */
+    text-wrap: balance;
+    line-height: 1.3;
   }
 
   .btn:disabled {

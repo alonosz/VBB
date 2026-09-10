@@ -37,7 +37,7 @@ export function LogoMark({
       height={size}
       viewBox="0 0 30 48"
       fill="none"
-      className={className}
+      className={`shrink-0 ${className}`}
       role="img"
       aria-label="ValueBasedBidding"
     >
@@ -74,16 +74,20 @@ export function Logo({
   size = 28,
   showDotCom = false,
   className = "",
+  gradientId,
 }: {
   size?: number;
   showDotCom?: boolean;
   className?: string;
+  /** Needed when two lockups share a page and one is `display: none`: a
+      gradient defined inside a hidden element paints nothing. */
+  gradientId?: string;
 }) {
   return (
     <span className={`flex items-center gap-2.5 ${className}`}>
-      <LogoMark size={size} />
+      <LogoMark size={size} gradientId={gradientId} />
       <span
-        className="font-extrabold tracking-[-.035em] text-[var(--brand-wordmark)]"
+        className="whitespace-nowrap font-extrabold tracking-[-.035em] text-[var(--brand-wordmark)]"
         style={{ fontSize: size * 0.56 }}
       >
         ValueBasedBidding
