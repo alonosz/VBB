@@ -107,7 +107,8 @@ cat > ~/Desktop/vbb-engine/*/app/app-hsmeta.json <<'EOF'
       "type": "oauth",
       "redirectUrls": [
         "https://vbb-cyan.vercel.app/api/crm/hubspot/callback",
-        "https://app.valuebasedbidding.com/api/crm/hubspot/callback"
+        "https://app.valuebasedbidding.com/api/crm/hubspot/callback",
+        "https://valuebasedbidding.com/api/crm/hubspot/callback"
       ],
       "requiredScopes": [
         "oauth",
@@ -183,16 +184,55 @@ developer account. In Vercel, add:
 
 Redeploy. The Connect HubSpot button on step 5 is now live.
 
-## Step 8 - webhooks, so a lead is priced the moment it exists
+## Step 8 - the live domain and webhooks, in one paste
 
-Without this, a connected portal is read once a night. With it, HubSpot
-calls us the moment a contact is created or a deal moves, and the lead is
-priced and sent to Google within seconds. Same model, same rules, same rows;
-only the clock changes.
-
-Add a webhooks component next to the app component and upload again:
+Two things changed since June: the site moved to valuebasedbidding.com, so
+the app needs that callback address, and a lead is now priced the moment
+HubSpot creates it, which needs a webhook. Both are files in the project
+folder on your Desktop, and one upload. The same Terminal you used in June:
+open it, paste the whole block below, press Enter, and wait for
+`hs project upload` to finish.
 
 ```bash
+cat > ~/Desktop/vbb-engine/*/app/app-hsmeta.json <<'JSON'
+{
+  "uid": "vbb_engine_app",
+  "type": "app",
+  "config": {
+    "description": "Works out what each lead is worth from your own closed deals, and sends those values to Google Ads. Read-only: nothing in your CRM is changed.",
+    "name": "Value Based Bidding",
+    "distribution": "marketplace",
+    "auth": {
+      "type": "oauth",
+      "redirectUrls": [
+        "https://vbb-cyan.vercel.app/api/crm/hubspot/callback",
+        "https://app.valuebasedbidding.com/api/crm/hubspot/callback",
+        "https://valuebasedbidding.com/api/crm/hubspot/callback"
+      ],
+      "requiredScopes": [
+        "oauth",
+        "crm.objects.deals.read",
+        "crm.objects.contacts.read",
+        "crm.objects.companies.read"
+      ],
+      "optionalScopes": [],
+      "conditionallyRequiredScopes": []
+    },
+    "permittedUrls": {
+      "fetch": [
+        "https://api.hubapi.com"
+      ],
+      "iframe": [],
+      "img": []
+    },
+    "support": {
+      "supportEmail": "alon@bettersignals.co",
+      "documentationUrl": "https://valuebasedbidding.com",
+      "supportUrl": "https://valuebasedbidding.com"
+    }
+  }
+}
+JSON
 mkdir -p ~/Desktop/vbb-engine/*/app/webhooks
 cat > ~/Desktop/vbb-engine/*/app/webhooks/webhooks-hsmeta.json <<'JSON'
 {
@@ -215,12 +255,13 @@ JSON
 cd ~/Desktop/vbb-engine && hs project upload
 ```
 
-If `hs project upload` rejects the file, the component's exact field names
-have moved since this was written (HubSpot renames these between platform
-versions). The developer docs page for the webhooks component has the
-current shape; the three things that must survive any rename are the target
-URL, a subscription to contact creation, and a subscription to deal
-property changes.
+If the last line ends in an error, copy the whole error and send it. The
+likely cause is that HubSpot renamed a field in the webhooks component
+since this was written; the three things that must survive any rename are
+the target URL, a subscription to contact creation, and a subscription to
+deal property changes. If it says the project folder does not exist, the
+June project is somewhere other than the Desktop: `hs project list` names
+it.
 
 Nothing to add in Vercel: the webhook is signed with `HUBSPOT_CLIENT_SECRET`,
 which is already there from step 7, and the endpoint refuses anything not
