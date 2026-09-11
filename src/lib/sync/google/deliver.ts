@@ -25,11 +25,16 @@ import { freshAccessToken } from "./accessToken";
 export interface DeliveryOutcome {
   /** Rows Google accepted for processing this time. */
   sent: number;
-  /** Rows still waiting after this attempt. */
+  /** Rows still waiting after this attempt, refused ones included. */
   pending: number;
-  /** Why nothing was sent, in words for the run log. */
+  /** Rows Google refused on their own this time. They are named as such and retried nightly. */
+  failed: number;
+  /** What went wrong, in words for the run log. Null when everything went. */
   error: string | null;
 }
+
+/** Rows per request. Google takes more; this keeps one refusal cheap to isolate. */
+export const SEND_CHUNK = 500;
 
 export interface GoogleSender {
   send(rows: FeedRow[]): Promise<void>;
@@ -116,30 +121,71 @@ export async function googleSenderFor(opts: {
   };
 }
 
+/**
+ * The Data Manager API accepts or refuses a request whole. So a batch is
+ * sent as one request, and when Google refuses it each row is sent on its
+ * own: the good ones go through, and the one Google will never take is
+ * named as refused rather than left to poison every batch after it. The
+ * live path skips a refused row; the nightly run tries it again, in case
+ * what Google lacked yesterday - a click too fresh to be recorded - it has
+ * today.
+ */
 export async function deliverPending(opts: {
   feed: FeedRecord;
   repo: FeedRepository;
   sender: GoogleSender;
   now?: Date;
+  /** Include rows Google refused before. The nightly run's setting. */
+  retryFailed?: boolean;
 }): Promise<DeliveryOutcome> {
   const { feed, repo, sender } = opts;
   const now = opts.now ?? new Date();
 
   // A URL feed is collected, not sent. Its rows never become "delivered"
   // because we never learn that they were.
-  if (feed.delivery !== "api") return { sent: 0, pending: 0, error: null };
+  if (feed.delivery !== "api") return { sent: 0, pending: 0, failed: 0, error: null };
 
-  const pending = await repo.pendingRows(feed.id);
-  if (pending.length === 0) return { sent: 0, pending: 0, error: null };
-
-  try {
-    await sender.send(pending);
-  } catch (error) {
-    return { sent: 0, pending: pending.length, error: describeFailure(error) };
+  const pending = await repo.pendingRows(feed.id, { retryFailed: opts.retryFailed });
+  if (pending.length === 0) {
+    return { sent: 0, pending: await repo.countPending(feed.id), failed: 0, error: null };
   }
 
-  await repo.markDelivered(feed.id, pending, now);
-  return { sent: pending.length, pending: 0, error: null };
+  let sent = 0;
+  let failed = 0;
+  let firstError: string | null = null;
+
+  for (let i = 0; i < pending.length; i += SEND_CHUNK) {
+    const chunk = pending.slice(i, i + SEND_CHUNK);
+    try {
+      await sender.send(chunk);
+      await repo.markDelivered(feed.id, chunk, now);
+      sent += chunk.length;
+      continue;
+    } catch (error) {
+      firstError ??= describeFailure(error);
+    }
+
+    // The batch was refused. Find out which rows Google actually objects to.
+    for (const row of chunk) {
+      try {
+        await sender.send([row]);
+        await repo.markDelivered(feed.id, [row], now);
+        sent++;
+      } catch (error) {
+        const why = describeFailure(error);
+        firstError ??= why;
+        await repo.markFailed(feed.id, [row], why, now);
+        failed++;
+      }
+    }
+  }
+
+  return {
+    sent,
+    pending: await repo.countPending(feed.id),
+    failed,
+    error: failed > 0 ? `${failed} ${failed === 1 ? "row" : "rows"} refused by Google: ${firstError}` : firstError,
+  };
 }
 
 function describeFailure(error: unknown): string {

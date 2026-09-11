@@ -50,6 +50,10 @@ interface FeedDto {
   rows_published: number;
 }
 
+const ROW_COLUMNS = "hashed_email, click_id, conversion_time, value, currency_code, model_id, kind, row_key";
+/** Keys per request. A 64-character key times this stays well inside a URL. */
+const KEY_CHUNK = 150;
+
 function toRow(r: FeedRowDto): FeedRow {
   return {
     hashedEmail: r.hashed_email,
@@ -141,7 +145,7 @@ export class SupabaseFeedRepository implements FeedRepository {
     return (data as FeedDto[]).map(toRecord);
   }
 
-  async addRows(feedId: string, rows: FeedRow[]): Promise<number> {
+  async addRows(feedId: string, rows: FeedRow[], opts: { deliveredAt?: Date } = {}): Promise<number> {
     if (rows.length === 0) return 0;
     for (const row of rows) assertStorableRow(row);
 
@@ -160,6 +164,7 @@ export class SupabaseFeedRepository implements FeedRepository {
           model_id: r.modelId,
           kind: r.kind,
           row_key: r.rowKey,
+          delivered_at: opts.deliveredAt?.toISOString() ?? null,
         })),
         { onConflict: "feed_id,row_key,kind", ignoreDuplicates: true }
       )
@@ -184,7 +189,7 @@ export class SupabaseFeedRepository implements FeedRepository {
   async rowsFor(feedId: string): Promise<FeedRow[]> {
     const { data, error } = await this.client
       .from("feed_rows")
-      .select("hashed_email, click_id, conversion_time, value, currency_code, model_id, kind, row_key")
+      .select(ROW_COLUMNS)
       .eq("feed_id", feedId)
       .order("conversion_time", { ascending: true });
 
@@ -192,31 +197,90 @@ export class SupabaseFeedRepository implements FeedRepository {
     return (data as FeedRowDto[]).map(toRow);
   }
 
-  async pendingRows(feedId: string): Promise<FeedRow[]> {
-    const { data, error } = await this.client
+  async rowsForIdentifiers(
+    feedId: string,
+    ids: { clickIds: string[]; hashedEmails: string[] }
+  ): Promise<FeedRow[]> {
+    const found = new Map<string, FeedRow>();
+    const read = async (column: "click_id" | "hashed_email", values: string[]) => {
+      for (let i = 0; i < values.length; i += KEY_CHUNK) {
+        const { data, error } = await this.client
+          .from("feed_rows")
+          .select(ROW_COLUMNS)
+          .eq("feed_id", feedId)
+          .in(column, values.slice(i, i + KEY_CHUNK));
+        if (error) throw new Error(error.message);
+        for (const dto of data as FeedRowDto[]) {
+          const row = toRow(dto);
+          found.set(`${row.rowKey}|${row.kind}`, row);
+        }
+      }
+    };
+    await read("click_id", ids.clickIds);
+    await read("hashed_email", ids.hashedEmails);
+    return [...found.values()];
+  }
+
+  async pendingRows(feedId: string, opts: { retryFailed?: boolean } = {}): Promise<FeedRow[]> {
+    let query = this.client
       .from("feed_rows")
-      .select("hashed_email, click_id, conversion_time, value, currency_code, model_id, kind, row_key")
+      .select(ROW_COLUMNS)
       .eq("feed_id", feedId)
-      .is("delivered_at", null)
-      .order("conversion_time", { ascending: true });
+      .is("delivered_at", null);
+    if (!opts.retryFailed) query = query.is("delivery_failed_at", null);
+    const { data, error } = await query.order("conversion_time", { ascending: true });
 
     if (error) throw new Error(error.message);
     return (data as FeedRowDto[]).map(toRow);
+  }
+
+  async countPending(feedId: string): Promise<number> {
+    const { count, error } = await this.client
+      .from("feed_rows")
+      .select("id", { count: "exact", head: true })
+      .eq("feed_id", feedId)
+      .is("delivered_at", null);
+    if (error) throw new Error(error.message);
+    return count ?? 0;
   }
 
   async markDelivered(feedId: string, rows: Pick<FeedRow, "rowKey" | "kind">[], at: Date): Promise<void> {
-    // One update per kind: a lead's conversion and its adjustment share a
-    // row key, and only the kind that was sent is the one that arrived.
+    await this.markRows(feedId, rows, {
+      delivered_at: at.toISOString(),
+      delivery_failed_at: null,
+      delivery_error: null,
+    });
+  }
+
+  async markFailed(feedId: string, rows: Pick<FeedRow, "rowKey" | "kind">[], error: string, at: Date): Promise<void> {
+    await this.markRows(feedId, rows, {
+      delivery_failed_at: at.toISOString(),
+      delivery_error: error.slice(0, 500),
+    });
+  }
+
+  /**
+   * One update per kind, in chunks: a lead's conversion and its adjustment
+   * share a row key and only the kind that was sent is the one that
+   * arrived, and a few thousand keys in one request is a URL too long for
+   * the gateway.
+   */
+  private async markRows(
+    feedId: string,
+    rows: Pick<FeedRow, "rowKey" | "kind">[],
+    patch: Record<string, string | null>
+  ): Promise<void> {
     for (const kind of ["conversion", "adjustment"] as const) {
       const keys = rows.filter((r) => r.kind === kind).map((r) => r.rowKey);
-      if (keys.length === 0) continue;
-      const { error } = await this.client
-        .from("feed_rows")
-        .update({ delivered_at: at.toISOString() })
-        .eq("feed_id", feedId)
-        .eq("kind", kind)
-        .in("row_key", keys);
-      if (error) throw new Error(error.message);
+      for (let i = 0; i < keys.length; i += KEY_CHUNK) {
+        const { error } = await this.client
+          .from("feed_rows")
+          .update(patch)
+          .eq("feed_id", feedId)
+          .eq("kind", kind)
+          .in("row_key", keys.slice(i, i + KEY_CHUNK));
+        if (error) throw new Error(error.message);
+      }
     }
   }
 

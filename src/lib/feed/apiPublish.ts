@@ -71,8 +71,9 @@ export async function storeApiPublish(repo: FeedRepository, publish: ApiPublish)
     delivery: "api",
   });
 
-  const rowsStored = await repo.addRows(feed.id, publish.rows);
-  await repo.markDelivered(feed.id, publish.rows, now);
+  // Written as already at Google in the same insert. Two writes would leave
+  // a window in which a run finds the whole send pending and sends it again.
+  const rowsStored = await repo.addRows(feed.id, publish.rows, { deliveredAt: now });
 
   let modelStored = false;
   if (publish.model) {

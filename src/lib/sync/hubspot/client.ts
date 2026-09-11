@@ -435,33 +435,56 @@ export async function discoverPortal(client: HubSpotClient): Promise<PortalVocab
  * deals and company, in the shape the mapper already understands. The
  * contacts are the leads; the deals say what has become of them so far.
  */
-export async function readLeads(client: HubSpotClient, contactIds: string[]): Promise<HubSpotPull> {
-  const vocabulary = await discoverPortal(client);
+export async function readLeads(
+  client: HubSpotClient,
+  contactIds: string[],
+  opts: {
+    /**
+     * Contacts created before this are not leads of the window and are not
+     * read further. A deal dragged to a new stage names its contact whatever
+     * its age, and a lead from three years ago must not become a brand-new
+     * conversion dated three years ago.
+     */
+    since?: Date;
+    /** Already discovered for this portal, so a burst of events reads it once. */
+    vocabulary?: PortalVocabulary;
+  } = {}
+): Promise<HubSpotPull> {
+  const vocabulary = opts.vocabulary ?? (await discoverPortal(client));
   const ids = [...new Set(contactIds)];
 
   const contactsById = await client.readBatch("contacts", ids, vocabulary.contactProperties);
-  const leads = ids.map((id) => contactsById.get(id)).filter((c): c is HubSpotObject => !!c);
+  const leads = ids
+    .map((id) => contactsById.get(id))
+    .filter((c): c is HubSpotObject => !!c)
+    .filter((c) => !opts.since || createdOnOrAfter(c, opts.since));
 
   const dealLinks = await client.readLinks("contacts", "deals", leads.map((c) => c.id));
-  const dealIds = [...dealLinks.values()].flat();
+  const dealIds = [...new Set([...dealLinks.values()].flat())];
   const dealsById =
     dealIds.length > 0
       ? await client.readBatch("deals", dealIds, vocabulary.dealProperties)
       : new Map<string, HubSpotObject>();
 
-  // The mapper reads a deal's contacts off the deal, so the link is written
-  // there, the way the window pull attaches it.
-  const deals: HubSpotObject[] = [];
+  // The mapper reads a deal's contacts off the deal, so the links are
+  // written there, the way the window pull attaches them: every named
+  // contact the deal points at, and the deal once. The mapper counts a
+  // deal on its first lead only, so a deal two contacts share is one sale.
+  const contactsByDeal = new Map<string, string[]>();
   for (const [contactId, linked] of dealLinks) {
     for (const dealId of linked) {
-      const deal = dealsById.get(dealId);
-      if (!deal) continue;
-      deal.associations = {
-        ...deal.associations,
-        contacts: { results: [{ id: contactId }] },
-      };
-      deals.push(deal);
+      contactsByDeal.set(dealId, [...(contactsByDeal.get(dealId) ?? []), contactId]);
     }
+  }
+  const deals: HubSpotObject[] = [];
+  for (const [dealId, contacts] of contactsByDeal) {
+    const deal = dealsById.get(dealId);
+    if (!deal) continue;
+    deal.associations = {
+      ...deal.associations,
+      contacts: { results: contacts.map((id) => ({ id })) },
+    };
+    deals.push(deal);
   }
 
   return {
@@ -473,6 +496,13 @@ export async function readLeads(client: HubSpotClient, contactIds: string[]): Pr
     stageLabels: vocabulary.stageLabels,
     signalProperties: vocabulary.signalProperties,
   };
+}
+
+function createdOnOrAfter(contact: HubSpotObject, since: Date): boolean {
+  const raw = contact.properties?.createdate;
+  if (!raw) return true;
+  const created = new Date(raw);
+  return Number.isNaN(created.getTime()) || created >= since;
 }
 
 /** The contacts a set of deals belongs to, for a deal event to name its leads. */

@@ -30,7 +30,8 @@ function portal() {
         results: body.inputs.map(({ id }: { id: string }) => ({
           id,
           properties: {
-            createdate: "2026-09-10T14:55:00.000Z",
+            // c-old arrived years ago; everyone else this afternoon.
+            createdate: id === "c-old" ? "2022-03-01T09:00:00.000Z" : "2026-09-10T14:55:00.000Z",
             lifecyclestage: "lead",
             email: `lead${id}@northridgefab.com`,
             jobtitle: "Operations Manager",
@@ -41,10 +42,25 @@ function portal() {
       }));
     }
     if (path === "/crm/v4/associations/contacts/deals/batch/read") {
-      return new Response(JSON.stringify({ results: [] }));
+      // c1 and c2 share deal d1; nobody else has one.
+      return new Response(JSON.stringify({
+        results: body.inputs
+          .filter(({ id }: { id: string }) => id === "c1" || id === "c2")
+          .map(({ id }: { id: string }) => ({ from: { id }, to: [{ toObjectId: "d1" }] })),
+      }));
     }
     if (path === "/crm/v4/associations/deals/contacts/batch/read") {
-      return new Response(JSON.stringify({ results: [{ from: { id: "d9" }, to: [{ toObjectId: "c9" }] }] }));
+      const id = body.inputs[0].id;
+      const to = id === "d-old" ? [{ toObjectId: "c-old" }] : [{ toObjectId: "c9" }];
+      return new Response(JSON.stringify({ results: [{ from: { id }, to }] }));
+    }
+    if (path === "/crm/v3/objects/deals/batch/read") {
+      return new Response(JSON.stringify({
+        results: body.inputs.map(({ id }: { id: string }) => ({
+          id,
+          properties: { createdate: "2026-09-10T15:00:00.000Z", dealstage: "closedwon", amount: "5000", hs_is_closed: "true", hs_is_closed_won: "true" },
+        })),
+      }));
     }
     if (path === "/crm/v3/objects/companies/batch/read") {
       return new Response(JSON.stringify({
@@ -124,6 +140,30 @@ describe("handleWebhookEvents", () => {
     expect(out.sent).toBe(0);
     expect(out.problems[0]).toMatch(/Google Ads/);
     expect(await repo.pendingRows(feed.id)).toHaveLength(1);
+  });
+
+  it("counts a deal two named contacts share once, on the first, not twice on the last", async () => {
+    const { repo, connections, feed } = await scenario();
+    const out = await handleWebhookEvents({
+      events: [created("c1"), created("c2")], repo, connections, fetchImpl: portal().fetchImpl, now: NOW,
+    });
+    expect(out.rowsAdded).toBe(2);
+    const rows = await repo.rowsFor(feed.id);
+    expect(rows.map((r) => r.clickId).sort()).toEqual(["Cj0KCQlivec1example", "Cj0KCQlivec2example"]);
+    // Both priced, and neither at a doubled amount: two rows, two distinct leads.
+    expect(new Set(rows.map((r) => r.rowKey)).size).toBe(2);
+  });
+
+  it("does not turn an old contact into a new conversion when its deal moves", async () => {
+    const { repo, connections, feed } = await scenario();
+    const event: WebhookEvent = {
+      eventId: "e-d-old", portalId: PORTAL, object: "deal", objectId: "d-old", change: "changed",
+      property: "dealstage", occurredAt: NOW,
+    };
+    const out = await handleWebhookEvents({ events: [event], repo, connections, fetchImpl: portal().fetchImpl, now: NOW });
+    expect(out.rowsAdded).toBe(0);
+    expect(out.leadsRead).toBe(0);
+    expect(await repo.rowsFor(feed.id)).toEqual([]);
   });
 
   it("ignores a portal nobody connected", async () => {

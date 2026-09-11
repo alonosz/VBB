@@ -57,6 +57,11 @@ interface PublishResult {
   fieldWarnings: unknown[];
   summary: string;
   strategies: StrategyAudit | null;
+  /**
+   * Whether the send was kept on the server with its model, which is what
+   * lets leads arriving after this screen be priced. Null when it was not.
+   */
+  stored?: { feedId: string; modelStored: boolean } | null;
 }
 
 type Phase = "idle" | "connecting" | "listing" | "sending";
@@ -656,6 +661,13 @@ function Sent({
 
       <ul className="mt-3 grid gap-1.5 text-[13.5px]">
         <li>{result.summary}</li>
+        {landed && !result.stored?.modelStored && (
+          <li className="text-[var(--warn)]">
+            {result.stored
+              ? "Sent, but the model could not be kept on our side, so leads that arrive after you close this page will not be priced until you send again."
+              : "Sent, but this send could not be kept on our side, so leads that arrive after you close this page will not be priced until you send again."}
+          </li>
+        )}
         {result.requestId && (
           <li className="mono text-[12px] text-[var(--muted)]">
             Request {result.requestId}

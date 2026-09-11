@@ -140,22 +140,28 @@ export async function syncFeed(opts: SyncFeedOptions): Promise<FeedSyncOutcome> 
   }
   const accessToken = fresh.token;
 
-  let deals;
-  try {
-    const client = new HubSpotClient({
-      accessToken,
-      fetchImpl,
-      now,
-      windowDays: opts.windowDays,
-      sleep: opts.sleep,
-    });
-    // A connection made before portals were recorded learns its number here,
-    // so the webhook can find it from tomorrow. Once, and never on the
-    // critical path: a failure to read it costs nothing tonight.
-    if (!connection.externalAccountId) {
+  const client = new HubSpotClient({
+    accessToken,
+    fetchImpl,
+    now,
+    windowDays: opts.windowDays,
+    sleep: opts.sleep,
+  });
+
+  // A connection made before portals were recorded learns its number here,
+  // so the webhook can find it from tomorrow. Once, and never on the
+  // critical path: a failure to read or write it costs nothing tonight.
+  if (!connection.externalAccountId) {
+    try {
       const info = await client.accountInfo();
       if (info) await connections.setExternalAccount(workspaceId, "hubspot", info.portalId);
+    } catch (error) {
+      console.error("recording the HubSpot portal id failed:", error);
     }
+  }
+
+  let deals;
+  try {
     // CRM records exist here and nowhere else - in memory, for the length of
     // this call. Only feed rows are written down.
     //
@@ -187,7 +193,8 @@ export async function syncFeed(opts: SyncFeedOptions): Promise<FeedSyncOutcome> 
    * the next run tries again, and the message says which it was.
    */
   if (!report.refusedBecause && feed.delivery === "api") {
-    report.delivery = await deliverToGoogle({ ...opts, feed, workspaceId, now });
+    // The night is when a row Google refused before gets its second chance.
+    report.delivery = await deliverToGoogle({ ...opts, feed, workspaceId, now, retryFailed: true });
   }
 
   const problem = report.refusedBecause ?? report.delivery?.error ?? null;
@@ -211,6 +218,7 @@ export async function deliverToGoogle(opts: {
   googleOauth?: OAuthConfig | null;
   fetchImpl?: typeof fetch;
   now?: Date;
+  retryFailed?: boolean;
 }) {
   const { sender, error } = await googleSenderFor({
     workspaceId: opts.workspaceId,
@@ -220,10 +228,12 @@ export async function deliverToGoogle(opts: {
     now: opts.now,
   });
   if (!sender) {
-    const pending = (await opts.repo.pendingRows(opts.feed.id)).length;
-    return { sent: 0, pending, error: pending > 0 ? error : null };
+    const pending = await opts.repo.countPending(opts.feed.id);
+    return { sent: 0, pending, failed: 0, error: pending > 0 ? error : null };
   }
-  return deliverPending({ feed: opts.feed, repo: opts.repo, sender, now: opts.now });
+  return deliverPending({
+    feed: opts.feed, repo: opts.repo, sender, now: opts.now, retryFailed: opts.retryFailed,
+  });
 }
 
 /**

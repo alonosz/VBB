@@ -18,7 +18,10 @@ const subscribe = () => () => {};
 
 export function AccountLink({ className = "" }: { className?: string }) {
   const router = useRouter();
-  const email = useSyncExternalStore(subscribe, readContactEmail, () => null);
+  // The server cannot know, so it renders nothing: a "Log in" that flips to
+  // "Sign out" on hydration is a link a returning customer can click first.
+  const email = useSyncExternalStore(subscribe, readContactEmail, () => undefined);
+  if (email === undefined) return null;
   if (email === null) {
     return (
       <a href="/api/auth/google/start?next=%2Fworkspace" className={className}>

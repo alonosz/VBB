@@ -7,6 +7,7 @@ import {
   type SavedValueModel,
 } from "@/lib/model/savedModel";
 import { identifiersFor, buildFeedRows } from "@/lib/feed/publish";
+import { normalizeEmail, sha256Hex } from "@/lib/export/googleAds";
 import type { FeedRepository } from "@/lib/feed/repository";
 import type { FeedRecord } from "@/lib/feed/types";
 import type { DeliveryOutcome } from "./google/deliver";
@@ -152,7 +153,9 @@ export async function runSync(opts: SyncOptions): Promise<SyncReport> {
       // identifier type per file, so a run must not switch it because today's
       // pull happens to have more emails than click IDs.
       identifier: feed.identifier,
-      previous: await repo.rowsFor(feed.id),
+      // A partial run is a few leads; what was sent for those few is all it
+      // needs to know, and a year of everyone else's rows is not.
+      previous: opts.partial ? await previousFor(repo, feed.id, deals) : await repo.rowsFor(feed.id),
       gate: savedGateToGateValue(model),
       now,
     });
@@ -174,6 +177,14 @@ export async function runSync(opts: SyncOptions): Promise<SyncReport> {
     coverage: coverageOf(leads),
     refusedBecause: null,
   };
+}
+
+async function previousFor(repo: FeedRepository, feedId: string, deals: MappedDeal[]) {
+  const clickIds = deals.map((d) => d.clickId?.trim() ?? "").filter(Boolean);
+  const hashedEmails = await Promise.all(
+    deals.map((d) => d.email?.trim() ?? "").filter(Boolean).map((e) => sha256Hex(normalizeEmail(e)))
+  );
+  return repo.rowsForIdentifiers(feedId, { clickIds, hashedEmails });
 }
 
 function coverageOf(leads: Parameters<typeof identifiersFor>[0]): RunCoverage {

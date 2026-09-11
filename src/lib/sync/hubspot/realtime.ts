@@ -3,7 +3,15 @@ import { runSync } from "../run";
 import type { SyncRunStore } from "../runs";
 import { CrmConnectionStore } from "../connections";
 import type { OAuthConfig } from "../oauth/tokens";
-import { HubSpotClient, HubSpotError, contactIdsOfDeals, readLeads } from "./client";
+import {
+  DEFAULT_WINDOW_DAYS,
+  HubSpotClient,
+  HubSpotError,
+  contactIdsOfDeals,
+  discoverPortal,
+  readLeads,
+  type PortalVocabulary,
+} from "./client";
 import { hubspotToDeals } from "./map";
 import { freshAccessToken } from "./accessToken";
 import { deliverToGoogle } from "./syncFeed";
@@ -38,6 +46,22 @@ export interface RealtimeOptions {
   fetchImpl?: typeof fetch;
   now?: Date;
   sleep?: (ms: number) => Promise<void>;
+}
+
+/**
+ * What a portal calls things, kept for a few minutes per workspace. A burst
+ * of events reads the property definitions once instead of once per event.
+ * Per process only - a serverless instance forgets it, which is fine.
+ */
+const VOCABULARY_TTL_MS = 10 * 60_000;
+const vocabularies = new Map<string, { at: number; value: PortalVocabulary }>();
+
+async function vocabularyFor(workspaceId: string, client: HubSpotClient, now: Date): Promise<PortalVocabulary> {
+  const cached = vocabularies.get(workspaceId);
+  if (cached && now.getTime() - cached.at < VOCABULARY_TTL_MS) return cached.value;
+  const value = await discoverPortal(client);
+  vocabularies.set(workspaceId, { at: now.getTime(), value });
+  return value;
 }
 
 export interface RealtimeOutcome {
@@ -119,9 +143,16 @@ async function priceForWorkspace(args: {
   for (const id of await contactIdsOfDeals(client, dealIds)) contactIds.add(id);
   if (contactIds.size === 0) return;
 
-  // CRM records live here, in memory, for the length of this call.
-  const pull = await readLeads(client, [...contactIds]);
+  // CRM records live here, in memory, for the length of this call. Only
+  // contacts of the window are leads: a deal event on an old contact must
+  // not turn it into a conversion dated years ago.
+  const since = new Date(now.getTime() - DEFAULT_WINDOW_DAYS * 86_400_000);
+  const pull = await readLeads(client, [...contactIds], {
+    since,
+    vocabulary: await vocabularyFor(workspaceId, client, now),
+  });
   outcome.leadsRead += pull.leads?.length ?? 0;
+  if ((pull.leads?.length ?? 0) === 0) return;
 
   for (const feed of await repo.listForWorkspace(workspaceId)) {
     if (feed.status !== "active") continue;

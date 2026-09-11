@@ -26,16 +26,34 @@ export interface FeedRepository {
   /** Everything one customer owns, newest first. */
   listForWorkspace(clientId: string): Promise<FeedRecord[]>;
   /** Inserts rows, ignoring any that were already sent. Returns how many were new. */
-  addRows(feedId: string, rows: FeedRow[]): Promise<number>;
+  /**
+   * Adds what is not already there. `deliveredAt` writes the rows as already
+   * at Google in the same insert, for a send the browser just made: two
+   * writes would leave a window where a run resends the lot.
+   */
+  addRows(feedId: string, rows: FeedRow[], opts?: { deliveredAt?: Date }): Promise<number>;
   rowsFor(feedId: string): Promise<FeedRow[]>;
+  /**
+   * The rows for a few named leads, by identifier. What a partial run needs
+   * to know whether a lead was already sent, without reading a year of
+   * history to find out.
+   */
+  rowsForIdentifiers(feedId: string, ids: { clickIds: string[]; hashedEmails: string[] }): Promise<FeedRow[]>;
   /**
    * Rows of an API-delivered feed that have not reached Google. Every row
    * starts here; a successful send marks it delivered. A URL feed's rows are
    * never marked, because Google fetches those itself and tells nobody.
+   * A row Google refused on its own is left out unless `retryFailed`, so
+   * the live path does not spend every webhook on it and the nightly run
+   * still tries it once a day.
    */
-  pendingRows(feedId: string): Promise<FeedRow[]>;
+  pendingRows(feedId: string, opts?: { retryFailed?: boolean }): Promise<FeedRow[]>;
+  /** How many rows are waiting, refused ones included. A count, never the rows. */
+  countPending(feedId: string): Promise<number>;
   /** Google accepted these. Identified by (rowKey, kind), the row's identity. */
   markDelivered(feedId: string, rows: Pick<FeedRow, "rowKey" | "kind">[], at: Date): Promise<void>;
+  /** Google refused these on their own, and said why. */
+  markFailed(feedId: string, rows: Pick<FeedRow, "rowKey" | "kind">[], error: string, at: Date): Promise<void>;
   /**
    * Freezes the model that priced this feed's rows, so a scheduled run can
    * apply it with no browser in the loop. Republishing after a refit replaces
@@ -72,6 +90,7 @@ export class InMemoryFeedRepository implements FeedRepository {
   private rows = new Map<string, FeedRow[]>();
   /** Keyed feedId|rowKey|kind, the row's identity. */
   private delivered = new Map<string, Date>();
+  private failed = new Map<string, { at: Date; error: string }>();
   private fetches = new Map<string, Date[]>();
   private models = new Map<string, string>();
   /** Exposed so tests can assert what was logged, not just how much. */
@@ -121,7 +140,7 @@ export class InMemoryFeedRepository implements FeedRepository {
       .map((f) => ({ ...f }));
   }
 
-  async addRows(feedId: string, incoming: FeedRow[]): Promise<number> {
+  async addRows(feedId: string, incoming: FeedRow[], opts: { deliveredAt?: Date } = {}): Promise<number> {
     const feed = this.feeds.get(feedId);
     if (!feed) throw new Error("No such feed.");
     const existing = this.rows.get(feedId) ?? [];
@@ -134,6 +153,7 @@ export class InMemoryFeedRepository implements FeedRepository {
       const duplicate = existing.some((r) => r.rowKey === row.rowKey && r.kind === row.kind);
       if (duplicate) continue;
       existing.push({ ...row });
+      if (opts.deliveredAt) this.delivered.set(`${feedId}|${row.rowKey}|${row.kind}`, opts.deliveredAt);
       added++;
     }
 
@@ -147,14 +167,46 @@ export class InMemoryFeedRepository implements FeedRepository {
     return (this.rows.get(feedId) ?? []).map((r) => ({ ...r }));
   }
 
-  async pendingRows(feedId: string): Promise<FeedRow[]> {
+  async rowsForIdentifiers(
+    feedId: string,
+    ids: { clickIds: string[]; hashedEmails: string[] }
+  ): Promise<FeedRow[]> {
+    const clicks = new Set(ids.clickIds);
+    const emails = new Set(ids.hashedEmails);
     return (this.rows.get(feedId) ?? [])
-      .filter((r) => !this.delivered.has(`${feedId}|${r.rowKey}|${r.kind}`))
+      .filter((r) => (r.clickId && clicks.has(r.clickId)) || (r.hashedEmail && emails.has(r.hashedEmail)))
       .map((r) => ({ ...r }));
   }
 
+  async pendingRows(feedId: string, opts: { retryFailed?: boolean } = {}): Promise<FeedRow[]> {
+    return (this.rows.get(feedId) ?? [])
+      .filter((r) => {
+        const key = `${feedId}|${r.rowKey}|${r.kind}`;
+        if (this.delivered.has(key)) return false;
+        return opts.retryFailed || !this.failed.has(key);
+      })
+      .map((r) => ({ ...r }));
+  }
+
+  async countPending(feedId: string): Promise<number> {
+    return (await this.pendingRows(feedId, { retryFailed: true })).length;
+  }
+
   async markDelivered(feedId: string, rows: Pick<FeedRow, "rowKey" | "kind">[], at: Date): Promise<void> {
-    for (const r of rows) this.delivered.set(`${feedId}|${r.rowKey}|${r.kind}`, at);
+    for (const r of rows) {
+      const key = `${feedId}|${r.rowKey}|${r.kind}`;
+      this.delivered.set(key, at);
+      this.failed.delete(key);
+    }
+  }
+
+  async markFailed(feedId: string, rows: Pick<FeedRow, "rowKey" | "kind">[], error: string, at: Date): Promise<void> {
+    for (const r of rows) this.failed.set(`${feedId}|${r.rowKey}|${r.kind}`, { at, error });
+  }
+
+  /** Why a row is stuck, for a test to assert. */
+  failureOf(feedId: string, rowKey: string, kind: FeedRow["kind"] = "conversion"): string | null {
+    return this.failed.get(`${feedId}|${rowKey}|${kind}`)?.error ?? null;
   }
 
   /** When a row reached Google, for a test to assert. Null if it has not. */

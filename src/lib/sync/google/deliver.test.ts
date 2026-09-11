@@ -35,8 +35,8 @@ describe("deliverPending", () => {
     const first = await deliverPending({ feed, repo, sender: { send: async (r) => { sent.push(r); } }, now: NOW });
     const second = await deliverPending({ feed, repo, sender: { send: async (r) => { sent.push(r); } }, now: NOW });
 
-    expect(first).toEqual({ sent: 2, pending: 0, error: null });
-    expect(second).toEqual({ sent: 0, pending: 0, error: null });
+    expect(first).toEqual({ sent: 2, pending: 0, failed: 0, error: null });
+    expect(second).toEqual({ sent: 0, pending: 0, failed: 0, error: null });
     expect(sent).toHaveLength(1);
     expect(repo.deliveredAt(feed.id, "k1")).toEqual(NOW);
   });
@@ -49,8 +49,39 @@ describe("deliverPending", () => {
       feed, repo, sender: { send: async () => { throw new Error("Google said no."); } },
     });
 
-    expect(out).toEqual({ sent: 0, pending: 2, error: "Google said no." });
-    expect(await repo.pendingRows(feed.id)).toHaveLength(2);
+    expect(out).toMatchObject({ sent: 0, pending: 2, failed: 2 });
+    expect(out.error).toMatch(/2 rows refused by Google: Google said no/);
+    // Named as refused: skipped by the live path, kept for the night.
+    expect(await repo.pendingRows(feed.id)).toHaveLength(0);
+    expect(await repo.pendingRows(feed.id, { retryFailed: true })).toHaveLength(2);
+    expect(await repo.countPending(feed.id)).toBe(2);
+  });
+
+  it("isolates a row Google refuses so the rest still go, and names it", async () => {
+    const repo = new InMemoryFeedRepository(() => NOW);
+    const feed = await apiFeed(repo);
+    // The batch fails while k2 is in it; each row alone tells which one Google objects to.
+    const sender = {
+      send: async (rows: FeedRow[]) => {
+        if (rows.some((r) => r.rowKey === "k2")) throw new Error("Click not found.");
+      },
+    };
+
+    const first = await deliverPending({ feed, repo, sender, now: NOW });
+    expect(first).toMatchObject({ sent: 1, failed: 1, pending: 1 });
+    expect(first.error).toMatch(/1 row refused by Google: Click not found/);
+    expect(repo.deliveredAt(feed.id, "k1")).toEqual(NOW);
+    expect(repo.failureOf(feed.id, "k2")).toBe("Click not found.");
+
+    // The live path leaves a refused row alone; the night tries it again.
+    let calls = 0;
+    const counting = { send: async () => { calls++; } };
+    const live = await deliverPending({ feed, repo, sender: counting, now: NOW });
+    expect(calls).toBe(0);
+    expect(live).toMatchObject({ sent: 0, pending: 1 });
+    const night = await deliverPending({ feed, repo, sender: counting, now: NOW, retryFailed: true });
+    expect(night).toMatchObject({ sent: 1, pending: 0, failed: 0, error: null });
+    expect(repo.failureOf(feed.id, "k2")).toBeNull();
   });
 
   it("never sends a url feed", async () => {

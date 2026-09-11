@@ -150,7 +150,7 @@ async function summariseFeed(
   const lastSuccess = fetches.find((f) => f.status === 200) ?? null;
   const since = new Date(now.getTime() - 86_400_000);
 
-  const pendingDelivery = feed.delivery === "api" ? (await feeds.pendingRows(feed.id)).length : 0;
+  const pendingDelivery = feed.delivery === "api" ? await feeds.countPending(feed.id) : 0;
 
   return {
     id: feed.id,
