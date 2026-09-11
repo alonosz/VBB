@@ -233,8 +233,8 @@ cat > ~/Desktop/vbb-engine/*/app/app-hsmeta.json <<'JSON'
   }
 }
 JSON
-mkdir -p ~/Desktop/vbb-engine/*/app/webhooks
-cat > ~/Desktop/vbb-engine/*/app/webhooks/webhooks-hsmeta.json <<'JSON'
+mkdir -p ~/Desktop/vbb-engine/src/app/webhooks
+cat > ~/Desktop/vbb-engine/src/app/webhooks/webhooks-hsmeta.json <<'JSON'
 {
   "uid": "vbb_engine_webhooks",
   "type": "webhooks",
@@ -254,6 +254,11 @@ cat > ~/Desktop/vbb-engine/*/app/webhooks/webhooks-hsmeta.json <<'JSON'
 JSON
 cd ~/Desktop/vbb-engine && hs project upload
 ```
+
+The webhooks path is spelled out rather than found with a star on purpose:
+zsh refuses a star in a path that does not exist yet ("no matches found"),
+and the upload then quietly goes out without the webhook. `src` is what the
+CLI named the components folder; `ls ~/Desktop/vbb-engine` confirms it.
 
 If the last line ends in an error, copy the whole error and send it. The
 likely cause is that HubSpot renamed a field in the webhooks component
