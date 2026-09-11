@@ -132,7 +132,7 @@ export default function Home() {
                   className="display mt-4 max-w-[16ch]"
                   style={{ color: "var(--on-navy)" }}
                 >
-                  Turn Google Ads into a pipeline revenue engine.
+                  Turn Google Ads into a revenue engine.
                 </h1>
 
                 <p
