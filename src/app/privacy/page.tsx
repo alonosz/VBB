@@ -188,8 +188,32 @@ export default function PrivacyPage() {
             them, to send values and read deals respectively, under the permissions
             you grant.
           </li>
+          <li>
+            <strong>Google Analytics</strong> - on this marketing website only, to
+            see which pages get visited. Described on its own below.
+          </li>
         </ul>
         <p>We do not sell data, and we do not share it for advertising of our own.</p>
+      </Clause>
+
+      <Clause title="Analytics on this website">
+        <p>
+          This site, the pages that explain the product before you sign up, uses
+          Google Analytics to see which pages get visited and how. It sets a cookie
+          in your browser and reports page views and clicks to Google.
+        </p>
+        <p>
+          It has no route to your CRM data. A file you upload is read and priced in
+          your browser and is never sent anywhere, which is a promise the product
+          keeps regardless of whether this cookie exists - Analytics could not see
+          that file even if it tried. It sees which pages you visited, not what you
+          typed into them.
+        </p>
+        <p>
+          You can opt out with a browser extension such as Google&rsquo;s own
+          Analytics opt-out add-on, or by blocking cookies from
+          google-analytics.com and googletagmanager.com.
+        </p>
       </Clause>
 
       <Clause title="What we send to Google, and why it is hashed">
