@@ -94,12 +94,12 @@ export function sentValueSpread(values: number[]): SentSpread | null {
   } else if (ratio === null || ratio < WORKABLE_RATIO) {
     verdict = "narrow";
     because =
-      "Your best leads are worth more than your worst, but not by much. " +
+      "Your top leads are worth more than your bottom ones, but not by much. " +
       "Expect a small shift in who Google buys, not a large one.";
   } else {
     verdict = "workable";
     because =
-      `Your best leads are worth ${(ratio as number).toFixed(1)}x your worst. ` +
+      `Your top 10% of leads are worth ${(ratio as number).toFixed(1)}× your bottom 10%. ` +
       "That is a difference Google can bid on.";
   }
 

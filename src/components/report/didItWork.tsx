@@ -240,9 +240,11 @@ export function DidItWorkPanel({
       <div className="mb-4">
         <h2 className="h2">Did it work?</h2>
         <p className="mt-1.5 max-w-[72ch] text-[14px] text-[var(--muted)]">
-          Measured in your own closed deals, not in the values we sent Google.
-          Google reporting a higher conversion value would only be repeating
-          back what we told it.
+          After connecting, track changes in lead quality and sales outcomes here.
+          It compares the leads Google bought after your campaigns started using
+          the values against the ones before, measured in your own closed deals
+          rather than in the values we sent. Google reporting a higher conversion
+          value would only be repeating back what we told it.
         </p>
       </div>
 

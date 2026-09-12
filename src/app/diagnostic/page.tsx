@@ -50,6 +50,7 @@ export default function IntakePage() {
     );
   }
   const [loadingSample, setLoadingSample] = useState(false);
+  const [showExample, setShowExample] = useState(false);
   const ingest = useIngest();
 
   /*
@@ -107,9 +108,6 @@ export default function IntakePage() {
         */}
         <div className="card mt-8 p-6 sm:p-7">
           <h2 className="h3">Who do you sell to?</h2>
-          <p className="mt-0.5 text-[13px] text-[var(--muted)]">
-            Only changes what we ask you and which built-in signals we test.
-          </p>
           {/*
             Chips, like the size bands below. Two labelled cards explaining
             what a business is and what a consumer is was the tool talking
@@ -146,10 +144,10 @@ export default function IntakePage() {
 
         {/* ---- the two claims worth asking for straight, first ---- */}
         <div className="card mt-4 p-6 sm:p-7">
-          <h2 className="h3">{consumer ? "Start with one number" : "Start with two numbers"}</h2>
-          <p className="mt-1.5 max-w-[62ch] text-[13.5px] text-[var(--muted)]">
-            {consumer ? "Optional. It does not price a lead" : "Both optional. Neither prices a lead"} - your closed deals do that.
-          </p>
+          <h2 className="h3">
+            {consumer ? "Typical time to sale" : "Time to sale and deal size"}{" "}
+            <span className="text-[13px] font-medium text-[var(--muted)]">· Optional</span>
+          </h2>
 
           {/* Sales cycle */}
           <div className="mt-5">
@@ -247,12 +245,8 @@ export default function IntakePage() {
             What makes a valuable lead?
           </label>
           <p className="mt-1 max-w-[64ch] text-[13.5px] text-[var(--muted)]">
-            Tell us who tends to buy, what makes a strong lead, and what any unclear
-            columns mean. AI turns your description into signals to test against
-            your sales history. Your data determines the values.
-          </p>
-          <p className="mt-2 max-w-[64ch] text-[13.5px] text-[var(--muted)]">
-            Optional. A few sentences are enough.
+            Optional. AI turns a few sentences into signals to test against your
+            sales history.
           </p>
           {/*
             The placeholder is a fill-in template rather than a worked example.
@@ -264,13 +258,29 @@ export default function IntakePage() {
             rows={7}
             value={businessContext}
             onChange={(e) => setBusinessContext(e.target.value)}
-            placeholder={
-              "\u201cWe sell [product or service] to [type of customer]. People enquire through [form, call or booking]. " +
-              "We believe enquiries about [option or need] are more valuable because [reason]. " +
-              "Our [field name] records [what it means when someone first enquires].\u201d"
-            }
-            className="input mt-3.5 min-h-[150px] resize-y bg-[var(--surface-sunken)] p-3.5 text-[15px] leading-relaxed"
+            placeholder="Describe what you sell and what your best customers have in common."
+            className="input mt-3.5 min-h-[120px] resize-y bg-[var(--surface-sunken)] p-3.5 text-[15px] leading-relaxed"
           />
+          {/* The fill-in template, behind a line. It is the shape of a good
+              answer, and on a phone it was longer than the box. */}
+          <div className="mt-2.5">
+            <button
+              type="button"
+              onClick={() => setShowExample((v) => !v)}
+              aria-expanded={showExample}
+              className="text-[13px] font-semibold text-[var(--primary)] underline underline-offset-[3px] hover:text-[var(--primary-hover)]"
+            >
+              {showExample ? "Hide the example" : "See an example"}
+            </button>
+            {showExample && (
+              <p className="animate-block-enter mt-2 max-w-[64ch] rounded-[var(--radius-sm)] bg-[var(--surface-sunken)] px-3.5 py-3 text-[13.5px] leading-relaxed text-[var(--muted-strong)]">
+                &ldquo;We sell [product or service] to [type of customer]. People enquire
+                through [form, call or booking]. We believe enquiries about [option or
+                need] are more valuable because [reason]. Our [field name] records [what
+                it means when someone first enquires].&rdquo;
+              </p>
+            )}
+          </div>
           {/*
             There was a "Fill with example text" link here. It pasted the
             sample dataset's own description into the box, which is exactly
@@ -283,11 +293,6 @@ export default function IntakePage() {
             placeholder above already shows the shape without becoming the
             answer. Nothing was lost by removing it.
           */}
-          <div className="mt-3 flex flex-wrap items-center justify-end gap-3">
-            <span className="text-[13px] text-[var(--muted)]">
-              Free text - nothing here is parsed into a form or required.
-            </span>
-          </div>
         </div>
 
         <div className="mt-8 flex flex-wrap items-center justify-between gap-4 border-t border-[var(--border)] pt-6">

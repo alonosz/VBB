@@ -48,7 +48,7 @@ describe("sentValueSpread", () => {
     const spread = sentValueSpread(values)!;
     expect(spread.verdict).toBe("workable");
     expect(spread.ratio!).toBeGreaterThan(WORKABLE_RATIO);
-    expect(spread.because).toMatch(/x your worst/);
+    expect(spread.because).toMatch(/× your bottom 10%/);
   });
 
   it("reports the percentiles it judged on", () => {

@@ -1,3 +1,4 @@
+import { deriveOutcome } from "./outcomes";
 import { classifyDomain, isValidEmail } from "@/lib/analysis/helpers";
 
 /**
@@ -569,7 +570,7 @@ export function findFileIssues(
         title: `${missing.length.toLocaleString()} rows have no ${label}`,
         detail:
           key === "amount"
-            ? "They'll be excluded from value calculations. We never estimate a missing amount."
+            ? missingAmountDetail(rows, missing, col("outcome"), col("stage"))
             : "Without it we can't measure your sales cycle, so these are excluded.",
         count: missing.length,
         rowIndices: missing,
@@ -624,3 +625,28 @@ export function findFileIssues(
 }
 
 export { classifyDomain };
+
+/**
+ * "348 rows have no deal amount" reads as 348 broken rows. Most of them are
+ * open or lost leads, which have no amount by nature and still count toward
+ * the close rate; only a won deal without an amount is a gap. The sentence
+ * says which is which, from the outcome words the file already carries.
+ */
+function missingAmountDetail(
+  rows: Record<string, string>[],
+  missing: number[],
+  outcomeCol: string | null,
+  stageCol: string | null
+): string {
+  const won = missing.filter((i) => {
+    const r = rows[i];
+    return deriveOutcome(outcomeCol ? r[outcomeCol] : undefined, stageCol ? r[stageCol] : undefined) === "won";
+  }).length;
+  const others = missing.length - won;
+  const rest =
+    others > 0
+      ? `${others.toLocaleString()} ${others === 1 ? "is an" : "are"} open or lost ${others === 1 ? "lead" : "leads"}, which ${others === 1 ? "has" : "have"} no amount by nature and still ${others === 1 ? "counts" : "count"} toward your close rate.`
+      : "";
+  if (won === 0) return `${rest} Only a won deal needs an amount to be priced.`.trim();
+  return `${won.toLocaleString()} ${won === 1 ? "is a won deal" : "are won deals"} and ${won === 1 ? "is" : "are"} left out of the value calculation, because we never estimate a missing amount. ${rest}`.trim();
+}

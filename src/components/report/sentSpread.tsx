@@ -35,10 +35,10 @@ export function SentSpreadPanel({
 
   const heading =
     spread.verdict === "workable"
-      ? "Your values vary enough to bid on"
+      ? "Your lead values vary"
       : spread.verdict === "narrow"
-        ? "Your values barely vary"
-        : "Your values are flat";
+        ? "Your lead values barely vary"
+        : "Your lead values are flat";
 
   return (
     <section className={`rounded-[var(--radius-lg)] border px-5 py-4 ${tone.border} ${tone.bg}`}>

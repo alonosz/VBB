@@ -192,6 +192,21 @@ describe("findFileIssues", () => {
     expect(missing[0].rowIndices).toEqual([2]);
   });
 
+  it("says which missing amounts are gaps and which are leads that never had one", () => {
+    const rows = [
+      { amount: "100", outcome: "Closed Won", created_at: "2026-01-01" },
+      { amount: "", outcome: "Closed Won", created_at: "2026-01-02" },
+      { amount: "", outcome: "Closed Lost", created_at: "2026-01-03" },
+      { amount: "", outcome: "Open", created_at: "2026-01-04" },
+    ];
+    const { fields } = detectColumns(Object.keys(rows[0]), rows);
+    const issue = findFileIssues(rows, fields).find((i) => i.kind === "missing_value")!;
+    expect(issue.title).toMatch(/3 rows have no/);
+    expect(issue.detail).toMatch(/1 is a won deal/);
+    expect(issue.detail).toMatch(/2 are open or lost leads/);
+    expect(issue.detail).toMatch(/still count toward your close rate/);
+  });
+
   it("detects exact duplicate rows", () => {
     const rows = [HUBSPOT_ROWS[0], HUBSPOT_ROWS[0], HUBSPOT_ROWS[1]];
     const { fields } = detectColumns(HEADERS, rows);

@@ -88,7 +88,10 @@ function fail(reason: string, status = 200) {
 export async function POST(request: Request) {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
-    return fail("No API key is configured, so the mapping suggestion was skipped.");
+    // The reason is for the operator, not the advertiser: to them it is an
+    // assistant that did not run, and the header matching carried the file.
+    console.error("ANTHROPIC_API_KEY is not set; the intake suggestion was skipped.");
+    return fail("The assistant is not available right now, so the columns were matched by their headers. Check them below.");
   }
 
   let body: IntakeRequestBody;

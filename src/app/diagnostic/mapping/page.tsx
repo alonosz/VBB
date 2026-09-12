@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, Fragment } from "react";
 import { useRouter } from "next/navigation";
 import { useDiagnostic } from "@/context/DiagnosticContext";
 import { Stepper } from "@/components/diagnostic/Stepper";
@@ -192,6 +192,8 @@ function RowPreview({
 
 export default function MappingPage() {
   const router = useRouter();
+  // Confidently matched columns sit behind one line on a phone.
+  const [showFine, setShowFine] = useState(false);
   const { audience, file, fields, setFields, issues, currency, setCurrency, stageTiming, intake, restored, setSignalOverride, outcomeOverrides, setOutcomeOverride, proposedOutcomes, effectiveOutcomeOverrides, businessContext, sortedColumns } =
     useDiagnostic();
 
@@ -251,6 +253,11 @@ export default function MappingPage() {
   const blocks = (f: DetectedField) =>
     f.required && f.column === null && !(f.key === "stage" && outcomeMapped);
   const missingRequired = fields.filter(blocks);
+  /** Blocking, disputed, or matched on a guess: the rows worth a look. */
+  const needsAttention = (f: DetectedField) =>
+    blocks(f) ||
+    Boolean(f.disagreement) ||
+    (f.source === "heuristic" && f.column !== null && (f.confidence ?? 1) < 0.7);
 
   function setColumn(key: string, column: string | null) {
     setFields(
@@ -349,23 +356,40 @@ export default function MappingPage() {
                   </div>
 
                   <div className="card overflow-hidden p-0">
-                    {group.rows.map((field, i) => {
+                    {group.rows.map((field) => ({ field, attention: needsAttention(field) }))
+                      .sort((a, b) => Number(b.attention) - Number(a.attention))
+                      .map(({ field, attention }, i, ordered) => {
                       // One rail, one meaning: this row is why you are on this
                       // screen. Red when it blocks, amber when we are unsure.
                       const blocking = blocks(field);
-                      const unsure =
-                        !blocking &&
-                        (Boolean(field.disagreement) ||
-                          (field.source === "heuristic" &&
-                            field.column !== null &&
-                            (field.confidence ?? 1) < 0.7));
+                      const unsure = attention && !blocking;
+                      // Rows we matched confidently sit behind one line on a
+                      // phone. The ones needing a look come first and stay open.
+                      const collapsed = !attention && !showFine;
+                      const firstFine = !attention && (i === 0 || ordered[i - 1].attention);
+                      const fineCount = ordered.filter((o) => !o.attention).length;
 
                       return (
+                        <Fragment key={field.key}>
+                        {firstFine && fineCount > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => setShowFine((v) => !v)}
+                            aria-expanded={showFine}
+                            className="flex w-full items-center justify-between gap-3 border-b border-b-[var(--border)] px-4 py-3 text-left text-[13px] text-[var(--muted)] md:hidden"
+                          >
+                            <span>
+                              <span className="mono font-semibold text-[var(--foreground)]">{fineCount}</span>{" "}
+                              {fineCount === 1 ? "column" : "columns"} matched with confidence
+                            </span>
+                            <span className="font-semibold text-[var(--primary)]">{showFine ? "Hide" : "Show"}</span>
+                          </button>
+                        )}
                         <div
-                          key={field.key}
                           className={
-                            "grid items-center gap-4 border-l-[3px] px-4 py-3.5 transition-colors hover:bg-[var(--surface-sunken)] md:grid-cols-[170px_1fr_1.15fr_auto] " +
-                            (i < group.rows.length - 1
+                            (collapsed ? "hidden md:grid " : "grid ") +
+                            "items-center gap-4 border-l-[3px] px-4 py-3.5 transition-colors hover:bg-[var(--surface-sunken)] md:grid-cols-[170px_1fr_1.15fr_auto] " +
+                            (i < ordered.length - 1
                               ? "border-b border-b-[var(--border)] "
                               : "") +
                             (blocking
@@ -437,6 +461,7 @@ export default function MappingPage() {
 
                           <ConfidenceBadge field={field} />
                         </div>
+                        </Fragment>
                       );
                     })}
                   </div>
@@ -884,26 +909,31 @@ export default function MappingPage() {
         {/* This page runs well past a screen, and the button that leaves it was
             at the very bottom. It now follows you down. */}
         <div className="sticky bottom-0 z-20 -mx-5 mt-8 flex flex-wrap items-center justify-between gap-4 border-t border-[var(--border)] bg-[color-mix(in_srgb,var(--background)_88%,transparent)] px-5 py-4 backdrop-blur-md md:-mx-8 md:px-8">
-          <p className="max-w-[54ch] text-[13px] text-[var(--muted)]">
-            <span className="mono font-semibold text-[var(--foreground)]">
-              {preview.deals.length.toLocaleString()}
-            </span>{" "}
-            of{" "}
-            <span className="mono font-semibold text-[var(--foreground)]">
-              {file.rows.length.toLocaleString()}
-            </span>{" "}
-            rows will be analyzed.{" "}
-            {preview.excluded.length === 0 ? (
-              <>Nothing was excluded.</>
-            ) : (
-              <>
-                The{" "}
-                <span className="mono">{preview.excluded.length.toLocaleString()}</span>{" "}
-                excluded {preview.excluded.length === 1 ? "row" : "rows"} and the reason
-                for each are carried through to the report - nothing disappears silently.
-              </>
-            )}
-          </p>
+          <details className="group max-w-[54ch] text-[13px] text-[var(--muted)]">
+            <summary className="cursor-pointer list-none [&::-webkit-details-marker]:hidden">
+              <span className="mono font-semibold text-[var(--foreground)]">
+                {preview.deals.length.toLocaleString()}
+              </span>{" "}
+              rows ready
+              {preview.excluded.length > 0 && (
+                <>
+                  {" "}·{" "}
+                  <span className="mono font-semibold text-[var(--warn)]">
+                    {preview.excluded.length.toLocaleString()}
+                  </span>{" "}
+                  excluded
+                </>
+              )}
+              <span className="ml-2 font-semibold text-[var(--primary)] underline underline-offset-[3px] group-open:hidden">
+                Details
+              </span>
+            </summary>
+            <p className="mt-1.5">
+              {preview.excluded.length === 0
+                ? `All ${file.rows.length.toLocaleString()} rows in the file will be analysed.`
+                : `${preview.deals.length.toLocaleString()} of ${file.rows.length.toLocaleString()} rows will be analysed. Each excluded row and its reason are listed on the report.`}
+            </p>
+          </details>
           <div className="flex flex-wrap gap-2.5">
             <button
               type="button"

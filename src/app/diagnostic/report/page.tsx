@@ -246,26 +246,18 @@ export default function ReportPage() {
         <PageHead
           eyebrow="Step 4 of 5 · Your model"
           title="This is what a lead is worth to you"
-          lede="Every figure below is computed from the file you uploaded - cohort win rate against your own median deal size. Nothing is estimated or benchmarked against other accounts."
+          lede="Every figure below is an estimate from the file you uploaded: how often each kind of lead closed, times the average amount it closed for, with outliers capped. Nothing is benchmarked against other accounts."
         />
 
-        <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1.5">
-          <span className="mono text-[12.5px] text-[var(--muted)]">
-            {result.rowsAnalyzed.toLocaleString()} deals analysed
-          </span>
-          <span aria-hidden className="text-[var(--border-strong)]">·</span>
-          <span className="mono max-w-[28ch] truncate text-[12.5px] text-[var(--muted)]" title={file.name}>
-            {file.name}
-          </span>
-          {result.excluded.length > 0 && (
-            <>
-              <span aria-hidden className="text-[var(--border-strong)]">·</span>
-              <span className="mono text-[12.5px] text-[var(--warn)]">
-                {result.excluded.length.toLocaleString()} excluded
-              </span>
-            </>
-          )}
-        </div>
+        <CountsBreakdown
+          fileName={file.name}
+          imported={file.rows.length}
+          analysed={result.rowsAnalyzed}
+          excluded={result.excluded}
+          resolved={result.valueModel.fittedOn}
+          priced={valued.filter((v) => v.value > 0).length}
+          matchable={result.matchRate.withAnyIdentifier}
+        />
 
         {/* minmax(0,1fr) rather than the default auto: a grid item will not shrink
             below its min-content, so one wide table inside any panel would push
@@ -370,13 +362,93 @@ export default function ReportPage() {
             className="btn btn-primary min-w-0"
           >
             <span className="truncate">
-              <span className="sm:hidden">Send to Google Ads</span>
-              <span className="hidden sm:inline">Send these values to Google Ads</span>
+              <span className="sm:hidden">Review &amp; connect</span>
+              <span className="hidden sm:inline">Review &amp; connect to Google Ads</span>
             </span>
             <ArrowIcon />
           </button>
         </footer>
       </main>
     </div>
+  );
+}
+
+/**
+ * The four counts a report shows, side by side with why they differ.
+ *
+ * Imported, analysed, resolved, priced and matchable are all correct and all
+ * different, and a reader who cannot see why stops trusting the one that
+ * matters. So they sit in one row, each with a word for what it is, and the
+ * exclusion reasons open underneath.
+ */
+function CountsBreakdown({
+  fileName,
+  imported,
+  analysed,
+  excluded,
+  resolved,
+  priced,
+  matchable,
+}: {
+  fileName: string;
+  imported: number;
+  analysed: number;
+  excluded: { id: string; reason: string }[];
+  resolved: number;
+  priced: number;
+  matchable: number;
+}) {
+  const reasons = new Map<string, number>();
+  for (const e of excluded) reasons.set(e.reason, (reasons.get(e.reason) ?? 0) + 1);
+
+  const items: { label: string; value: number; means: string }[] = [
+    { label: "Imported", value: imported, means: "rows in the file" },
+    { label: "Analysed", value: analysed, means: "rows with the columns the analysis needs" },
+    { label: "Resolved", value: resolved, means: "won or lost, the rows the model is fitted on" },
+    { label: "Priced", value: priced, means: "leads the model gave a value to" },
+    { label: "Matchable", value: matchable, means: "priced leads carrying a click ID or email Google can match" },
+  ];
+
+  return (
+    <details className="group mt-4">
+      <summary className="flex cursor-pointer list-none flex-wrap items-center gap-x-4 gap-y-1.5 text-[12.5px] text-[var(--muted)] [&::-webkit-details-marker]:hidden">
+        {items.map((item, i) => (
+          <span key={item.label} className="flex items-center gap-x-4">
+            {i > 0 && <span aria-hidden className="text-[var(--border-strong)]">·</span>}
+            <span>
+              <span className="mono font-semibold text-[var(--foreground)]">{item.value.toLocaleString()}</span>{" "}
+              {item.label.toLowerCase()}
+            </span>
+          </span>
+        ))}
+        <span className="font-semibold text-[var(--primary)] underline underline-offset-[3px]">
+          <span className="group-open:hidden">Why they differ</span>
+          <span className="hidden group-open:inline">Hide</span>
+        </span>
+      </summary>
+      <div className="card mt-3 p-4 text-[13px]">
+        <p className="mono mb-2 text-[12px] text-[var(--muted)]">{fileName}</p>
+        <ul className="grid gap-1.5">
+          {items.map((item) => (
+            <li key={item.label} className="flex flex-wrap gap-x-2">
+              <span className="mono w-[6ch] shrink-0 text-right font-semibold">{item.value.toLocaleString()}</span>
+              <span className="font-semibold">{item.label}</span>
+              <span className="text-[var(--muted)]">{item.means}</span>
+            </li>
+          ))}
+        </ul>
+        {reasons.size > 0 && (
+          <ul className="mt-3 grid gap-1 border-t border-[var(--border)] pt-3 text-[var(--muted)]">
+            {[...reasons.entries()]
+              .sort((a, b) => b[1] - a[1])
+              .map(([reason, count]) => (
+                <li key={reason}>
+                  <span className="mono font-semibold text-[var(--foreground)]">{count.toLocaleString()}</span> excluded: {reason}
+                </li>
+              ))}
+          </ul>
+        )}
+      </div>
+    </details>
   );
 }

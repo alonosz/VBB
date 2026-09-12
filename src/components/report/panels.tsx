@@ -87,24 +87,57 @@ export function HookPanel({
           gets display type and the figures get the mono treatment that makes
           them read as measurements rather than marketing.
         */}
-        <h2 className="display mt-3 max-w-[22ch]" style={{ color: "var(--on-navy)" }}>
-          Your closed deals run from{" "}
-          <span className="mono text-[.86em] text-[var(--primary-soft)]">
-            {money(spread.min, currency)}
-          </span>{" "}
-          to{" "}
-          <span className="mono text-[.86em] text-[var(--primary-soft)]">
-            {money(spread.max, currency)}
-          </span>
-          .
-        </h2>
+        {/*
+          The useful result first: what a lead is estimated to be worth, which
+          is what Google will be given. The closed-deal range is the evidence
+          underneath it. A flat model has one value to send, so there the
+          closed-deal range stays the headline: it is the spread the model
+          could not yet reach.
+        */}
+        {flat ? (
+          <h2 className="display mt-3 max-w-[22ch]" style={{ color: "var(--on-navy)" }}>
+            Your closed deals run from{" "}
+            <span className="mono text-[.86em] text-[var(--primary-soft)]">
+              {money(spread.min, currency)}
+            </span>{" "}
+            to{" "}
+            <span className="mono text-[.86em] text-[var(--primary-soft)]">
+              {money(spread.max, currency)}
+            </span>
+            .
+          </h2>
+        ) : (
+          <h2 className="display mt-3 max-w-[22ch]" style={{ color: "var(--on-navy)" }}>
+            Your leads are worth{" "}
+            <span className="mono text-[.86em] text-[var(--primary-soft)]">
+              {money(low, currency)}
+            </span>{" "}
+            to{" "}
+            <span className="mono text-[.86em] text-[var(--primary-soft)]">
+              {money(high, currency)}
+            </span>{" "}
+            each.
+          </h2>
+        )}
 
         <p
-          className="lede mt-3 max-w-[48ch]"
+          className="lede mt-3 max-w-[52ch]"
           style={{ color: "var(--on-navy-muted)" }}
         >
-          Google Ads gets one number for every lead that produced them, so it
-          bids as if they were all the same.
+          {flat ? (
+            <>
+              Google Ads gets one number for every lead that produced them, so it
+              bids as if they were all the same.
+            </>
+          ) : (
+            <>
+              Estimated from your closed deals, which ran from{" "}
+              <span className="mono">{money(spread.min, currency)}</span> to{" "}
+              <span className="mono">{money(spread.max, currency)}</span>. Google Ads
+              gets one number for every lead today, so it bids as if they were all
+              the same.
+            </>
+          )}
         </p>
 
         {spread.blindnessRatio !== null && (
@@ -423,6 +456,9 @@ export function ValueModelPanel({
   onResetAll?: () => void;
 }) {
   const editCount = Object.keys(overrides ?? {}).length;
+  // On a phone the rule stack, calibration and cap are detail behind one
+  // line; on a wide screen there is room for them beside the signals.
+  const [showHow, setShowHow] = useState(false);
 
   return (
     <section>
@@ -475,10 +511,19 @@ export function ValueModelPanel({
         </div>
       ) : (
         <div className="grid items-start gap-4 lg:grid-cols-[1.05fr_.95fr]">
+          <button
+            type="button"
+            onClick={() => setShowHow((v) => !v)}
+            aria-expanded={showHow}
+            className="card card-hover flex w-full items-center justify-between gap-4 px-5 py-3.5 text-left lg:hidden"
+          >
+            <span className="text-[14px] font-bold">How we calculated these values</span>
+            <span aria-hidden className="text-[var(--muted)]">{showHow ? "▴" : "▾"}</span>
+          </button>
           {/* The rule stack */}
           {/* The stack is the summary the signals list explains, so it stays
               in view while that list scrolls past it. */}
-          <div className="card p-5 sm:p-6 lg:sticky lg:top-20">
+          <div className={(showHow ? "" : "hidden ") + "card p-5 sm:p-6 lg:block lg:sticky lg:top-20"}>
             <p className="label mb-3.5">The rule stack - best case</p>
             <div className="grid gap-1.5">
               <div className="flex items-baseline justify-between gap-3 pb-1">
@@ -534,7 +579,7 @@ export function ValueModelPanel({
 
               <div className="mt-2 flex items-baseline justify-between gap-3 rounded-[var(--radius-sm)] bg-[var(--primary-soft)] px-3 py-2.5">
                 <span className="text-[13.5px] font-bold text-[var(--primary-deep)]">
-                  Highest value sent
+                  Highest value to send
                 </span>
                 <span className="mono text-[20px] font-extrabold tracking-tight text-[var(--primary-deep)]">
                   {money(stack.finalValue, currency, 2)}

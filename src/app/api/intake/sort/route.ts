@@ -67,7 +67,10 @@ function fail(reason: string, status = 200) {
 
 export async function POST(request: Request) {
   const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) return fail("No API key is configured, so messages cannot be sorted.");
+  if (!apiKey) {
+    console.error("ANTHROPIC_API_KEY is not set; message sorting refused.");
+    return fail("Sorting is not available right now. The column is left as it is.");
+  }
 
   let body: Body;
   try {
