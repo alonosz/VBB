@@ -95,12 +95,35 @@ export async function adsSession(request: Request, workspaceKey: unknown): Promi
     };
   }
 
+  /*
+   * A stored connection Google will no longer renew is not an authentication
+   * problem, it is the same situation as never having connected - and it has
+   * to refuse the same way, with a 409, or the advertiser is trapped.
+   *
+   * Revoking our access from a Google account leaves the row behind holding a
+   * refresh token Google now rejects. As a 401 that read "this browser's
+   * access no longer works" and sent them to find a workspace link, which
+   * fixes nothing: the workspace was fine, the Google grant was gone. Worse,
+   * the connect button lists accounts whenever a connection exists, so it
+   * never re-asked and there was no way forward from the screen at all.
+   *
+   * A 409 puts it back on the path that already works, exactly as the missing
+   * scope case above does.
+   */
   const fresh = await freshAccessToken({
     connections,
     connection: loaded.connection,
     oauth,
   });
-  if (fresh.token === null) return { ok: false, status: 401, error: fresh.error };
+  if (fresh.token === null) {
+    return {
+      ok: false,
+      status: 409,
+      error:
+        "Google will not renew this connection, which happens when its access " +
+        "was removed from the Google account. Connecting again restores it.",
+    };
+  }
 
   /*
    * The developer token is ours, not the customer's, and it is the one thing
