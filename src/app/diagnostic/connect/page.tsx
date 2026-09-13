@@ -652,7 +652,7 @@ export default function ConnectPage() {
                 type="button"
                 onClick={() => void publish()}
                 disabled={publishing}
-                className="btn btn-primary btn-lg mt-5"
+                className="btn btn-outline btn-lg mt-5"
               >
                 {publishing ? "Publishing…" : "Generate my feed URL"}
                 {!publishing && <ArrowIcon />}

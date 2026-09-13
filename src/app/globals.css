@@ -358,6 +358,25 @@ body {
     color: var(--foreground);
   }
 
+  /* For the route that works, but isn't the one to reach for first: a blue
+     frame keeps it a real call to action without competing with a filled
+     .btn-primary sitting above it on the same screen. */
+  .btn-outline {
+    background: var(--surface);
+    color: var(--primary);
+    border: 1.5px solid var(--primary);
+  }
+
+  .btn-outline:not(:disabled):hover {
+    background: var(--primary-soft);
+    border-color: var(--primary-hover);
+    color: var(--primary-hover);
+  }
+
+  .btn-outline:not(:disabled):active {
+    background: var(--primary-soft);
+  }
+
   /* On the navy surface, where a white button would shout. */
   .btn-on-navy {
     background: rgba(255, 255, 255, 0.1);
