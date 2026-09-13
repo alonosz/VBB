@@ -31,6 +31,19 @@ export const API_VERSION = process.env.GOOGLE_ADS_API_VERSION?.trim() || "v22";
 export const API_ORIGIN = "https://googleads.googleapis.com";
 
 /**
+ * How long one call may hang before we give up on it.
+ *
+ * Without this a single slow response holds the whole request open until the
+ * platform kills the function, and the advertiser gets a gateway timeout with
+ * nothing in it they can act on. Listing accounts fans out one call per
+ * account, so one stalled account used to take the entire list down.
+ *
+ * Well inside the route's own budget, so a stall surfaces as our sentence
+ * rather than as the platform's.
+ */
+export const CALL_TIMEOUT_MS = 15_000;
+
+/**
  * Google Ads shows account ids as 123-456-7890 and the API accepts only
  * 1234567890. Pasting the id straight off the screen is the obvious thing to
  * do and fails with a NOT_FOUND that names nothing, so the dashes are stripped
@@ -187,6 +200,7 @@ export class AdsClient {
         method,
         headers: this.headers(),
         body: payload === undefined ? undefined : JSON.stringify(payload),
+        signal: AbortSignal.timeout(CALL_TIMEOUT_MS),
       });
     } catch {
       // Unreachable is not the same as refused, and the advertiser should not

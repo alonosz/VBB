@@ -30,6 +30,8 @@ import { parseRows } from "@/lib/feed/handlers";
  */
 
 export const runtime = "nodejs";
+/* Creates the conversion action, sends the batch, then reads the campaigns. */
+export const maxDuration = 60;
 
 function bad(error: string, status = 400) {
   return NextResponse.json({ ok: false, error }, { status });

@@ -21,6 +21,8 @@ import { describeDatabaseFailure } from "@/lib/db/failure";
  */
 
 export const runtime = "nodejs";
+/* A token exchange with Google, then one write. Rarely slow, fatal if it is. */
+export const maxDuration = 30;
 
 function back(origin: string, params: Record<string, string>): NextResponse {
   const url = new URL(`${origin}/diagnostic/connect`);

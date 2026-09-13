@@ -13,6 +13,13 @@ import { AdsApiError } from "@/lib/sync/google/client";
  */
 
 export const runtime = "nodejs";
+/*
+ * One call to list the accounts, then one per account to name them. An agency
+ * or manager login sees dozens, so the default ten seconds is not enough and
+ * the whole thing died as a gateway timeout with nothing on screen to explain
+ * it.
+ */
+export const maxDuration = 60;
 
 export async function POST(request: Request) {
   let body: { workspaceKey?: unknown };
