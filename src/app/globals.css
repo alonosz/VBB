@@ -633,6 +633,38 @@ body {
     border-radius: 4px 4px 0 0;
   }
 
+  /*
+   * The varied row arriving, once, on load.
+   *
+   * Only the blue row animates. The grey row above it is already sitting
+   * there, flat and inert, and that difference is the argument: one of them
+   * is alive and one of them is not. Animating both would spend the motion
+   * on decoration and throw the comparison away.
+   *
+   * scaleY rather than height, so the bar's own height stays wherever the
+   * shape put it and nothing has to be restated in a keyframe.
+   */
+  .bar-rise {
+    transform-origin: bottom;
+    animation: bar-rise 260ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  @keyframes bar-rise {
+    from {
+      transform: scaleY(0);
+    }
+    to {
+      transform: scaleY(1);
+    }
+  }
+
+  /* Asked for less motion: the bars are simply there. */
+  @media (prefers-reduced-motion: reduce) {
+    .bar-rise {
+      animation: none;
+    }
+  }
+
   /* ---------------------------------------------------------------------- */
   /* Loading                                                                 */
   /* ---------------------------------------------------------------------- */

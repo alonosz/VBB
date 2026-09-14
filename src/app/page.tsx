@@ -195,9 +195,13 @@ export default function Home() {
                     {SHAPE.map((h, i) => (
                       <div
                         key={i}
-                        className="bar flex-1"
+                        className="bar bar-rise flex-1"
                         style={{
                           height: `${h}%`,
+                          // Left to right, so the row reads as filling in
+                          // rather than appearing. Short enough that the
+                          // whole thing has settled inside a second.
+                          animationDelay: `${i * 30}ms`,
                           background:
                             "linear-gradient(180deg, var(--primary-on-navy) 0%, var(--primary) 100%)",
                         }}
