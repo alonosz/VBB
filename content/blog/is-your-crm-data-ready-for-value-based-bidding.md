@@ -16,6 +16,8 @@ Once those records become conversion values, these are no longer just reporting 
 
 Before you teach Google which leads to hunt, check what your CRM is actually telling it.
 
+This is the checklist that goes with [the complete guide to value-based bidding for lead generation](/blog/value-based-bidding-for-lead-generation). The guide explains the method. This piece is about whether your records can support it.
+
 ## 1. Did the lead progress, or did someone update the pipeline?
 
 Imagine a deal that spends nine seconds in Evaluation, two seconds in Contracting and less than a minute in Proposal Sent.
@@ -58,7 +60,7 @@ Open leads also need careful treatment. Counting recent opportunities as losses 
 
 **Check:** Build on sufficiently mature lead cohorts, document how unresolved leads are handled, and test the resulting values on a later period that was not used to build them.
 
-For a revenue objective, close probability multiplied by mean won revenue estimates expected revenue. A median or capped average can make the score less sensitive to large deals, but changes what it estimates. Label that choice honestly.
+For a revenue objective, [close probability multiplied by mean won revenue](/blog/value-based-bidding-for-lead-generation#estimate-value-from-your-own-sales-history) estimates expected revenue. A median or capped average can make the score less sensitive to large deals, but changes what it estimates. Label that choice honestly.
 
 If you cap large deals, show the effect. A rare enterprise contract is not necessarily bad data. Capping it may stabilize the score while understating a genuinely valuable segment.
 
@@ -88,7 +90,7 @@ Google recommends shorter reporting delays, preferably under seven days, but exp
 
 Do not casually add predicted lead value, qualified-lead value and final revenue together as though they were three independent returns from the same customer.
 
-Keep eventual outcomes for validation. An early score is useful only if later sales support it.
+Keep eventual outcomes for validation. An early score is useful only if later sales support it. How to judge that, on separation, calibration, coverage and timeliness, is in [The future of lead-gen bidding is better value signals](/blog/future-of-lead-gen-bidding-better-value-signals).
 
 ## Give Google a signal you can defend
 

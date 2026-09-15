@@ -29,7 +29,7 @@ For example, imagine two groups of enquiries:
 * **Group A.** 10% buy, with average revenue of $2,000 per buyer.
 * **Group B.** 20% buy, with average revenue of $3,000 per buyer.
 
-Their estimated revenue per lead is $200 and $600. These are hypothetical figures, not product results.
+Their estimated revenue per lead is $200 and $600. These are hypothetical figures, not product results. How to build that estimate from a CRM export, and what to do about outliers and small groups, is worked through in [the complete guide to value-based bidding for lead generation](/blog/value-based-bidding-for-lead-generation).
 
 The estimate does not claim every lead in Group B will produce $600. Most may produce nothing. It describes an average across comparable leads.
 
@@ -98,7 +98,7 @@ Start with a question you can answer: does your sales history support meaningful
 
 Build a simple baseline on an older period. Evaluate it on a newer, sufficiently mature period. Keep a record of the model version and resist adjusting it repeatedly to flatter the test results.
 
-If the signal holds up, validate matching and delivery before changing bidding. Then use a controlled campaign experiment where feasible, with a clear baseline, an agreed outcome and enough time for sales to mature.
+If the signal holds up, validate matching and delivery before changing bidding. [Five checks on the CRM records themselves](/blog/is-your-crm-data-ready-for-value-based-bidding) come before either. Then use a controlled campaign experiment where feasible, with a clear baseline, an agreed outcome and enough time for sales to mature.
 
 Judge the result using actual sales outcomes relative to spend, not just the predicted values you submitted. A before-and-after dashboard is useful monitoring, but changes in demand, budget or sales follow-up can also explain an apparent improvement.
 

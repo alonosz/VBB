@@ -45,7 +45,7 @@ const STAGES = [
  * whether this is for them and reads the rest knowing it.
  * Every answer is true of the product as built; none promises a result.
  */
-const FAQ = [
+const FAQ: { q: string; a: string; more?: { href: string; label: string } }[] = [
   {
     q: "Why bid on value instead of conversions?",
     a: "Google can only optimise for what you tell it. Tell it every lead is worth the same and it buys the cheapest ones. Tell it what each lead is likely to be worth and it buys the ones that pay.",
@@ -53,10 +53,12 @@ const FAQ = [
   {
     q: "Is my account ready for this?",
     a: "Three things need to be true. Roughly 30 to 50 conversions a month per campaign, which is Google's own guidance for value-based bidding. A year of CRM history with a few hundred closed leads, so the tool has about 25 closed deals in each group it prices. And real differences between your leads: this suits insurance, lending, legal, home services, education and B2B software, and not a single product at a single price.",
+    more: { href: "/blog/value-based-bidding-for-lead-generation#this-may-not-be-for-you", label: "The suitability test, in the guide" },
   },
   {
     q: "Where do the values come from?",
     a: "From your own history: how often each kind of lead closed, times what it was worth when it did. AI reads your file and your description. It never sets a number.",
+    more: { href: "/blog/is-your-crm-data-ready-for-value-based-bidding", label: "Whether your CRM data can support it" },
   },
   {
     q: "What happens in my Google Ads account?",
@@ -69,6 +71,7 @@ const FAQ = [
   {
     q: "How will I know it worked?",
     a: "Once connected, the tool keeps reading your CRM and compares the leads Google buys after the switch against the ones before, measured in real outcomes, not in the numbers we sent.",
+    more: { href: "/blog/value-based-bidding-for-lead-generation#measure-business-results-not-just-reported-value", label: "How to measure the result, in the guide" },
   },
 ];
 
@@ -339,6 +342,15 @@ export default async function Home() {
                 <p className="mt-2.5 max-w-[68ch] text-[14px] leading-relaxed text-[var(--muted)]">
                   {item.a}
                 </p>
+                {item.more && (
+                  <Link
+                    href={item.more.href}
+                    className="mt-2 inline-flex items-center gap-1.5 text-[13.5px] font-semibold text-[var(--primary)] hover:text-[var(--primary-hover)]"
+                  >
+                    {item.more.label}
+                    <span aria-hidden>&rarr;</span>
+                  </Link>
+                )}
               </details>
             ))}
           </div>

@@ -86,6 +86,8 @@ A neat value table can hide problems in the underlying CRM records. Three checks
 
 Small groups also need cautious treatment. Estimates from sparse histories deserve less confidence. Combining sparse groups or pulling their estimates toward a broader baseline can reduce overreaction.
 
+Those checks decide whether a value table can be trusted at all. A longer list, covering stage timestamps, source fields and what a huge deal range does and does not prove, is in [Is your CRM data ready for value-based bidding?](/blog/is-your-crm-data-ready-for-value-based-bidding).
+
 ## Make sure the values reach Google
 
 A lead's CRM record needs identifiers that the chosen import method can use to match it to an eligible ad interaction. Depending on the setup, these can include a captured click identifier or customer information used through Enhanced Conversions for Leads. [About offline conversion imports](https://support.google.com/google-ads/answer/2998031?hl=en).
@@ -135,7 +137,7 @@ An increase in Google Ads conversion value is not sufficient evidence of success
 
 Test two things separately.
 
-First, test the model against historical leads excluded from model fitting, preferably from a later period with mature outcomes. Do higher-value groups actually generate more revenue per lead? Are the predicted differences broadly consistent with the observed differences?
+First, test the model against historical leads excluded from model fitting, preferably from a later period with mature outcomes. Do higher-value groups actually generate more revenue per lead? Are the predicted differences broadly consistent with the observed differences? Those two questions, separation and calibration, sit alongside coverage and timeliness in [a four-part test of any value signal](/blog/future-of-lead-gen-bidding-better-value-signals).
 
 Then test the bidding change. Where feasible, use a campaign experiment and compare actual sales revenue or gross profit relative to spend. Track lead volume and cost alongside those outcomes, and give both groups comparable time to convert. [Google's value-based bidding experiment guidance](https://support.google.com/google-ads/answer/14147337?hl=en).
 
