@@ -3,7 +3,7 @@ description: Why the next improvement may come from what you tell the algorithm,
 date: 2026-09-15
 author: Alon Oszmann
 kind: Perspective
-coverAlt: A grid of glass lead cards, a few lit blue and violet, with their signal drawn into one beam entering a dark receiver
+coverAlt: A crowd of glass lead cards, a few lit blue and violet, one picked out by a spotlight from above
 ---
 
 *Why the next improvement may come from what you tell the algorithm, not from a more complicated prediction model.*
