@@ -56,7 +56,7 @@ A form submission tells you someone is interested. It does not tell you whether 
 
 Waiting for completed sales gives you a clearer outcome, but delays the feedback. Predicting lead value gives you earlier feedback, with more uncertainty.
 
-Google recommends reporting conversion data promptly and generally prefers delays below seven days. However, seven days is not a universal cutoff: its guidance allows longer average delays and explains that consistently late feedback can lengthen the learning period. [Google's value-based bidding guidance](https://support.google.com/google-ads/answer/15099424?hl=en).
+For the first report of a conversion, Google recommends a delay below seven days from click to upload, and says longer delays can slow learning. That guidance is about reporting a conversion, not restating one already recorded. [Google's value-based bidding guidance](https://support.google.com/google-ads/answer/15099424?hl=en).
 
 Later sales can still inform future bidding when reported through an eligible conversion setup. Predicted values are useful because they can provide an earlier indication of value, not because later outcomes are worthless. [Google's offline conversion guidance](https://support.google.com/google-ads/answer/10029210?hl=en).
 
@@ -88,7 +88,7 @@ Small groups also need cautious treatment. Estimates from sparse histories deser
 
 ## Make sure the values reach Google
 
-A lead's CRM record needs identifiers that the chosen import method can use to match it to an eligible ad interaction. Depending on the setup, these can include a captured click identifier or customer information used through Enhanced Conversions for Leads. [Google's offline conversion import documentation](https://support.google.com/google-ads/answer/2998031?hl=en).
+A lead's CRM record needs identifiers that the chosen import method can use to match it to an eligible ad interaction. Depending on the setup, these can include a captured click identifier or customer information used through Enhanced Conversions for Leads. [About offline conversion imports](https://support.google.com/google-ads/answer/2998031?hl=en).
 
 Check identifier capture through the entire journey: landing page, form, CRM and import. If your existing setup already preserves the necessary identifiers, you may not need another tracking script.
 
@@ -96,7 +96,7 @@ Keep two measurements separate: the share of leads carrying usable identifiers, 
 
 Ongoing delivery matters too. A one-time CRM export can support an initial analysis. New leads and later outcomes require fresh data through a CRM connection or repeated exports. A scheduled feed URL cannot discover CRM changes unless something updates the feed.
 
-Google dates the start of its upload migration to June 15, 2026: offline conversion and enhanced-conversion lead uploads move to the Data Manager API, with legacy Google Ads API access restricted to allowlisted developer tokens. If a script or connector delivers your data, confirm its route and check upload results and freshness. A running schedule does not prove the values arrived. [Google's migration notice](https://support.google.com/google-ads/answer/2998031?hl=en).
+Google dates the start of its upload migration to June 15, 2026: offline conversion and enhanced-conversion lead uploads move to the Data Manager API, with legacy Google Ads API access restricted to allowlisted developer tokens. If a script or connector delivers your data, confirm its route and check upload results and freshness. A running schedule does not prove the values arrived. [Migration notice in About offline conversion imports](https://support.google.com/google-ads/answer/2998031?hl=en).
 
 ## Choose a conversion goal you can support
 
@@ -114,19 +114,20 @@ For Search and Shopping, Google's published Target ROAS requirement is at least 
 
 Later-stage goals supply fewer events. Splitting those events across narrow product or regional campaigns can leave little evidence in each. Check usable volume for your chosen action per campaign, not just account totals. This is a practical check, not an additional eligibility threshold: Google also documents learning across conversion actions. [Google's Target ROAS guidance](https://support.google.com/google-ads/answer/6268637?hl=en).
 
-## Update values as you learn more
+## Update values promptly, and keep adjustments apart from new conversions
 
 A reliable milestone can change what you know about a lead. If receiving a quote or completing qualification predicts a higher chance of purchase, that information may justify updating its value.
 
-Google supports conversion value restatements, subject to the requirements of the conversion and import method. Plan those updates deliberately and preserve the identifiers needed to adjust the original event. [Google's conversion-adjustment documentation](https://support.google.com/google-ads/answer/7686447?hl=en).
+There are two different operations, and they carry different rules:
 
-Acceptance is not the same as influence, and the difference decides what a late outcome can do.
+* **Import a new conversion.** Report an event that has not been recorded before, such as a completed sale.
+* **Restate an existing conversion.** Replace the value of the lead conversion you already reported, after learning more about it. A restatement changes its value without adding another conversion. [About conversion adjustments](https://support.google.com/google-ads/answer/7686447?hl=en).
 
-Google gives you up to seven days after a conversion is first recorded for an adjustment to that conversion to be read by autobidding. An adjustment made after those seven days is ignored by autobidding. The wider window, up to 55 days, is for restating your reporting, which is a different job. [Google's conversion adjustments documentation](https://support.google.com/google-ads/answer/7686447?hl=en).
+Google accepts a restatement for up to 55 days after the conversion was first recorded. Acceptance is not influence. The one figure Google publishes for how long autobidding reads an adjustment is seven days from the conversion being recorded, and on the same page it appears in the hotel ads passage; Google does not say in plain terms whether it binds Search lead conversions. [About conversion adjustments](https://support.google.com/google-ads/answer/7686447?hl=en).
 
-Keep two operations apart, because they have different deadlines. Importing a conversion that has only just happened is a new event, and it can still inform bidding when it arrives inside your configured conversion window. Adjusting the value of a conversion you already reported is the one the seven days applies to.
+Treat seven days as the deadline anyway. An adjustment sent inside it is safe under any reading of the rule, and nothing is gained by waiting. A lead-value feed should send an update while the original conversion is under seven days old, and keep a later change for recalibration instead of sending an adjustment that may be ignored. Google also requires new conversions and adjustments to be uploaded in separate files. [How to adjust your conversions](https://support.google.com/google-ads/answer/7686280?hl=en).
 
-So a sale closing months later cannot change the bid that won the click, and it cannot be walked back into one. It corrects your reporting, and it belongs in the next recalibration, where it prices tomorrow's leads rather than yesterday's. Continue collecting actual outcomes for exactly that purpose. Treat a successful upload as evidence that Google accepted the file, and nothing more.
+Keep collecting later sales outcomes. A sale closing months later cannot change the bid that won the click, but it is exactly what tells you whether the estimates were sensible, and it prices tomorrow's leads. A successful upload proves that Google accepted the file, and nothing more.
 
 ## Measure business results, not just reported value
 
@@ -140,7 +141,9 @@ Then test the bidding change. Where feasible, use a campaign experiment and comp
 
 Keep scoring consistent during the comparison. If you change the model, conversion goal, budget and landing page together, it becomes much harder to identify what caused the result.
 
-Standard campaign reporting assigns conversions to the ad interaction, not the later sale date. Recent periods can therefore look worse simply because their conversions have not arrived. In Goals > Attribution > Path metrics, "Avg. days to conversion" shows the delay. [Google's attribution reporting documentation](https://support.google.com/google-ads/answer/1722023?hl=en).
+Standard conversion columns report by the time of the ad click. Separate "by conv. time" columns report by when the conversion happened. Recent click dates can therefore look worse simply because their conversions have not arrived. [Understand your conversion tracking data](https://support.google.com/google-ads/answer/6270625?hl=en).
+
+In Goals > Attribution > Path metrics, "Avg. days to conversion" shows the delay. Check whether it is measured from the first or the last ad interaction. [About attribution reports](https://support.google.com/google-ads/answer/1722023?hl=en).
 
 Use mature history for your chosen action to establish the delay, then exclude recent days whose outcomes are still incomplete. Allow for upload delays too. The campaign report's Conversions > Days to conversion segment is another check. Last week's incomplete results cannot establish that a bid change failed. [Google's conversion-delay guidance](https://support.google.com/google-ads/answer/6239119?hl=en).
 
