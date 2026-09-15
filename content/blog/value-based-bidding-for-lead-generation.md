@@ -9,11 +9,11 @@ coverAlt: A figure on a mountain ridge with streams of light converging on them 
 
 *A lower cost per lead looks good in a report. It means much less if those leads never become customers.*
 
-If your Google Ads campaigns optimize for form submissions, a dead-end enquiry and your next best customer each count as one conversion. The campaign gets credit for generating both, even if only one produces revenue.
+If your Google Ads campaigns optimize for form submissions, a dead-end enquiry and your next best customer each count as one conversion. The campaign gets credit for generating both, even if only one produces revenue. [Google's conversion reporting documentation](https://support.google.com/google-ads/answer/6270625?hl=en).
 
 That creates a gap between what marketing reports and what sales needs. You can keep improving cost per lead while spending more of your budget on people who are unlikely to buy.
 
-Value-based bidding gives Google a different objective: the value of the conversions it generates. For lead generation, the challenge is deciding what value to report before a sale happens, and checking whether the resulting bids actually bring better business.
+Value-based bidding gives Google a different objective: the value of the conversions it generates. For lead generation, the challenge is deciding what value to report before a sale happens, and checking whether the resulting bids actually bring better business. [Google's value-based bidding guidance](https://support.google.com/google-ads/answer/15099424?hl=en).
 
 ## Cheap leads can be expensive customers
 
@@ -34,6 +34,22 @@ The same problem exists in B2B. A small business and an enterprise prospect can 
 
 Google's value-based strategies, Maximize Conversion Value and Target ROAS, optimize toward the values you report. The quality of those values therefore matters to the objective you are giving the bidder. [Google Ads documentation](https://support.google.com/google-ads/answer/6268637?hl=en).
 
+## This may not be for you
+
+Value-based bidding needs three things:
+
+* Real, repeatable differences in value between leads.
+* Enough usable conversions to learn from.
+* A business that cares about the difference, not just lead volume.
+
+Missing any one means this is the wrong tool for now, not a smaller win. Google's guidance calls for distinct values, a matching business objective and sufficient conversion volume. [Google's suitability criteria](https://support.google.com/google-ads/answer/15099424?hl=en).
+
+If every lead is genuinely worth the same, a flat value adds no information about lead quality. Mathematically, maximizing the same positive value per lead means maximizing lead count. Conversion-based bidding is the simpler choice. That is an equivalent objective, not a promise of identical bids.
+
+You may find no useful spread because you sell one product at one price, your groups are too small to distinguish, or the only predictive fields appear after the sale. One price alone does not rule out different close rates.
+
+Before building anything, take your most obvious lead groups. Multiply each group's close rate by its average deal size. If the answers sit within a narrow band, stop here.
+
 ## The value arrives later than the lead
 
 A form submission tells you someone is interested. It does not tell you whether they will buy, how much they will spend or whether the sale will be profitable.
@@ -42,7 +58,7 @@ Waiting for completed sales gives you a clearer outcome, but delays the feedback
 
 Google recommends reporting conversion data promptly and generally prefers delays below seven days. However, seven days is not a universal cutoff: its guidance allows longer average delays and explains that consistently late feedback can lengthen the learning period. [Google's value-based bidding guidance](https://support.google.com/google-ads/answer/15099424?hl=en).
 
-Later sales can still inform future bidding when reported through an eligible conversion setup. Predicted values are useful because they can provide an earlier indication of value, not because later outcomes are worthless.
+Later sales can still inform future bidding when reported through an eligible conversion setup. Predicted values are useful because they can provide an earlier indication of value, not because later outcomes are worthless. [Google's offline conversion guidance](https://support.google.com/google-ads/answer/10029210?hl=en).
 
 ## Estimate value from your own sales history
 
@@ -50,7 +66,7 @@ A practical starting point is to group leads by attributes available when they f
 
 **Estimated lead value = historical close rate × average revenue from won deals in that group**
 
-If a group closes 20% of the time and generates an average of $5,000 per sale, its estimated revenue per new lead is $1,000. That assumes unsuccessful leads generate no revenue.
+Illustrative calculation: if a group closes 20% of the time and generates an average of $5,000 per sale, its estimated revenue per new lead is $1,000. That assumes unsuccessful leads generate no revenue.
 
 For B2B, possible attributes include company size, industry, job role and email domain type. For consumer businesses, they might include the service requested, product package or stated purchase timeframe. Whether any attribute is useful depends on your data.
 
@@ -68,7 +84,7 @@ A neat value table can hide problems in the underlying CRM records. Three checks
 * **Allow outcomes time to develop.** A lead created yesterday is not a failed sale. Compare cohorts with sufficient follow-up and explain how unresolved leads affect the calculation.
 * **Use information available at scoring time.** A lost reason, final contract amount or status added after a sale cannot be used to predict value at form submission. Later milestones need their own timing and reliability checks.
 
-Small groups also need cautious treatment. A close rate based on a handful of outcomes should carry less confidence than one supported by hundreds. Combining sparse groups or pulling their estimates toward a broader baseline can reduce overreaction.
+Small groups also need cautious treatment. Estimates from sparse histories deserve less confidence. Combining sparse groups or pulling their estimates toward a broader baseline can reduce overreaction.
 
 ## Make sure the values reach Google
 
@@ -76,9 +92,11 @@ A lead's CRM record needs identifiers that the chosen import method can use to m
 
 Check identifier capture through the entire journey: landing page, form, CRM and import. If your existing setup already preserves the necessary identifiers, you may not need another tracking script.
 
-Keep two measurements separate: the share of leads carrying usable identifiers, and the results Google reports after processing the import. Having an email address or click ID is not proof that a conversion has been successfully attributed.
+Keep two measurements separate: the share of leads carrying usable identifiers, and the results Google reports after processing the import. Having an email address or click ID is not proof that a conversion has been successfully attributed. [Google's import verification guidance](https://support.google.com/google-ads/answer/10029210?hl=en).
 
 Ongoing delivery matters too. A one-time CRM export can support an initial analysis. New leads and later outcomes require fresh data through a CRM connection or repeated exports. A scheduled feed URL cannot discover CRM changes unless something updates the feed.
+
+Google dates the start of its upload migration to June 15, 2026: offline conversion and enhanced-conversion lead uploads move to the Data Manager API, with legacy Google Ads API access restricted to allowlisted developer tokens. If a script or connector delivers your data, confirm its route and check upload results and freshness. A running schedule does not prove the values arrived. [Google's migration notice](https://support.google.com/google-ads/answer/2998031?hl=en).
 
 ## Choose a conversion goal you can support
 
@@ -86,9 +104,15 @@ There is no single best funnel stage for every advertiser. Consider how closely 
 
 Completed sales may be a suitable goal when they arrive regularly and promptly. Qualified leads can offer earlier feedback if qualification is recorded consistently and predicts sales. Predicted values at enquiry can be worth testing when useful distinctions are available immediately but final outcomes arrive much later.
 
-Google recommends choosing a single funnel stage for bid optimization. If you report several stages, make sure your campaign goals do not unintentionally count the same economic value repeatedly. [Google's conversion-goal guidance](https://support.google.com/google-ads/answer/15099424?hl=en).
+Google recommends choosing a single funnel stage for bid optimization. [Google's conversion-goal guidance](https://support.google.com/google-ads/answer/15099424?hl=en).
 
-For Search and Shopping, Google's published Target ROAS requirement is at least 15 conversions in the preceding 30 days at the conversion tracking level. Other campaign types have different requirements. These are eligibility criteria, not a guarantee of stable performance or improvement. Count usable conversions for the relevant goal, not every lead in your CRM. [Google's Target ROAS requirements](https://support.google.com/google-ads/answer/6268637?hl=en).
+The trap is giving overlapping stages separate values and making them all primary in the campaign's bidding goals. Illustrative example: a lead worth $100, qualification worth $200 and a sale worth $1,000 total $1,300 when someone completes the funnel. You have supplied $1,300 of bidding value for $1,000 of revenue. Google sums the included conversion values; it does not subtract your earlier estimates. [Google's conversion-value reporting documentation](https://support.google.com/google-ads/answer/6270625?hl=en).
+
+Choose a single action, or a non-overlapping set, to drive bidding. Make the rest secondary before switching strategies. Primary actions drive bidding when their standard goal is selected; secondary actions remain in "All conversions" reporting. Check custom goals too: they use included secondary actions for bidding. Demoting an action is not enough if it remains in a custom goal used by the campaign. [Google's primary and secondary settings](https://support.google.com/google-ads/answer/11461796?hl=en).
+
+For Search and Shopping, Google's published Target ROAS requirement is at least 15 conversions in the preceding 30 days at the conversion tracking level. Other campaign types have different requirements. These are eligibility criteria, not a guarantee of stable performance or improvement. [Google's Target ROAS requirements](https://support.google.com/google-ads/answer/6268637?hl=en).
+
+Later-stage goals supply fewer events. Splitting those events across narrow product or regional campaigns can leave little evidence in each. Check usable volume for your chosen action per campaign, not just account totals. This is a practical check, not an additional eligibility threshold: Google also documents learning across conversion actions. [Google's Target ROAS guidance](https://support.google.com/google-ads/answer/6268637?hl=en).
 
 ## Update values as you learn more
 
@@ -96,7 +120,13 @@ A reliable milestone can change what you know about a lead. If receiving a quote
 
 Google supports conversion value restatements, subject to the requirements of the conversion and import method. Plan those updates deliberately and preserve the identifiers needed to adjust the original event. [Google's conversion-adjustment documentation](https://support.google.com/google-ads/answer/7686447?hl=en).
 
-Continue collecting actual sales outcomes. They let you test whether the original estimates were sensible and whether the model needs recalibration as the business changes.
+Acceptance is not the same as influence, and the difference decides what a late outcome can do.
+
+Google gives you up to seven days after a conversion is first recorded for an adjustment to that conversion to be read by autobidding. An adjustment made after those seven days is ignored by autobidding. The wider window, up to 55 days, is for restating your reporting, which is a different job. [Google's conversion adjustments documentation](https://support.google.com/google-ads/answer/7686447?hl=en).
+
+Keep two operations apart, because they have different deadlines. Importing a conversion that has only just happened is a new event, and it can still inform bidding when it arrives inside your configured conversion window. Adjusting the value of a conversion you already reported is the one the seven days applies to.
+
+So a sale closing months later cannot change the bid that won the click, and it cannot be walked back into one. It corrects your reporting, and it belongs in the next recalibration, where it prices tomorrow's leads rather than yesterday's. Continue collecting actual outcomes for exactly that purpose. Treat a successful upload as evidence that Google accepted the file, and nothing more.
 
 ## Measure business results, not just reported value
 
@@ -106,9 +136,13 @@ Test two things separately.
 
 First, test the model against historical leads excluded from model fitting, preferably from a later period with mature outcomes. Do higher-value groups actually generate more revenue per lead? Are the predicted differences broadly consistent with the observed differences?
 
-Then test the bidding change. Where feasible, use a campaign experiment and compare actual sales revenue or gross profit relative to spend. Track lead volume and cost alongside those outcomes, and give both groups comparable time to convert.
+Then test the bidding change. Where feasible, use a campaign experiment and compare actual sales revenue or gross profit relative to spend. Track lead volume and cost alongside those outcomes, and give both groups comparable time to convert. [Google's value-based bidding experiment guidance](https://support.google.com/google-ads/answer/14147337?hl=en).
 
 Keep scoring consistent during the comparison. If you change the model, conversion goal, budget and landing page together, it becomes much harder to identify what caused the result.
+
+Standard campaign reporting assigns conversions to the ad interaction, not the later sale date. Recent periods can therefore look worse simply because their conversions have not arrived. In Goals > Attribution > Path metrics, "Avg. days to conversion" shows the delay. [Google's attribution reporting documentation](https://support.google.com/google-ads/answer/1722023?hl=en).
+
+Use mature history for your chosen action to establish the delay, then exclude recent days whose outcomes are still incomplete. Allow for upload delays too. The campaign report's Conversions > Days to conversion segment is another check. Last week's incomplete results cannot establish that a bid change failed. [Google's conversion-delay guidance](https://support.google.com/google-ads/answer/6239119?hl=en).
 
 A before-and-after comparison can help monitor progress, but changes in seasonality, demand and sales follow-up can also affect the outcome. Treat it as directional evidence unless the evaluation design supports a stronger conclusion.
 
