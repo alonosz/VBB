@@ -1,0 +1,75 @@
+import { describe, expect, it } from "vitest";
+import { formatPostDate, listPosts, parseFrontMatter, readPost } from "./posts";
+
+describe("the article header", () => {
+  it("reads key and value up to the first ---", () => {
+    const { meta, body } = parseFrontMatter(
+      ["title: A title", "date: 2026-09-15", "---", "", "First paragraph."].join("\n")
+    );
+    expect(meta.title).toBe("A title");
+    expect(meta.date).toBe("2026-09-15");
+    expect(body).toBe("First paragraph.");
+  });
+
+  it("keeps a colon inside a title, which is where they mostly appear", () => {
+    const { meta } = parseFrontMatter("title: Value-Based Bidding: How to Start\n---\nBody.");
+    expect(meta.title).toBe("Value-Based Bidding: How to Start");
+  });
+
+  it("leaves the body's own markdown alone", () => {
+    const { body } = parseFrontMatter("title: T\n---\n## A heading\n\n| a | b |\n| - | - |");
+    expect(body).toContain("## A heading");
+    expect(body).toContain("| a | b |");
+  });
+});
+
+describe("reading a post", () => {
+  /*
+   * The slug arrives from the URL. A path that escapes the content directory
+   * must be refused before it reaches the filesystem, not after.
+   */
+  it("refuses a slug that is not a plain name", async () => {
+    for (const slug of ["../../etc/passwd", "a/b", "Upper", "with space", ".env"]) {
+      expect(await readPost(slug)).toBeNull();
+    }
+  });
+
+  it("returns null for a name that is fine but missing", async () => {
+    expect(await readPost("no-such-article")).toBeNull();
+  });
+
+  it("reads the article that ships with the repo", async () => {
+    const post = await readPost("value-based-bidding-for-lead-generation");
+    expect(post).not.toBeNull();
+    expect(post?.title).toMatch(/value-based bidding/i);
+    expect(post?.body).toContain("## Cheap leads can be expensive customers");
+  });
+});
+
+describe("the index", () => {
+  it("lists posts newest first and carries no body", async () => {
+    const posts = await listPosts();
+    expect(posts.length).toBeGreaterThan(0);
+    expect(posts[0]).not.toHaveProperty("body");
+    const dates = posts.map((p) => p.date);
+    expect([...dates].sort((a, b) => b.localeCompare(a))).toEqual(dates);
+  });
+
+  it("gives every post the three things a search result needs", async () => {
+    for (const post of await listPosts()) {
+      expect(post.title.length).toBeGreaterThan(0);
+      expect(post.description.length).toBeGreaterThan(0);
+      expect(post.date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    }
+  });
+});
+
+describe("the displayed date", () => {
+  it("reads as a date rather than as a timestamp", () => {
+    expect(formatPostDate("2026-09-15")).toBe("15 September 2026");
+  });
+
+  it("hands back whatever it was given when that is not a date", () => {
+    expect(formatPostDate("soon")).toBe("soon");
+  });
+});

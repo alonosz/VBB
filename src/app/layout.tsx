@@ -21,6 +21,10 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
+  // Without this, the canonical and Open Graph URLs a page declares stay
+  // relative, and a crawler resolves them against whichever preview host it
+  // happened to arrive on.
+  metadataBase: new URL("https://valuebasedbidding.com"),
   title: "Value Bidding Model Builder",
   description:
     "Build a reusable, value-based bidding / lead-scoring model from your own conversion data - no data science required.",
