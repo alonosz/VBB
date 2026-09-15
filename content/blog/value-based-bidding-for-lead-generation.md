@@ -3,6 +3,7 @@ description: A lower cost per lead looks good in a report. It means much less if
 date: 2026-09-15
 author: Alon Oszmann
 kind: Guide
+featured: true
 coverAlt: A figure on a mountain ridge with streams of light converging on them from a valley of glowing points
 ---
 

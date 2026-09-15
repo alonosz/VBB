@@ -36,6 +36,8 @@ export interface PostMeta {
   /** Public path of the cover image, or null when the post has none yet. */
   cover: string | null;
   coverAlt: string;
+  /** Pinned to the top of the index, ahead of the date order. */
+  featured: boolean;
 }
 
 export interface Post extends PostMeta {
@@ -113,6 +115,7 @@ function toPost(slug: string, raw: string): Post {
     minutes: readingMinutes(body),
     cover: meta.cover ?? findCover(slug),
     coverAlt: meta.coverAlt ?? meta.title,
+    featured: meta.featured === "true",
     body,
   };
 }
@@ -128,6 +131,7 @@ function metaOf(post: Post): PostMeta {
     minutes: post.minutes,
     cover: post.cover,
     coverAlt: post.coverAlt,
+    featured: post.featured,
   };
 }
 
@@ -149,10 +153,22 @@ export async function listPosts(): Promise<PostMeta[]> {
       })
   );
 
-  // Newest first, and stable on a tie so two posts dated the same day do not
-  // swap places between builds.
+  /*
+   * Newest first, and stable on a tie so two posts dated the same day do not
+   * swap places between builds.
+   *
+   * A post marked `featured: true` in its header comes first whatever its
+   * date. The index gives its top slot to one article at a size the others do
+   * not get, and which article deserves that is an editorial decision rather
+   * than a consequence of when it was written. Without this, three pieces
+   * published on one day are ordered alphabetically, which is nobody's
+   * judgement about anything.
+   */
   return posts
-    .sort((a, b) => (a.date === b.date ? a.slug.localeCompare(b.slug) : b.date.localeCompare(a.date)))
+    .sort((a, b) => {
+      if (a.featured !== b.featured) return a.featured ? -1 : 1;
+      return a.date === b.date ? a.slug.localeCompare(b.slug) : b.date.localeCompare(a.date);
+    })
     .map(metaOf);
 }
 

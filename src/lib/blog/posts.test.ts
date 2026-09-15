@@ -97,3 +97,22 @@ describe("the displayed date", () => {
     expect(formatPostDate("soon")).toBe("soon");
   });
 });
+
+describe("the featured post", () => {
+  /*
+   * Three articles published on one day used to be ordered alphabetically,
+   * which decided the index's biggest slot by accident. The flag makes that
+   * an editorial choice instead.
+   */
+  it("comes first whatever the dates say", async () => {
+    const posts = await listPosts();
+    const featured = posts.filter((p) => p.featured);
+    expect(featured.length).toBeGreaterThan(0);
+    expect(posts[0].featured).toBe(true);
+  });
+
+  it("leaves the rest in date order behind it", async () => {
+    const rest = (await listPosts()).filter((p) => !p.featured).map((p) => p.date);
+    expect([...rest].sort((a, b) => b.localeCompare(a))).toEqual(rest);
+  });
+});
