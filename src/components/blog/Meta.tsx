@@ -17,8 +17,20 @@ export function MetaRow({ post }: { post: Pick<PostMeta, "kind" | "minutes"> }) 
   );
 }
 
-/** Who wrote it and when, with a mark where a photo would go. */
-export function Byline({ post }: { post: Pick<PostMeta, "author" | "date"> }) {
+/**
+ * Who wrote it and when, with a mark where a photo would go.
+ *
+ * The date is dropped on a card, where it is a timestamp nobody asked for,
+ * and kept on the article itself, where a reader deciding whether the advice
+ * is current has a reason to want it.
+ */
+export function Byline({
+  post,
+  showDate = true,
+}: {
+  post: Pick<PostMeta, "author" | "date">;
+  showDate?: boolean;
+}) {
   return (
     <div className="flex items-center gap-3">
       <span
@@ -30,7 +42,9 @@ export function Byline({ post }: { post: Pick<PostMeta, "author" | "date"> }) {
       </span>
       <div className="leading-tight">
         <p className="text-[13.5px] font-semibold">{post.author}</p>
-        <p className="mono mt-0.5 text-[12px] text-[var(--muted)]">{formatPostDate(post.date)}</p>
+        {showDate && (
+          <p className="mono mt-0.5 text-[12px] text-[var(--muted)]">{formatPostDate(post.date)}</p>
+        )}
       </div>
     </div>
   );

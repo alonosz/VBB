@@ -38,8 +38,14 @@ function Featured({ post }: { post: PostMeta }) {
         <p className="mt-3 max-w-[52ch] text-[15px] leading-relaxed text-[var(--muted-strong)]">
           {post.description}
         </p>
-        <div className="mt-6">
-          <Byline post={post} />
+        <div className="mt-6 flex flex-wrap items-center justify-between gap-4">
+          <Byline post={post} showDate={false} />
+          <p className="flex items-center gap-1.5 text-[13.5px] font-semibold text-[var(--primary)]">
+            Read article
+            <span aria-hidden className="transition-transform duration-200 group-hover:translate-x-0.5">
+              &rarr;
+            </span>
+          </p>
         </div>
       </div>
     </Link>

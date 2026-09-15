@@ -296,12 +296,12 @@ export default async function Home() {
         </section>
 
         {/* ---------------------------------------------------------------- */}
-        {/* From the blog                                                     */}
+        {/* Learn value-based bidding                                         */}
         {/* ---------------------------------------------------------------- */}
         {posts.length > 0 && (
           <section className="page-wide pt-14">
             <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2">
-              <h2 className="h2">From the blog</h2>
+              <h2 className="h2">Learn value-based bidding</h2>
               <Link
                 href="/blog"
                 className="text-[13.5px] font-semibold text-[var(--primary)] hover:text-[var(--primary-hover)]"
