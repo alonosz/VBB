@@ -16,6 +16,9 @@ export function SiteFooter() {
           ValueBasedBidding, by BetterSignals
         </p>
         <nav className="flex flex-wrap items-center gap-x-5 gap-y-2 text-[12.5px] font-semibold">
+          <Link href="/blog" className="text-[var(--muted)] hover:text-[var(--foreground)]">
+            Blog
+          </Link>
           <Link href="/privacy" className="text-[var(--muted)] hover:text-[var(--foreground)]">
             Privacy
           </Link>

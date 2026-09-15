@@ -4,6 +4,8 @@ import { Logo } from "@/components/brand/Logo";
 import { SiteFooter } from "@/components/legal/SiteFooter";
 import { WorkspaceReadyBar } from "@/components/workspace/WorkspaceReadyBar";
 import { AccountLink } from "@/components/workspace/AccountLink";
+import { PostCard } from "@/components/blog/PostCard";
+import { listPosts } from "@/lib/blog/posts";
 
 /**
  * What this is, before anyone is asked to do anything.
@@ -95,7 +97,10 @@ const TRUST = [
   "Values sent straight to Google Ads",
 ];
 
-export default function Home() {
+export default async function Home() {
+  // The three newest. Read at build time, like the blog itself.
+  const posts = (await listPosts()).slice(0, 3);
+
   return (
     <div className="animate-page-in flex min-h-screen flex-col">
       <header className="page-wide flex items-center justify-between gap-3 py-5">
@@ -289,6 +294,30 @@ export default function Home() {
             </p>
           </div>
         </section>
+
+        {/* ---------------------------------------------------------------- */}
+        {/* From the blog                                                     */}
+        {/* ---------------------------------------------------------------- */}
+        {posts.length > 0 && (
+          <section className="page-wide pt-14">
+            <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2">
+              <h2 className="h2">From the blog</h2>
+              <Link
+                href="/blog"
+                className="text-[13.5px] font-semibold text-[var(--primary)] hover:text-[var(--primary-hover)]"
+              >
+                All articles
+              </Link>
+            </div>
+            <ul className="mt-5 grid gap-4 md:grid-cols-3">
+              {posts.map((post) => (
+                <li key={post.slug}>
+                  <PostCard post={post} heading="h3" sizes="(min-width: 768px) 33vw, 100vw" />
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
 
         {/* ---------------------------------------------------------------- */}
         {/* Questions                                                         */}
