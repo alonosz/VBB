@@ -2,6 +2,7 @@ title: Value-Based Bidding for Lead Generation: How to Train Google to Find Bett
 description: A lower cost per lead looks good in a report. It means much less if those leads never become customers. How to estimate what a lead is worth, send it to Google Ads, and check whether the bids brought better business.
 date: 2026-09-15
 author: Alon Oszmann
+kind: Guide
 ---
 
 *A lower cost per lead looks good in a report. It means much less if those leads never become customers.*

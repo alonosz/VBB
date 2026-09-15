@@ -2,6 +2,7 @@ title: The Future of Lead-Gen Bidding Is Better Value Signals
 description: Why the next improvement may come from what you tell the algorithm, not from a more complicated prediction model. Ranking is not enough, magnitudes matter, and delivery is part of the model's practical value.
 date: 2026-09-15
 author: Alon Oszmann
+kind: Perspective
 ---
 
 *Why the next improvement may come from what you tell the algorithm, not from a more complicated prediction model.*

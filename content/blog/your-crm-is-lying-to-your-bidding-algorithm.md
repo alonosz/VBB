@@ -2,6 +2,7 @@ title: Your CRM Is Lying to Your Bidding Algorithm
 description: Five checks before you turn your sales history into Google Ads conversion values. Stage timestamps, source fields, deal ranges, click ID coverage and late outcomes all mislead in ways that become spending instructions.
 date: 2026-09-15
 author: Alon Oszmann
+kind: Checklist
 ---
 
 *Five checks before you turn your sales history into Google Ads conversion values.*

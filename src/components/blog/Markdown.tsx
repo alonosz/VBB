@@ -58,6 +58,52 @@ function inline(tokens: Token[] | undefined, keyPrefix = ""): ReactNode {
   });
 }
 
+export interface Heading {
+  id: string;
+  text: string;
+  level: 2 | 3;
+}
+
+function slugify(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, "")
+    .trim()
+    .replace(/[\s-]+/g, "-")
+    .slice(0, 80);
+}
+
+/**
+ * Every heading with a stable anchor, in document order.
+ *
+ * Computed once from the token list and used both by the renderer, to put the
+ * id on the element, and by the page, to build the table of contents - so the
+ * two can never disagree about where a link lands. Two headings with the same
+ * words get numbered rather than sharing an id.
+ */
+function headings(tokens: Token[]): (Heading & { index: number })[] {
+  const seen = new Map<string, number>();
+  const out: (Heading & { index: number })[] = [];
+  tokens.forEach((token, index) => {
+    if (token.type !== "heading") return;
+    const t = token as Tokens.Heading;
+    if (t.depth > 3) return;
+    const text = t.text.replace(/[*_`]/g, "").trim();
+    const base = slugify(text) || "section";
+    const n = seen.get(base) ?? 0;
+    seen.set(base, n + 1);
+    out.push({ index, id: n ? `${base}-${n + 1}` : base, text, level: t.depth <= 2 ? 2 : 3 });
+  });
+  return out;
+}
+
+/** The sections of an article, for a table of contents. Top level only. */
+export function outline(source: string): Heading[] {
+  return headings(marked.lexer(source))
+    .filter((h) => h.level === 2)
+    .map(({ id, text, level }) => ({ id, text, level }));
+}
+
 /** Right-aligned columns are the numeric ones, so they get the mono face. */
 function cellClass(align: "center" | "left" | "right" | null): string {
   if (align === "right") return "mono text-right tabular-nums";
@@ -65,7 +111,7 @@ function cellClass(align: "center" | "left" | "right" | null): string {
   return "text-left";
 }
 
-function block(token: Token, key: string): ReactNode {
+function block(token: Token, key: string, id?: string): ReactNode {
   switch (token.type) {
     case "heading": {
       const t = token as Tokens.Heading;
@@ -80,13 +126,13 @@ function block(token: Token, key: string): ReactNode {
        */
       if (t.depth <= 2) {
         return (
-          <h2 key={key} className="mt-12 scroll-mt-24 text-[21px] font-bold leading-snug tracking-[-.02em] text-balance first:mt-0">
+          <h2 key={key} id={id} className="mt-12 scroll-mt-24 text-[21px] font-bold leading-snug tracking-[-.02em] text-balance first:mt-0">
             {inline(t.tokens, `${key}-`)}
           </h2>
         );
       }
       return (
-        <h3 key={key} className="mt-8 text-[17px] font-bold tracking-[-.012em]">
+        <h3 key={key} id={id} className="mt-8 scroll-mt-24 text-[17px] font-bold tracking-[-.012em]">
           {inline(t.tokens, `${key}-`)}
         </h3>
       );
@@ -204,5 +250,6 @@ function block(token: Token, key: string): ReactNode {
 
 export function Markdown({ source }: { source: string }) {
   const tokens = marked.lexer(source);
-  return <>{tokens.map((token, i) => block(token, `b${i}`))}</>;
+  const ids = new Map(headings(tokens).map((h) => [h.index, h.id]));
+  return <>{tokens.map((token, i) => block(token, `b${i}`, ids.get(i)))}</>;
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatPostDate, listPosts, parseFrontMatter, readPost } from "./posts";
+import { formatPostDate, initials, listPosts, parseFrontMatter, readingMinutes, readPost } from "./posts";
 
 describe("the article header", () => {
   it("reads key and value up to the first ---", () => {
@@ -61,6 +61,30 @@ describe("the index", () => {
       expect(post.description.length).toBeGreaterThan(0);
       expect(post.date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     }
+  });
+});
+
+describe("reading time", () => {
+  it("never says zero, even for a note", () => {
+    expect(readingMinutes("Short.")).toBe(1);
+  });
+
+  it("does not count a table's pipes or a link's brackets as words", () => {
+    const prose = Array.from({ length: 440 }, () => "word").join(" ");
+    const noisy = `${prose}\n\n| a | b |\n| - | - |\n[x](https://example.com)`;
+    expect(readingMinutes(noisy)).toBe(2);
+  });
+
+  it("is carried on every listed post", async () => {
+    for (const post of await listPosts()) expect(post.minutes).toBeGreaterThanOrEqual(1);
+  });
+});
+
+describe("the byline mark", () => {
+  it("takes the first letter of the first two names", () => {
+    expect(initials("Alon Oszmann")).toBe("AO");
+    expect(initials("Cher")).toBe("C");
+    expect(initials("  three  part name ")).toBe("TP");
   });
 });
 

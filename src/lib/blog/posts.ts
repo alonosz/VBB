@@ -1,3 +1,4 @@
+import { existsSync } from "node:fs";
 import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 
@@ -16,6 +17,10 @@ import path from "node:path";
 
 export const BLOG_DIR = path.join(process.cwd(), "content", "blog");
 
+/** Where a post's cover image lives, if one has been dropped in. */
+export const COVER_DIR = path.join(process.cwd(), "public", "blog");
+const COVER_EXTENSIONS = ["jpg", "jpeg", "png", "webp"];
+
 export interface PostMeta {
   /** The filename without its extension. Also the URL. */
   slug: string;
@@ -24,6 +29,13 @@ export interface PostMeta {
   /** ISO date, as written in the header. */
   date: string;
   author: string;
+  /** Guide, Checklist, Perspective: what kind of piece it is. Optional. */
+  kind: string | null;
+  /** Reading time, whole minutes, never below one. */
+  minutes: number;
+  /** Public path of the cover image, or null when the post has none yet. */
+  cover: string | null;
+  coverAlt: string;
 }
 
 export interface Post extends PostMeta {
@@ -56,6 +68,31 @@ export function parseFrontMatter(raw: string): { meta: Record<string, string>; b
 }
 
 /**
+ * Words over a reading pace, rounded to the nearest minute. Markdown
+ * punctuation is stripped first so a table's pipes and a link's brackets do
+ * not count as words.
+ */
+export function readingMinutes(body: string): number {
+  const words = body
+    .replace(/[#*_>|`[\]()]/g, " ")
+    .split(/\s+/)
+    .filter(Boolean).length;
+  return Math.max(1, Math.round(words / 220));
+}
+
+/**
+ * A cover is found by convention, so publishing one is dropping a file in
+ * public/blog named after the post. The header can still point somewhere
+ * else with `cover:` when the convention does not fit.
+ */
+function findCover(slug: string): string | null {
+  for (const ext of COVER_EXTENSIONS) {
+    if (existsSync(path.join(COVER_DIR, `${slug}.${ext}`))) return `/blog/${slug}.${ext}`;
+  }
+  return null;
+}
+
+/**
  * A post that is missing a title, a date or a description is a mistake worth
  * failing the build over rather than publishing half-described. Every one of
  * them is load-bearing: two are what search engines read, and the date is
@@ -72,7 +109,25 @@ function toPost(slug: string, raw: string): Post {
     description: meta.description,
     date: meta.date,
     author: meta.author ?? "Alon Oszmann",
+    kind: meta.kind ?? null,
+    minutes: readingMinutes(body),
+    cover: meta.cover ?? findCover(slug),
+    coverAlt: meta.coverAlt ?? meta.title,
     body,
+  };
+}
+
+function metaOf(post: Post): PostMeta {
+  return {
+    slug: post.slug,
+    title: post.title,
+    description: post.description,
+    date: post.date,
+    author: post.author,
+    kind: post.kind,
+    minutes: post.minutes,
+    cover: post.cover,
+    coverAlt: post.coverAlt,
   };
 }
 
@@ -98,13 +153,7 @@ export async function listPosts(): Promise<PostMeta[]> {
   // swap places between builds.
   return posts
     .sort((a, b) => (a.date === b.date ? a.slug.localeCompare(b.slug) : b.date.localeCompare(a.date)))
-    .map((post) => ({
-      slug: post.slug,
-      title: post.title,
-      description: post.description,
-      date: post.date,
-      author: post.author,
-    }));
+    .map(metaOf);
 }
 
 export async function readPost(slug: string): Promise<Post | null> {
@@ -123,4 +172,14 @@ export function formatPostDate(iso: string): string {
   const d = new Date(`${iso}T00:00:00Z`);
   if (Number.isNaN(d.getTime())) return iso;
   return d.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
+}
+
+/** "Alon Oszmann" becomes "AO", for the byline mark. */
+export function initials(name: string): string {
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((w) => w[0]?.toUpperCase() ?? "")
+    .join("");
 }
