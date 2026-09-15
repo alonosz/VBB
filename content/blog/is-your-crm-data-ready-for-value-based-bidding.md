@@ -3,6 +3,7 @@ description: Five checks before you turn your sales history into Google Ads conv
 date: 2026-09-15
 author: Alon Oszmann
 kind: Checklist
+coverAlt: Corrupted lead cards on a conveyor passing through a glass gate towards a glowing tunnel
 ---
 
 *Five checks before you turn your sales history into Google Ads conversion values.*
