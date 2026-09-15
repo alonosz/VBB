@@ -137,7 +137,15 @@ export function SignupModal({
           </p>
         </div>
 
-        <div className="panel-navy relative hidden flex-col justify-between p-8 md:flex">
+        {/*
+          Flush against the card's own edge, so the navy reaches the corner.
+
+          .panel-navy is a free-standing panel everywhere else and carries its
+          own radius, border and shadow. Here it is one half of a card that
+          already has all three, and its rounding pulled away from the card's
+          clip, leaving white showing along the top, right and bottom.
+        */}
+        <div className="panel-navy relative hidden flex-col justify-between rounded-none border-0 p-8 shadow-none md:flex">
           <button
             type="button"
             onClick={onClose}
