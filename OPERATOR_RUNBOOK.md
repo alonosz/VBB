@@ -188,7 +188,9 @@ Use when a pilot ends or a URL is believed compromised.
 ### Add or suspend a customer
 
 `<your-domain>/admin`, signed in with your admin password. Adding shows the new
-key once; suspending is a button on the row.
+key once; suspending is a button on the row. The "Last seen" column is when
+the workspace's key was last accepted, to the quarter hour, and "never" for
+one that has not been opened since the column was added.
 
 Their key stops working immediately. **Their feed keeps serving** - suspending
 is about access to the workspace, not about stopping Google. To stop values

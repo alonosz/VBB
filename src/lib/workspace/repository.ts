@@ -33,6 +33,12 @@ export interface Workspace {
    * operator tells them apart. Null until the advertiser leaves one.
    */
   contactEmail: string | null;
+  /**
+   * When the key was last presented and accepted. The one thing the admin
+   * list needs that creation date cannot tell it: whether anyone came back.
+   * Null until they do.
+   */
+  lastSeenAt: Date | null;
 }
 
 export interface NewWorkspace {
@@ -55,9 +61,18 @@ interface WorkspaceDto {
   created_at: string;
   value_bidding_switched_at: string | null;
   contact_email?: string | null;
+  last_seen_at?: string | null;
 }
 
-const COLUMNS = "id, name, key_prefix, status, created_at, value_bidding_switched_at, contact_email";
+const COLUMNS =
+  "id, name, key_prefix, status, created_at, value_bidding_switched_at, contact_email, last_seen_at";
+
+/**
+ * How often a busy session is allowed to write its own timestamp. A page that
+ * makes a dozen calls a minute would otherwise cost a dozen updates for a
+ * fact that only needs to be right to the quarter hour.
+ */
+export const LAST_SEEN_THROTTLE_MS = 15 * 60 * 1000;
 
 function toWorkspace(dto: WorkspaceDto): Workspace {
   return {
@@ -70,6 +85,7 @@ function toWorkspace(dto: WorkspaceDto): Workspace {
       ? new Date(dto.value_bidding_switched_at)
       : null,
     contactEmail: dto.contact_email ?? null,
+    lastSeenAt: dto.last_seen_at ? new Date(dto.last_seen_at) : null,
   };
 }
 
@@ -98,6 +114,11 @@ export interface WorkspaceRepository {
   setContactEmail(id: string, email: string): Promise<void>;
   /** What the workspace is called, once its owner has said. */
   setName(id: string, name: string): Promise<void>;
+  /**
+   * Note that the key was just used. Best effort and throttled: a failure
+   * here must never refuse a request, and a burst of calls writes once.
+   */
+  touch(id: string, at: Date): Promise<void>;
   /**
    * How many workspaces this caller has minted since `since`.
    *
@@ -210,6 +231,16 @@ export class SupabaseWorkspaceRepository implements WorkspaceRepository {
     if (error) throw new Error(error.message);
   }
 
+  async touch(id: string, at: Date): Promise<void> {
+    const cutoff = new Date(at.getTime() - LAST_SEEN_THROTTLE_MS).toISOString();
+    const { error } = await this.client
+      .from("workspaces")
+      .update({ last_seen_at: at.toISOString() })
+      .eq("id", id)
+      .or(`last_seen_at.is.null,last_seen_at.lt.${cutoff}`);
+    if (error) throw new Error(error.message);
+  }
+
   async countCreatedSince(ipHash: string | null, since: Date): Promise<number> {
     if (!ipHash) return 0;
 
@@ -248,6 +279,7 @@ export class InMemoryWorkspaceRepository implements WorkspaceRepository {
       createdAt: this.now(),
       valueBiddingSwitchedAt: null as Date | null,
       contactEmail: null as string | null,
+      lastSeenAt: null as Date | null,
     };
     this.rows.set(row.id, row);
     return { ...row };
@@ -293,6 +325,13 @@ export class InMemoryWorkspaceRepository implements WorkspaceRepository {
   async setName(id: string, name: string): Promise<void> {
     const row = this.rows.get(id);
     if (row) row.name = name;
+  }
+
+  async touch(id: string, at: Date): Promise<void> {
+    const row = this.rows.get(id);
+    if (!row) return;
+    if (row.lastSeenAt && at.getTime() - row.lastSeenAt.getTime() < LAST_SEEN_THROTTLE_MS) return;
+    row.lastSeenAt = at;
   }
 
   async rotateKey(id: string, keyHash: string, keyPrefix: string): Promise<void> {

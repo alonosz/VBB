@@ -23,6 +23,7 @@ interface Workspace {
   keyPrefix: string;
   status: string;
   createdAt: string;
+  lastSeenAt?: string | null;
 }
 
 const ADMIN_STORE = "vbb.adminKey.v1";
@@ -32,6 +33,22 @@ const ADMIN_STORE = "vbb.adminKey.v1";
  * cannot do what was asked. Everything is optional because a refusal carries
  * only `ok` and `error`.
  */
+/**
+ * "today", "yesterday", "6 days ago", then the date. "never" for a workspace
+ * whose key has not been presented since the column existed, which for the
+ * ones made before it is what "never" means.
+ */
+export function lastSeenLabel(iso: string | null | undefined, now: Date = new Date()): string {
+  if (!iso) return "never";
+  const seen = new Date(iso);
+  if (Number.isNaN(seen.getTime())) return "never";
+  const days = Math.floor((now.getTime() - seen.getTime()) / 86_400_000);
+  if (days <= 0) return "today";
+  if (days === 1) return "yesterday";
+  if (days < 30) return `${days} days ago`;
+  return seen.toLocaleDateString();
+}
+
 interface AdminReply {
   ok?: boolean;
   error?: string;
@@ -359,6 +376,7 @@ export function AdminView() {
                     <th className="label pb-1.5 font-bold">Key</th>
                     <th className="label pb-1.5 font-bold">Status</th>
                     <th className="label pb-1.5 font-bold">Added</th>
+                    <th className="label pb-1.5 font-bold">Last seen</th>
                     <th className="pb-1.5" />
                   </tr>
                 </thead>
@@ -379,6 +397,9 @@ export function AdminView() {
                       </td>
                       <td className="mono py-2 text-[12px] text-[var(--muted)]">
                         {new Date(w.createdAt).toLocaleDateString()}
+                      </td>
+                      <td className="mono py-2 text-[12px]" style={{ color: w.lastSeenAt ? "var(--foreground)" : "var(--muted)" }}>
+                        {lastSeenLabel(w.lastSeenAt)}
                       </td>
                       <td className="py-2 text-right">
                         {w.status === "active" && (

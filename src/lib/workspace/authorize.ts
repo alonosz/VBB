@@ -64,6 +64,10 @@ export async function authorizeWorkspace(
     return refuse(403, "This workspace is suspended. Contact support to reactivate it.");
   }
 
+  // Every authorised request passes here, so this is where "last seen" is
+  // true. Not awaited: a slow or failed write must cost the request nothing.
+  void repo.touch(workspace.id, new Date()).catch(() => {});
+
   return { ok: true, workspace };
 }
 

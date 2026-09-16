@@ -109,6 +109,7 @@ async function handle(request: Request) {
         keyPrefix: w.keyPrefix,
         status: w.status,
         createdAt: w.createdAt.toISOString(),
+        lastSeenAt: w.lastSeenAt ? w.lastSeenAt.toISOString() : null,
       })),
     });
   }

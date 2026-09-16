@@ -144,3 +144,29 @@ describe("key shapes", () => {
     expect(looksLikeWorkspaceKey(keyPrefix)).toBe(false);
   });
 });
+
+describe("last seen", () => {
+  it("is recorded when a key is accepted, and not when it is refused", async () => {
+    const { repo, keyA, northridge, acme } = await twoCustomers();
+    expect((await repo.findById(northridge.id))?.lastSeenAt).toBeNull();
+
+    await authorizeWorkspace(repo, keyA);
+    expect((await repo.findById(northridge.id))?.lastSeenAt).toBeInstanceOf(Date);
+    expect((await repo.findById(acme.id))?.lastSeenAt).toBeNull();
+
+    const stranger = await generateWorkspaceKey();
+    await authorizeWorkspace(repo, stranger.key);
+    expect((await repo.findById(acme.id))?.lastSeenAt).toBeNull();
+  });
+
+  it("writes once for a burst of calls", async () => {
+    const { repo, northridge } = await twoCustomers();
+    const t0 = new Date("2026-09-16T10:00:00Z");
+    await repo.touch(northridge.id, t0);
+    await repo.touch(northridge.id, new Date(t0.getTime() + 5 * 60_000));
+    expect((await repo.findById(northridge.id))?.lastSeenAt).toEqual(t0);
+    const later = new Date(t0.getTime() + 20 * 60_000);
+    await repo.touch(northridge.id, later);
+    expect((await repo.findById(northridge.id))?.lastSeenAt).toEqual(later);
+  });
+});
