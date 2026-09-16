@@ -137,10 +137,11 @@ export default async function Home() {
                 </p>
 
                 <h1
-                  className="display mt-4 max-w-[16ch]"
+                  className="display mt-4 max-w-[18ch]"
                   style={{ color: "var(--on-navy)" }}
                 >
-                  Turn Google Ads into a revenue engine.
+                  {/* The name of the method never breaks at its hyphen. */}
+                  Leverage <span className="whitespace-nowrap">value-based</span> bidding to improve lead quality.
                 </h1>
 
                 <p

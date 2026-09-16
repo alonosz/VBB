@@ -25,9 +25,10 @@ export const metadata: Metadata = {
   // relative, and a crawler resolves them against whichever preview host it
   // happened to arrive on.
   metadataBase: new URL("https://valuebasedbidding.com"),
-  title: "Value Bidding Model Builder",
+  // The home page's own headline in search results. Blog pages set their own.
+  title: "Value-Based Bidding for Lead Generation · ValueBasedBidding.com",
   description:
-    "Build a reusable, value-based bidding / lead-scoring model from your own conversion data - no data science required.",
+    "Turn your CRM history into lead values Google Ads can bid on. Value-based bidding for lead generation, from your own close rates and deal sizes. No CRM data is stored.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
