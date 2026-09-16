@@ -5,6 +5,7 @@ import { SiteFooter } from "@/components/legal/SiteFooter";
 import { WorkspaceReadyBar } from "@/components/workspace/WorkspaceReadyBar";
 import { AccountLink } from "@/components/workspace/AccountLink";
 import { PostCard } from "@/components/blog/PostCard";
+import { HowItGoes } from "@/components/landing/HowItGoes";
 import { listPosts } from "@/lib/blog/posts";
 
 /**
@@ -22,23 +23,6 @@ import { listPosts } from "@/lib/blog/posts";
  * exact failure the product exists to avoid.
  */
 
-const STAGES = [
-  {
-    n: "1",
-    title: "Measure",
-    body: "Upload a CRM export. AI reads your columns and your description of a good lead, then the values come from your own win rates and deal sizes. Nothing invented.",
-  },
-  {
-    n: "2",
-    title: "Connect",
-    body: "Send those values to Google Ads as a URL it fetches on a schedule, so nobody uploads a file again.",
-  },
-  {
-    n: "3",
-    title: "Improve",
-    body: "A one-line script keeps the ad click ID attached to every future lead, so more of them can be matched at all.",
-  },
-];
 
 /**
  * Six questions. The qualifying one sits second, so a visitor learns early
@@ -246,25 +230,7 @@ export default async function Home() {
           ))}
         </ul>
 
-        {/* ---------------------------------------------------------------- */}
-        {/* How it goes                                                       */}
-        {/* ---------------------------------------------------------------- */}
-        <section className="page-wide pt-16">
-          <h2 className="h2">How it goes</h2>
-          <div className="mt-5 grid gap-4 md:grid-cols-3">
-            {STAGES.map((s) => (
-              <div key={s.n} className="card card-hover p-6">
-                <span className="mono flex size-8 items-center justify-center rounded-full bg-[var(--primary-soft)] text-[13px] font-bold text-[var(--primary-deep)]">
-                  {s.n}
-                </span>
-                <p className="mt-4 text-[16px] font-bold">{s.title}</p>
-                <p className="mt-1.5 text-[14px] leading-relaxed text-[var(--muted)]">
-                  {s.body}
-                </p>
-              </div>
-            ))}
-          </div>
-        </section>
+        <HowItGoes />
 
         {/* ---------------------------------------------------------------- */}
         {/* What you'll need, and what leaves your machine                    */}
