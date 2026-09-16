@@ -170,3 +170,13 @@ describe("last seen", () => {
     expect((await repo.findById(northridge.id))?.lastSeenAt).toEqual(later);
   });
 });
+
+describe("a deploy that lands before its migration", () => {
+  it("recognises Postgres saying the column is not there", async () => {
+    const { isMissingColumn } = await import("./repository");
+    expect(isMissingColumn({ code: "42703", message: "column workspaces.last_seen_at does not exist" }, "last_seen_at")).toBe(true);
+    expect(isMissingColumn({ message: "column workspaces.last_seen_at does not exist" }, "last_seen_at")).toBe(true);
+    expect(isMissingColumn({ code: "23505", message: "duplicate key value" }, "last_seen_at")).toBe(false);
+    expect(isMissingColumn(null, "last_seen_at")).toBe(false);
+  });
+});

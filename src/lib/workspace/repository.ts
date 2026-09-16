@@ -68,6 +68,22 @@ const COLUMNS =
   "id, name, key_prefix, status, created_at, value_bidding_switched_at, contact_email, last_seen_at";
 
 /**
+ * The same list before the last-seen migration. Migrations here are pasted
+ * into the SQL Editor by hand, so a deploy can land before its column does.
+ * Reading must keep working in that window rather than refuse every key in
+ * the product until somebody notices; the repository falls back to this
+ * list on the first "column does not exist" and says so in the log.
+ */
+const COLUMNS_BEFORE_LAST_SEEN =
+  "id, name, key_prefix, status, created_at, value_bidding_switched_at, contact_email";
+
+/** PostgREST's "undefined column", as Postgres reports it. */
+export function isMissingColumn(error: { code?: string; message?: string } | null, column: string): boolean {
+  if (!error) return false;
+  return error.code === "42703" || (error.message ?? "").includes(column);
+}
+
+/**
  * How often a busy session is allowed to write its own timestamp. A page that
  * makes a dozen calls a minute would otherwise cost a dozen updates for a
  * fact that only needs to be right to the quarter hour.
@@ -130,68 +146,84 @@ export interface WorkspaceRepository {
   countCreatedSince(ipHash: string | null, since: Date): Promise<number>;
 }
 
+/**
+ * What a PostgREST call resolves to, typed loosely on purpose: the column
+ * list is a runtime value here, so the client cannot infer the row shape.
+ */
+type Reply = { data: unknown; error: { code?: string; message: string } | null };
+
 export class SupabaseWorkspaceRepository implements WorkspaceRepository {
+  private columns = COLUMNS;
+
   constructor(private client: SupabaseClient) {}
 
-  async create(workspace: NewWorkspace): Promise<Workspace> {
-    const { data, error } = await this.client
-      .from("workspaces")
-      .insert({
-        name: workspace.name,
-        key_hash: workspace.keyHash,
-        key_prefix: workspace.keyPrefix,
-        created_ip_hash: workspace.createdIpHash ?? null,
-      })
-      .select(COLUMNS)
-      .single();
+  /**
+   * Run a read, and if the only thing wrong is that the newest column has
+   * not been added yet, run it again without that column and remember.
+   */
+  private async read<T>(query: (columns: string) => PromiseLike<Reply>): Promise<T | null> {
+    let reply = await query(this.columns);
+    if (reply.error && this.columns === COLUMNS && isMissingColumn(reply.error, "last_seen_at")) {
+      console.warn(
+        "workspaces.last_seen_at does not exist yet: run supabase/migrations/20260916100000_workspace_last_seen.sql. Reading without it until then."
+      );
+      this.columns = COLUMNS_BEFORE_LAST_SEEN;
+      reply = await query(this.columns);
+    }
+    if (reply.error) throw new Error(reply.error.message);
+    return reply.data as T | null;
+  }
 
-    if (error) throw new Error(error.message);
-    return toWorkspace(data as WorkspaceDto);
+  async create(workspace: NewWorkspace): Promise<Workspace> {
+    const data = await this.read<WorkspaceDto>((columns) =>
+      this.client
+        .from("workspaces")
+        .insert({
+          name: workspace.name,
+          key_hash: workspace.keyHash,
+          key_prefix: workspace.keyPrefix,
+          created_ip_hash: workspace.createdIpHash ?? null,
+        })
+        .select(columns)
+        .single()
+    );
+    if (!data) throw new Error("The workspace was not created.");
+    return toWorkspace(data);
   }
 
   async findByKey(key: string): Promise<Workspace | null> {
-    const { data, error } = await this.client
-      .from("workspaces")
-      .select(COLUMNS)
-      .eq("key_hash", await hashWorkspaceKey(key))
-      .maybeSingle();
-
-    if (error) throw new Error(error.message);
-    return data ? toWorkspace(data as WorkspaceDto) : null;
+    const hash = await hashWorkspaceKey(key);
+    const data = await this.read<WorkspaceDto>((columns) =>
+      this.client.from("workspaces").select(columns).eq("key_hash", hash).maybeSingle()
+    );
+    return data ? toWorkspace(data) : null;
   }
 
   async findByContactEmail(email: string): Promise<Workspace | null> {
-    const { data, error } = await this.client
-      .from("workspaces")
-      .select(COLUMNS)
-      .eq("contact_email", email)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    if (error) throw new Error(error.message);
-    return data ? toWorkspace(data as WorkspaceDto) : null;
+    const data = await this.read<WorkspaceDto>((columns) =>
+      this.client
+        .from("workspaces")
+        .select(columns)
+        .eq("contact_email", email)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle()
+    );
+    return data ? toWorkspace(data) : null;
   }
 
   async findById(id: string): Promise<Workspace | null> {
-    const { data, error } = await this.client
-      .from("workspaces")
-      .select(COLUMNS)
-      .eq("id", id)
-      .maybeSingle();
-
-    if (error) throw new Error(error.message);
-    return data ? toWorkspace(data as WorkspaceDto) : null;
+    const data = await this.read<WorkspaceDto>((columns) =>
+      this.client.from("workspaces").select(columns).eq("id", id).maybeSingle()
+    );
+    return data ? toWorkspace(data) : null;
   }
 
   async list(): Promise<Workspace[]> {
-    const { data, error } = await this.client
-      .from("workspaces")
-      .select(COLUMNS)
-      .order("created_at", { ascending: false });
-
-    if (error) throw new Error(error.message);
-    return (data as WorkspaceDto[]).map(toWorkspace);
+    const data = await this.read<WorkspaceDto[]>((columns) =>
+      this.client.from("workspaces").select(columns).order("created_at", { ascending: false })
+    );
+    return (data ?? []).map(toWorkspace);
   }
 
   async suspend(id: string): Promise<void> {
