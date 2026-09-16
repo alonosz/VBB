@@ -141,7 +141,7 @@ export default async function Home() {
                   style={{ color: "var(--on-navy)" }}
                 >
                   {/* The name of the method never breaks at its hyphen. */}
-                  Leverage <span className="whitespace-nowrap">value-based</span> bidding to improve lead quality.
+                  Improve lead quality with <span className="whitespace-nowrap">value-based</span> bidding.
                 </h1>
 
                 <p
