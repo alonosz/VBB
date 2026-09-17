@@ -163,7 +163,6 @@ export default async function Home() {
                     >
                       One value per lead, or the real ones
                     </span>
-                    <span className="badge badge-on-navy">Illustration</span>
                   </figcaption>
 
                   <p
