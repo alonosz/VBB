@@ -60,6 +60,13 @@ const FAQ: { q: string; a: string; more?: { href: string; label: string } }[] = 
 ];
 
 
+/** Three facts about the data, beside the three things a visitor needs. */
+const PRIVATE = [
+  "File processed in your browser",
+  "Personal information is never stored",
+  "Google receives only the required conversion data",
+];
+
 const NEEDED = [
   "A CSV of deals from your CRM - HubSpot, Salesforce, Pipedrive, Close, or a plain spreadsheet.",
   "Create dates and deal amounts in it. Close dates and email addresses make the analysis sharper.",
@@ -255,12 +262,31 @@ export default async function Home() {
           </div>
 
           <div className="well p-6 sm:p-7">
-            <h2 className="h3">What leaves your machine</h2>
-            <p className="mt-3 max-w-[52ch] text-[14px] leading-relaxed text-[var(--muted)]">
-              Your file is read in your browser and never uploaded. Only the finished
-              values Google receives - hashed identifiers, timestamps and amounts - are
-              ever stored, and never a name, an address or a deal size.
-            </p>
+            <div className="flex items-center gap-3">
+              <span
+                aria-hidden
+                className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[var(--primary-soft)] text-[var(--primary)]"
+              >
+                <svg viewBox="0 0 20 20" className="size-[18px]" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M10 2.5 3.5 5v4.5c0 4 2.8 6.9 6.5 8 3.7-1.1 6.5-4 6.5-8V5L10 2.5Z" />
+                  <path d="m7.5 10 1.8 1.8L12.8 8.3" />
+                </svg>
+              </span>
+              <h2 className="h3">What leaves your machine</h2>
+            </div>
+            <ul className="mt-4 grid gap-3 text-[14px]">
+              {PRIVATE.map((line) => (
+                <li key={line} className="flex gap-3">
+                  <span
+                    aria-hidden
+                    className="mt-[3px] flex size-[18px] shrink-0 items-center justify-center rounded-full bg-[var(--accent-soft)] text-[11px] font-bold text-[var(--accent)]"
+                  >
+                    ✓
+                  </span>
+                  <span className="text-[var(--muted-strong)]">{line}</span>
+                </li>
+              ))}
+            </ul>
           </div>
         </section>
 
@@ -322,17 +348,41 @@ export default async function Home() {
           </div>
         </section>
 
-        <section className="page-wide pb-24 pt-8">
-          <p className="text-[13.5px] text-[var(--muted)]">
-            No export handy?{" "}
-            <Link
-              href="/diagnostic"
-              className="font-semibold text-[var(--primary)] underline underline-offset-[3px] hover:text-[var(--primary-hover)]"
-            >
-              Try it on a sample dataset
-            </Link>{" "}
-            - 500 synthetic deals, the whole flow end to end.
-          </p>
+        {/* ---------------------------------------------------------------- */}
+        {/* The ending: the same ask as the top, once the case has been made  */}
+        {/* ---------------------------------------------------------------- */}
+        <section className="page-wide pb-24 pt-14">
+          <div className="panel-navy p-7 sm:p-10">
+            <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between md:gap-10">
+              <div className="min-w-0">
+                <h2 className="h1" style={{ color: "var(--on-navy)" }}>
+                  See what your own leads are worth
+                </h2>
+                <p
+                  className="mt-3 max-w-[54ch] text-[15px] leading-relaxed"
+                  style={{ color: "var(--on-navy-muted)" }}
+                >
+                  Upload a CRM export and find out whether your lead values vary,
+                  and by how much. About five minutes, and nothing is stored.
+                </p>
+              </div>
+              <div className="flex shrink-0 flex-col items-start gap-3 md:items-end">
+                <Link
+                  href="/diagnostic"
+                  className="btn btn-primary btn-lg btn-wrap w-full sm:w-auto"
+                >
+                  Start with your CRM export <ArrowIcon />
+                </Link>
+                <Link
+                  href="/diagnostic"
+                  className="text-[13.5px] font-semibold underline underline-offset-[3px]"
+                  style={{ color: "var(--on-navy-muted)" }}
+                >
+                  No export handy? Try the sample dataset
+                </Link>
+              </div>
+            </div>
+          </div>
         </section>
       </main>
 
