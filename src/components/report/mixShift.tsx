@@ -51,7 +51,7 @@ export function MixShiftPanel({
 
   return (
     <section className="card p-5 sm:p-6">
-      <h2 className="text-[15px] font-bold">The pipeline Google is building you</h2>
+      <h2 className="text-[15px] font-semibold">The pipeline Google is building you</h2>
       <p className="mt-1 max-w-[72ch] text-[13px] text-[var(--muted)]">
         Value bidding does one thing: it changes the mix of leads the platform
         buys. A lead carries its expected value the day it arrives, so this

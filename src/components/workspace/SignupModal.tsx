@@ -159,7 +159,7 @@ export function SignupModal({
             <p className="label" style={{ color: "var(--on-navy-muted)" }}>
               What you are signing up for
             </p>
-            <p className="mt-3 text-[20px] font-extrabold leading-snug tracking-[-.02em]" style={{ color: "var(--on-navy)" }}>
+            <p className="mt-3 text-[20px] font-semibold leading-[1.2] tracking-[-.015em]" style={{ color: "var(--on-navy)" }}>
               Google bids on what each lead is worth, from your own history.
             </p>
           </div>

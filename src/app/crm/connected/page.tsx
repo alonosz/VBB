@@ -46,7 +46,7 @@ export default async function CrmConnectedPage({ searchParams }: Props) {
     <div className="animate-page-in flex min-h-screen flex-col">
       <main className="mx-auto w-full max-w-2xl flex-1 px-6 py-16">
         <p className="label mb-2">HubSpot</p>
-        <h1 className="text-3xl font-bold tracking-tight text-balance">
+        <h1 className="text-3xl font-bold tracking-[-.03em] text-balance">
           {connected ? "Your CRM is connected" : "That didn't connect"}
         </h1>
 

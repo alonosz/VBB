@@ -1,12 +1,19 @@
 import type { Metadata } from "next";
-import { Inter, JetBrains_Mono } from "next/font/google";
+import { Instrument_Sans, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { AppStateProvider } from "@/context/AppStateContext";
 import { GoogleAnalytics } from "@/components/analytics/GoogleAnalytics";
 
-const inter = Inter({
-  variable: "--font-inter",
+/**
+ * Instrument Sans for everything that is not a figure. Variable, 400 to 700,
+ * so every weight the scale uses comes from one file. next/font self-hosts
+ * it, preloads it, and sizes the fallback face to match, so the swap from
+ * fallback to loaded face moves nothing.
+ */
+const instrumentSans = Instrument_Sans({
+  variable: "--font-instrument-sans",
   subsets: ["latin"],
+  display: "swap",
 });
 
 /**
@@ -34,7 +41,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: LayoutProps<"/">) {
   const gaId = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
   return (
-    <html lang="en" className={`${inter.variable} ${jetbrainsMono.variable} h-full antialiased`}>
+    <html lang="en" className={`${instrumentSans.variable} ${jetbrainsMono.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col">
         {gaId && <GoogleAnalytics measurementId={gaId} />}
         <AppStateProvider>{children}</AppStateProvider>

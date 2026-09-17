@@ -34,7 +34,7 @@ export function PostCard({
       <PostVisual post={post} sizes={sizes} className="aspect-[16/9]" />
       <div className="flex flex-1 flex-col p-5 sm:p-6">
         <MetaRow post={post} />
-        <Heading className="mt-3 text-[19px] font-bold leading-snug tracking-[-.015em] text-balance group-hover:text-[var(--primary)]">
+        <Heading className="mt-3 text-[19px] font-semibold leading-[1.2] tracking-[-.015em] text-balance group-hover:text-[var(--primary)]">
           {post.title}
         </Heading>
         <p className="mt-2 line-clamp-3 text-[14px] leading-relaxed text-[var(--muted-strong)]">

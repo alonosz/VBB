@@ -217,7 +217,7 @@ export function AdminView() {
       <div className="animate-page-in flex min-h-screen flex-col">
         <main className="mx-auto w-full max-w-lg flex-1 px-6 py-20">
           <p className="label mb-2">Operator</p>
-          <h1 className="text-3xl font-bold tracking-tight text-balance">Your customers</h1>
+          <h1 className="text-3xl font-bold tracking-[-.03em] text-balance">Your customers</h1>
           <p className="mt-2 text-[15px] text-[var(--muted)]">
             Enter your admin password. This is the one password you keep - it is
             not a customer&apos;s workspace key.
@@ -260,7 +260,7 @@ export function AdminView() {
         <div className="flex flex-wrap items-baseline justify-between gap-3">
           <div>
             <p className="label mb-1">Operator</p>
-            <h1 className="text-3xl font-bold tracking-tight">Your customers</h1>
+            <h1 className="text-3xl font-bold tracking-[-.03em]">Your customers</h1>
           </div>
           <button
             type="button"

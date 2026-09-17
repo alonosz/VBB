@@ -70,7 +70,7 @@ function Related({ posts }: { posts: PostMeta[] }) {
               <PostVisual post={post} sizes="(min-width: 640px) 33vw, 100vw" className="aspect-[16/8]" />
               <div className="flex flex-1 flex-col p-5">
                 <MetaRow post={post} />
-                <h3 className="mt-2.5 text-[16px] font-bold leading-snug tracking-[-.012em] text-balance group-hover:text-[var(--primary)]">
+                <h3 className="mt-2.5 text-[16px] font-semibold leading-snug tracking-[-.015em] text-balance group-hover:text-[var(--primary)]">
                   {post.title}
                 </h3>
               </div>
@@ -96,7 +96,7 @@ export default async function BlogPost({ params }: { params: Promise<{ slug: str
         <div className="min-w-0">
           <article className="max-w-[70ch]">
             <MetaRow post={post} />
-            <h1 className="mt-4 text-[clamp(1.9rem,1.3rem+1.8vw,2.55rem)] font-extrabold leading-[1.1] tracking-[-.025em] text-balance">
+            <h1 className="mt-4 text-[clamp(1.9rem,1.3rem+1.8vw,2.55rem)] font-bold leading-[1.08] tracking-[-.03em] text-balance">
               {post.title}
             </h1>
             <div className="mt-6">

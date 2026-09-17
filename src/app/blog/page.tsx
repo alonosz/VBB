@@ -32,7 +32,7 @@ function Featured({ post }: { post: PostMeta }) {
       />
       <div className="flex flex-col justify-center p-6 sm:p-8">
         <MetaRow post={post} />
-        <h2 className="mt-3.5 text-[26px] font-extrabold leading-[1.15] tracking-[-.022em] text-balance group-hover:text-[var(--primary)] sm:text-[28px]">
+        <h2 className="mt-3.5 text-[26px] font-semibold leading-[1.2] tracking-[-.015em] text-balance group-hover:text-[var(--primary)] sm:text-[28px]">
           {post.title}
         </h2>
         <p className="mt-3 max-w-[52ch] text-[15px] leading-relaxed text-[var(--muted-strong)]">

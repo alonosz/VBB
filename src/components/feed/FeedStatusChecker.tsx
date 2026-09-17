@@ -141,7 +141,7 @@ export function FeedStatusChecker() {
     <div className="animate-page-in flex min-h-screen flex-col">
       <main className="mx-auto w-full max-w-3xl flex-1 px-6 py-12">
         <p className="label mb-2">Check your feed</p>
-        <h1 className="text-3xl font-bold tracking-tight text-balance">
+        <h1 className="text-3xl font-bold tracking-[-.03em] text-balance">
           Is Google collecting your values?
         </h1>
         <p className="mt-2 max-w-[66ch] text-[15px] text-[var(--muted)]">

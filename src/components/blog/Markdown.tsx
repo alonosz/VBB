@@ -126,13 +126,13 @@ function block(token: Token, key: string, id?: string): ReactNode {
        */
       if (t.depth <= 2) {
         return (
-          <h2 key={key} id={id} className="mt-12 scroll-mt-24 text-[21px] font-bold leading-snug tracking-[-.02em] text-balance first:mt-0">
+          <h2 key={key} id={id} className="mt-12 scroll-mt-24 text-[21px] font-semibold leading-[1.2] tracking-[-.015em] text-balance first:mt-0">
             {inline(t.tokens, `${key}-`)}
           </h2>
         );
       }
       return (
-        <h3 key={key} id={id} className="mt-8 scroll-mt-24 text-[17px] font-bold tracking-[-.012em]">
+        <h3 key={key} id={id} className="mt-8 scroll-mt-24 text-[17px] font-semibold tracking-[-.015em]">
           {inline(t.tokens, `${key}-`)}
         </h3>
       );

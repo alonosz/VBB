@@ -145,7 +145,7 @@ function RowPreview({
                     return (
                       <span
                         className={
-                          "mt-0.5 block text-[10px] uppercase tracking-[.06em] " +
+                          "mt-0.5 block text-[10px] uppercase tracking-[.08em] " +
                           (l.tone === "mapped"
                             ? "font-bold text-[var(--primary)]"
                             : l.tone === "signal"

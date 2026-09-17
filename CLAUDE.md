@@ -220,13 +220,17 @@ Status colors are reserved and never reused as decoration or "another series":
 
 ## Typography
 
-- **Inter** for all UI and prose. Loaded via `next/font/google` as `--font-inter`.
+- **Instrument Sans** for all UI and prose. Loaded via `next/font/google` as
+  `--font-instrument-sans`, variable 400 to 700.
 - **JetBrains Mono** for *every figure*: metrics, table numbers, percentages,
   dates, IDs. Always with `font-variant-numeric: tabular-nums` so columns align.
   This mono-for-data pairing is what gives the product its instrument feel;
   it is part of the identity, not an accident.
-- Headings: weight 700–800, `letter-spacing: -.02em`, `text-wrap: balance`.
-- Uppercase labels: 10.5–11.5px, weight 700, `letter-spacing: .07em`.
+- Hero: 700, `letter-spacing: -.035em`, `line-height: 1.02`. Page titles: 700,
+  `-.03em`, `1.08`. Section and card headings: 600, `-.015em`, `1.2`. Nothing
+  heavier than 700 anywhere; the old 800 is what made it read as generic.
+  `text-wrap: balance` on all of them. Buttons 600, body 400.
+- Uppercase labels: 10.5–11.5px, weight 600, `letter-spacing: .08em`.
 - Body copy stays near 65–72 characters wide.
 
 ## Components

@@ -53,7 +53,7 @@ export function ModelSourcePanel({
     <section className="card p-5 sm:p-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="text-[11px] font-bold uppercase tracking-[.1em] text-[var(--muted)]">
+          <p className="text-[11px] font-semibold uppercase tracking-[.08em] text-[var(--muted)]">
             Pricing these leads with
           </p>
           <div className="mt-2.5 inline-flex rounded-full border border-[var(--border)] bg-[var(--surface-sunken)] p-1">
@@ -202,7 +202,7 @@ function DriftBlock({ drift, onForget }: { drift: ModelDrift; onForget: () => vo
   return (
     <div className="mt-5 border-t border-[var(--border)] pt-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h3 className="text-[14px] font-bold tracking-tight">
+        <h3 className="text-[14px] font-semibold tracking-[-.015em]">
           Is your saved model still right?
         </h3>
         <span
@@ -254,7 +254,7 @@ function DriftBlock({ drift, onForget }: { drift: ModelDrift; onForget: () => vo
               {["Rule", "Level", "Saved", "Would refit to", "Change"].map((h) => (
                 <th
                   key={h}
-                  className="pb-2 text-[10.5px] font-bold uppercase tracking-[.07em] text-[var(--muted)]"
+                  className="pb-2 text-[10.5px] font-semibold uppercase tracking-[.08em] text-[var(--muted)]"
                 >
                   {h}
                 </th>

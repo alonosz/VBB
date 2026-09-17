@@ -64,10 +64,10 @@ export function ShadowRoasSection({
     <section className="gradient-navy overflow-hidden rounded-2xl p-6 text-white sm:p-7">
       <div className="mb-6 flex flex-wrap items-end justify-between gap-5">
         <div>
-          <p className="mb-2 text-[11px] font-bold uppercase tracking-[.1em] text-[var(--muted)]">
+          <p className="mb-2 text-[11px] font-semibold uppercase tracking-[.08em] text-[var(--muted)]">
             What Google sees vs. what happened
           </p>
-          <h2 className="max-w-[30ch] text-[clamp(20px,2.6vw,26px)] font-bold leading-tight tracking-tight text-balance">
+          <h2 className="max-w-[30ch] text-[clamp(20px,2.6vw,26px)] font-semibold leading-tight tracking-[-.015em] text-balance">
             Every one of these leads counts the same to Google today.
           </h2>
         </div>
@@ -76,7 +76,7 @@ export function ShadowRoasSection({
             <span className="mono block text-[clamp(38px,6vw,56px)] font-bold leading-none tracking-tighter">
               {blindnessRatio}×
             </span>
-            <span className="mt-1.5 block text-[11px] font-semibold uppercase tracking-[.09em] text-[var(--muted)]">
+            <span className="mt-1.5 block text-[11px] font-semibold uppercase tracking-[.08em] text-[var(--muted)]">
               Best won deal vs. smallest
             </span>
           </div>
@@ -86,7 +86,7 @@ export function ShadowRoasSection({
       <div className="overflow-x-auto">
         <table className="w-full min-w-[620px] border-collapse text-left text-[13.5px]">
           <thead>
-            <tr className="text-[10.5px] uppercase tracking-[.07em] text-[var(--muted)]">
+            <tr className="text-[10.5px] uppercase tracking-[.08em] text-[var(--muted)]">
               <th className="pb-2.5 pr-3 font-bold">Source</th>
               <th className="pb-2.5 pr-3 text-right font-bold">Leads</th>
               <th className="pb-2.5 pr-3 text-right font-bold">Google sees</th>
@@ -242,7 +242,7 @@ export function VerdictBanner({ verdict }: { verdict: Verdict }) {
           {verdict.mode.replace("_", " ")}
         </span>
         <div>
-          <h2 className="text-[17px] font-bold tracking-tight">{verdict.headline}</h2>
+          <h2 className="text-[17px] font-semibold tracking-[-.015em]">{verdict.headline}</h2>
           <p className="mt-1 max-w-[72ch] text-[14.5px] text-[var(--muted)]">
             {verdict.reasoning}
           </p>
@@ -452,7 +452,7 @@ export function SourceEconomicsSection({
         <div className="overflow-x-auto">
           <table className="w-full min-w-[620px] text-left text-[13.5px]">
             <thead>
-              <tr className="bg-[var(--surface-sunken)] text-[10.5px] uppercase tracking-[.07em] text-[var(--muted)]">
+              <tr className="bg-[var(--surface-sunken)] text-[10.5px] uppercase tracking-[.08em] text-[var(--muted)]">
                 <th className="px-4 py-2.5 font-bold">Source</th>
                 <th className="px-4 py-2.5 text-right font-bold">Leads</th>
                 <th className="px-4 py-2.5 text-right font-bold">Won</th>

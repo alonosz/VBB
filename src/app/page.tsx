@@ -297,7 +297,7 @@ export default async function Home() {
           <div className="card mt-5 divide-y divide-[var(--border)] px-6 sm:px-7">
             {FAQ.map((item) => (
               <details key={item.q} className="group py-4">
-                <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-[15px] font-bold [&::-webkit-details-marker]:hidden">
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-[15px] font-semibold [&::-webkit-details-marker]:hidden">
                   <span>{item.q}</span>
                   <span
                     aria-hidden

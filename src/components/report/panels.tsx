@@ -581,7 +581,7 @@ export function ValueModelPanel({
                 <span className="text-[13.5px] font-bold text-[var(--primary-deep)]">
                   Highest value to send
                 </span>
-                <span className="mono text-[20px] font-extrabold tracking-tight text-[var(--primary-deep)]">
+                <span className="mono text-[20px] font-bold tracking-tight text-[var(--primary-deep)]">
                   {money(stack.finalValue, currency, 2)}
                 </span>
               </div>
@@ -717,7 +717,7 @@ export function WiringPanel({
           }
         >
           <p className="label">Match rate</p>
-          <p className="mono mt-1 text-[26px] font-extrabold leading-none tracking-tight">
+          <p className="mono mt-1 text-[26px] font-bold leading-none tracking-tight">
             {pct(match.overallRate)}
           </p>
           <p className="mt-1.5 max-w-[42ch] text-[13px] text-[var(--muted)]">
@@ -738,7 +738,7 @@ export function WiringPanel({
 
         <div className="card p-5">
           <p className="label">Volume</p>
-          <p className="mono mt-1 text-[26px] font-extrabold leading-none tracking-tight">
+          <p className="mono mt-1 text-[26px] font-bold leading-none tracking-tight">
             {volume.leadsPerMonth}
             <span className="text-[14px] font-semibold text-[var(--muted)]">/mo</span>
           </p>
@@ -1076,7 +1076,7 @@ export function ClippedOutliersSection({
         <div className="card overflow-hidden">
           <table className="w-full min-w-[480px] text-left text-[13px]">
             <thead>
-              <tr className="bg-[var(--surface-sunken)] text-[10.5px] uppercase tracking-[.07em] text-[var(--muted)]">
+              <tr className="bg-[var(--surface-sunken)] text-[10.5px] uppercase tracking-[.08em] text-[var(--muted)]">
                 <th className="px-4 py-2 font-bold">Deal</th>
                 <th className="px-4 py-2 font-bold">Closed for</th>
                 <th className="px-4 py-2 text-right font-bold">Counted as</th>
@@ -1171,7 +1171,7 @@ export function EarlyGateSection({
           <div className="grid gap-5 border-b border-[var(--border)] bg-[var(--primary-softer)] p-5 sm:grid-cols-[auto_1fr] sm:items-center sm:gap-8 sm:p-6">
             <div>
               <p className="label">Reaching this stage is worth</p>
-              <p className="mono mt-1.5 text-[2rem] leading-none font-extrabold tracking-tight text-[var(--primary-deep)]">
+              <p className="mono mt-1.5 text-[2rem] leading-none font-bold tracking-tight text-[var(--primary-deep)]">
                 ×{gate.multiplier}
               </p>
             </div>

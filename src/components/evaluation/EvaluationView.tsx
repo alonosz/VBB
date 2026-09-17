@@ -320,7 +320,7 @@ export function EvaluationView() {
           nobody reopens.
         */}
         <section className="card mt-4 p-5 sm:p-6">
-          <h2 className="text-[15px] font-bold">Is Google bidding on your values?</h2>
+          <h2 className="text-[15px] font-semibold">Is Google bidding on your values?</h2>
           <p className="mt-1 max-w-[70ch] text-[13px] text-[var(--muted)]">
             Sending values changes nothing on its own. A campaign set to
             Maximize conversions bids on how many leads arrive and ignores

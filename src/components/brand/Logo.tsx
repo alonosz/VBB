@@ -87,7 +87,7 @@ export function Logo({
     <span className={`flex items-center gap-2.5 ${className}`}>
       <LogoMark size={size} gradientId={gradientId} />
       <span
-        className="whitespace-nowrap font-extrabold tracking-[-.035em] text-[var(--brand-wordmark)]"
+        className="whitespace-nowrap font-bold tracking-[-.035em] text-[var(--brand-wordmark)]"
         style={{ fontSize: size * 0.56 }}
       >
         ValueBasedBidding

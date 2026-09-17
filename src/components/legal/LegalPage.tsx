@@ -68,7 +68,7 @@ export function LegalPage({
 export function Clause({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="mt-9 first:mt-0">
-      <h2 className="text-[17px] font-bold tracking-[-0.01em]">{title}</h2>
+      <h2 className="text-[17px] font-semibold tracking-[-.015em]">{title}</h2>
       <div className="mt-2.5 grid gap-3 text-[14.5px] leading-relaxed text-[var(--muted-strong)]">
         {children}
       </div>

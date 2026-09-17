@@ -795,7 +795,7 @@ function EvaluationHandoff({ unlocked }: { unlocked: boolean }) {
   return (
     <div className="mt-5 border-t border-[var(--border)] pt-5">
       <p className="label">{unlocked ? "From here on" : "After you send"}</p>
-      <h3 className="mt-1.5 text-[15px] font-bold">Check whether it worked</h3>
+      <h3 className="mt-1.5 text-[15px] font-semibold">Check whether it worked</h3>
       <p className="mt-1 max-w-[64ch] text-[13.5px] text-[var(--muted)]">
         Reads your CRM live and compares the leads Google buys now against the
         ones it bought before, with the leads that never came from Google as a

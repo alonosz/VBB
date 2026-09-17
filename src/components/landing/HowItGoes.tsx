@@ -112,7 +112,7 @@ export function HowItGoes() {
               </span>
               <div className="-mr-1 -mt-1">{s.glyph}</div>
             </div>
-            <p className="mt-4 text-[16px] font-bold">{s.title}</p>
+            <p className="mt-4 text-[16px] font-semibold tracking-[-.015em]">{s.title}</p>
             <p className="mt-1.5 text-[14px] leading-relaxed text-[var(--muted)]">{s.body}</p>
           </li>
         ))}
