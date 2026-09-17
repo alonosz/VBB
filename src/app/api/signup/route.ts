@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { workspaceRepositoryFromEnv } from "@/lib/workspace/env";
 import { callerIp } from "@/lib/workspace/callerIp";
 import { completeSignup } from "@/lib/workspace/signup";
+import { alertMailerFromEnv } from "@/lib/notify/signupAlert";
 
 /**
  * The signup, which is a name and an address on the workspace this browser
@@ -32,6 +33,7 @@ export async function POST(request: Request) {
     ip: callerIp(request),
     name: body.name,
     email: body.email,
+    mailer: alertMailerFromEnv(),
   });
   if (!result.ok) return NextResponse.json({ ok: false, error: result.error }, { status: result.status });
 

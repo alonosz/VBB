@@ -5,6 +5,7 @@ import { keyFromEnv } from "@/lib/sync/secrets";
 import { inviteStoreFromEnv, workspaceRepositoryFromEnv } from "@/lib/workspace/env";
 import { callerIp } from "@/lib/workspace/callerIp";
 import { fetchGoogleIdentity, readSignInState, signInWithGoogle } from "@/lib/auth/google";
+import { alertMailerFromEnv } from "@/lib/notify/signupAlert";
 
 /**
  * Back from Google with a code and the signed state. The code becomes an
@@ -45,7 +46,7 @@ export async function GET(request: Request) {
   const identity = await fetchGoogleIdentity(oauth, code, fetch);
   if (!identity) return failed("Google would not confirm who you are. Try again.", read.next);
 
-  const result = await signInWithGoogle({ workspaces, invites, identity, ip: callerIp(request) });
+  const result = await signInWithGoogle({ workspaces, invites, identity, ip: callerIp(request), mailer: alertMailerFromEnv() });
   if (!result.ok) return failed(result.error, read.next);
 
   const join = new URL(`${origin}/join`);

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { InMemoryWorkspaceRepository } from "./repository";
 import { cleanName, completeSignup, safeNext } from "./signup";
+import { InMemoryMailer } from "@/lib/notify/signupAlert";
 
 describe("signing up", () => {
   it("makes a workspace and puts the name and address on it", async () => {
@@ -59,5 +60,26 @@ describe("where to go next", () => {
     expect(safeNext("//evil.com")).toBe("/diagnostic");
     expect(safeNext("https://evil.com")).toBe("/diagnostic");
     expect(safeNext(null)).toBe("/diagnostic");
+  });
+});
+
+describe("telling the operator", () => {
+  it("sends one alert when a workspace first gets an address, and none when the form is resubmitted", async () => {
+    const repo = new InMemoryWorkspaceRepository();
+    const mailer = new InMemoryMailer();
+    const first = await completeSignup({ repo, presented: null, ip: null, name: "Dana Klein", email: "dana@x.com", mailer });
+    if (!first.ok) throw new Error("setup");
+    expect(mailer.sent).toHaveLength(1);
+    expect(mailer.sent[0].subject).toBe("New signup: Dana Klein <dana@x.com>");
+    expect(mailer.sent[0].text).toContain(first.workspace.id);
+
+    await completeSignup({ repo, presented: first.mintedKey, ip: null, name: "Dana K", email: "dana@x.com", mailer });
+    expect(mailer.sent).toHaveLength(1);
+  });
+
+  it("signs up fine when the alert cannot be sent", async () => {
+    const repo = new InMemoryWorkspaceRepository();
+    const r = await completeSignup({ repo, presented: null, ip: null, name: "Dana", email: "d@x.com", mailer: new InMemoryMailer(true) });
+    expect(r.ok).toBe(true);
   });
 });

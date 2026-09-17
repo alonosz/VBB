@@ -1,6 +1,7 @@
 import { looksLikeEmail, normalizeEmail } from "@/lib/leads/leads";
 import { authorizeOrCreateWorkspace } from "./selfServe";
 import type { Workspace, WorkspaceRepository } from "./repository";
+import { notifySignup, type Mailer } from "@/lib/notify/signupAlert";
 
 /**
  * Signing up, which here means putting a name and an address on a workspace.
@@ -35,6 +36,9 @@ export async function completeSignup(opts: {
   ip: string | null;
   name: unknown;
   email: unknown;
+  /** Where the operator hears about it. Null or absent means nobody does. */
+  mailer?: Mailer | null;
+  now?: Date;
 }): Promise<SignupResult> {
   const name = cleanName(opts.name);
   if (!name) return { ok: false, status: 400, error: "Tell us your name." };
@@ -46,8 +50,16 @@ export async function completeSignup(opts: {
   const auth = await authorizeOrCreateWorkspace({ repo: opts.repo, presented: opts.presented, ip: opts.ip });
   if (!auth.ok) return { ok: false, status: auth.status, error: auth.error };
 
+  // A workspace gaining its first address is a signup. The same browser
+  // resubmitting the form, or correcting the address, is not a second one.
+  const firstTime = auth.workspace.contactEmail === null;
+
   await opts.repo.setContactEmail(auth.workspace.id, email);
   await opts.repo.setName(auth.workspace.id, name);
+
+  if (firstTime) {
+    await notifySignup(opts.mailer, { name, email, workspaceId: auth.workspace.id, via: "email", at: opts.now ?? new Date() });
+  }
 
   return {
     ok: true,

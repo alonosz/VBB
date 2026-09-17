@@ -6,6 +6,7 @@ import { hashCreator } from "@/lib/workspace/selfServe";
 import { looksLikeEmail, normalizeEmail } from "@/lib/leads/leads";
 import { cleanName, safeNext } from "@/lib/workspace/signup";
 import type { WorkspaceRepository } from "@/lib/workspace/repository";
+import { notifySignup, type Mailer } from "@/lib/notify/signupAlert";
 
 /**
  * Signing in with Google.
@@ -117,6 +118,8 @@ export async function signInWithGoogle(opts: {
   invites: InviteStore;
   identity: GoogleIdentity;
   ip: string | null;
+  /** Where the operator hears about a new one. Null or absent means nobody does. */
+  mailer?: Mailer | null;
   now?: Date;
 }): Promise<SignInResult> {
   const { identity } = opts;
@@ -141,6 +144,7 @@ export async function signInWithGoogle(opts: {
     });
     await opts.workspaces.setContactEmail(workspace.id, email);
     created = true;
+    await notifySignup(opts.mailer, { name: workspace.name, email, workspaceId: workspace.id, via: "google", at: now });
   }
 
   const invite = await generateInviteToken();

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { InMemoryWorkspaceRepository } from "@/lib/workspace/repository";
 import { InMemoryInviteStore, hashInviteToken } from "@/lib/workspace/invite";
+import { InMemoryMailer } from "@/lib/notify/signupAlert";
 import { SIGN_IN_SCOPES, fetchGoogleIdentity, readSignInState, signInState, signInUrl, signInWithGoogle } from "./google";
 
 const KEY = Buffer.from("k".repeat(32));
@@ -87,5 +88,23 @@ describe("signing in", () => {
     if (!r.ok) throw new Error("setup");
     const later = new Date(NOW.getTime() + 11 * 60_000);
     expect(await invites.redeem(await hashInviteToken(r.inviteToken), later)).toBeNull();
+  });
+});
+
+describe("telling the operator about a Google signup", () => {
+  const identity = { sub: "123", email: "Dana@Example.com", emailVerified: true, name: "Dana Klein" };
+
+  it("alerts once for a new address and not for a return visit", async () => {
+    const workspaces = new InMemoryWorkspaceRepository();
+    const invites = new InMemoryInviteStore();
+    const mailer = new InMemoryMailer();
+    const first = await signInWithGoogle({ workspaces, invites, identity, ip: null, mailer });
+    expect(first.ok && first.created).toBe(true);
+    expect(mailer.sent).toHaveLength(1);
+    expect(mailer.sent[0].subject).toBe("New signup: Dana Klein <dana@example.com>");
+    expect(mailer.sent[0].text).toContain("Sign up with Google");
+
+    await signInWithGoogle({ workspaces, invites, identity, ip: null, mailer });
+    expect(mailer.sent).toHaveLength(1);
   });
 });

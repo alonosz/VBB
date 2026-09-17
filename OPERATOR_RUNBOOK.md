@@ -185,6 +185,14 @@ Permanent - publishing a new feed means reconfiguring Google Ads.
 
 Use when a pilot ends or a URL is believed compromised.
 
+### Hear about a signup
+
+With `RESEND_API_KEY` and `VBB_ALERT_EMAIL` set, every signup, through the
+form or with Google, sends one email to that address with the name, the
+address, the workspace id and a link to `/admin`. A workspace correcting its
+address is not a second signup. A send that fails is noted in the function
+log and the signup goes through regardless.
+
 ### Add or suspend a customer
 
 `<your-domain>/admin`, signed in with your admin password. Adding shows the new
