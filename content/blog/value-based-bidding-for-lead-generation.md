@@ -4,7 +4,7 @@ date: 2026-09-15
 author: Alon Oszmann
 kind: Guide
 featured: true
-coverAlt: Illustration of a robot among screens of lead rankings and charts, with a few leads lit gold in a crowd of grey ones
+coverAlt: A figure on a mountain ridge with streams of light converging on them from a valley of glowing points
 ---
 
 *A lower cost per lead looks good in a report. It means much less if those leads never become customers.*
