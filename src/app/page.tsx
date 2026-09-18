@@ -5,6 +5,7 @@ import { SiteFooter } from "@/components/legal/SiteFooter";
 import { WorkspaceReadyBar } from "@/components/workspace/WorkspaceReadyBar";
 import { AccountLink } from "@/components/workspace/AccountLink";
 import { PostCard } from "@/components/blog/PostCard";
+import { PostRail } from "@/components/blog/PostRail";
 import { HowItGoes } from "@/components/landing/HowItGoes";
 import { listPosts } from "@/lib/blog/posts";
 
@@ -93,7 +94,8 @@ const TRUST = [
 
 export default async function Home() {
   // The three newest. Read at build time, like the blog itself.
-  const posts = (await listPosts()).slice(0, 3);
+  // Every post. The rail shows three at a time and the rest scroll in.
+  const posts = await listPosts();
 
   return (
     <div className="animate-page-in flex min-h-screen flex-col">
@@ -304,13 +306,11 @@ export default async function Home() {
                 All articles
               </Link>
             </div>
-            <ul className="mt-5 grid gap-4 md:grid-cols-3">
+            <PostRail>
               {posts.map((post) => (
-                <li key={post.slug}>
-                  <PostCard post={post} heading="h3" sizes="(min-width: 768px) 33vw, 100vw" />
-                </li>
+                <PostCard key={post.slug} post={post} heading="h3" sizes="(min-width: 768px) 33vw, 84vw" />
               ))}
-            </ul>
+            </PostRail>
           </section>
         )}
 

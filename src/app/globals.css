@@ -586,6 +586,15 @@ body {
     font-family: var(--font-instrument-sans), ui-sans-serif, system-ui, sans-serif;
   }
 
+  /* A sideways row of cards. The scrollbar is hidden because the arrows and
+     the card peeking in at the edge already say it scrolls. */
+  .rail {
+    scrollbar-width: none;
+  }
+  .rail::-webkit-scrollbar {
+    display: none;
+  }
+
   /* Any wide content scrolls inside its own box; the page never does. */
   .scroll-x {
     overflow-x: auto;
