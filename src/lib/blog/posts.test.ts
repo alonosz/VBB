@@ -51,7 +51,9 @@ describe("the index", () => {
     const posts = await listPosts();
     expect(posts.length).toBeGreaterThan(0);
     expect(posts[0]).not.toHaveProperty("body");
-    const dates = posts.map((p) => p.date);
+    // A featured post is pinned ahead of the date order on purpose; the
+    // rest must still run newest first.
+    const dates = posts.filter((p) => !p.featured).map((p) => p.date);
     expect([...dates].sort((a, b) => b.localeCompare(a))).toEqual(dates);
   });
 
