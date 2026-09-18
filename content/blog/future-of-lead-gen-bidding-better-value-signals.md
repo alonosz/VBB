@@ -3,7 +3,7 @@ description: Why the next improvement may come from what you tell the algorithm,
 date: 2026-09-15
 author: Alon Oszmann
 kind: Perspective
-coverAlt: A crowd of glass lead cards, a few lit blue and violet, one picked out by a spotlight from above
+coverAlt: Illustration of CRM data flowing into an automated bidder that lights up the high-value people in a crowd
 ---
 
 *Why the next improvement may come from what you tell the algorithm, not from a more complicated prediction model.*

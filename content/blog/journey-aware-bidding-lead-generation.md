@@ -3,7 +3,7 @@ description: Google's Journey-Aware Bidding learns from the stages between a for
 date: 2026-09-18
 author: Alon Oszmann
 kind: Perspective
-coverAlt: Streams of light carrying leads from a form through a series of gates towards a single bright point
+coverAlt: Illustration of a customer journey as branching roads from a form fill, with some leads reaching gold coins and others disqualified
 ---
 
 *Google's new beta models how likely a lead is to progress. It does not decide what the lead is worth. Both still matter, and they are different jobs.*

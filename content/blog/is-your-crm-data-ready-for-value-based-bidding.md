@@ -3,7 +3,7 @@ description: Five checks before you turn your sales history into Google Ads conv
 date: 2026-09-15
 author: Alon Oszmann
 kind: Checklist
-coverAlt: A grid of glass lead cards, a few lit blue and violet, with their signal drawn into one beam entering a dark receiver
+coverAlt: Illustration of messy CRM records being sorted through dashboards and a funnel into a clean stream of values for Google
 ---
 
 *Five checks before you turn your sales history into Google Ads conversion values.*
