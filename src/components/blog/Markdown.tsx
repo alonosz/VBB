@@ -248,8 +248,29 @@ function block(token: Token, key: string, id?: string): ReactNode {
   }
 }
 
-export function Markdown({ source }: { source: string }) {
+/**
+ * Where the mid-article aside goes: just before the middle top-level heading,
+ * so it sits between sections and never splits a paragraph or a list. An
+ * article with fewer than three sections has no middle worth interrupting.
+ */
+export function midpointIndex(tokens: Token[]): number | null {
+  const tops = headings(tokens).filter((h) => h.level === 2);
+  if (tops.length < 3) return null;
+  return tops[Math.floor(tops.length / 2)].index;
+}
+
+export function Markdown({ source, aside }: { source: string; aside?: ReactNode }) {
   const tokens = marked.lexer(source);
   const ids = new Map(headings(tokens).map((h) => [h.index, h.id]));
-  return <>{tokens.map((token, i) => block(token, `b${i}`, ids.get(i)))}</>;
+  const at = aside ? midpointIndex(tokens) : null;
+  return (
+    <>
+      {tokens.map((token, i) => (
+        <Fragment key={`b${i}`}>
+          {i === at && aside}
+          {block(token, `b${i}`, ids.get(i))}
+        </Fragment>
+      ))}
+    </>
+  );
 }

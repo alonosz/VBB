@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { BlogShell } from "@/components/blog/BlogShell";
 import { Markdown, outline } from "@/components/blog/Markdown";
+import { MidCta } from "@/components/blog/MidCta";
 import { Byline, MetaRow } from "@/components/blog/Meta";
 import { PostVisual } from "@/components/blog/PostVisual";
 import { listPosts, readPost, type PostMeta } from "@/lib/blog/posts";
@@ -111,7 +112,7 @@ export default async function BlogPost({ params }: { params: Promise<{ slug: str
             />
 
             <div className="mt-9">
-              <Markdown source={post.body} />
+              <Markdown source={post.body} aside={<MidCta />} />
             </div>
           </article>
 
