@@ -2,8 +2,8 @@ import Link from "next/link";
 import { ArrowIcon } from "@/components/ArrowIcon";
 import { Logo } from "@/components/brand/Logo";
 import { SiteFooter } from "@/components/legal/SiteFooter";
-import { WorkspaceReadyBar } from "@/components/workspace/WorkspaceReadyBar";
 import { AccountLink } from "@/components/workspace/AccountLink";
+import { AccountChip } from "@/components/workspace/AccountChip";
 import { PostCard } from "@/components/blog/PostCard";
 import { PostRail } from "@/components/blog/PostRail";
 import { HowItGoes } from "@/components/landing/HowItGoes";
@@ -104,18 +104,13 @@ export default async function Home() {
         <Logo size={34} showDotCom className="max-sm:hidden" />
         <Logo size={27} showDotCom className="sm:hidden" gradientId="vbb-mark-gradient-sm" />
         <div className="flex shrink-0 items-center gap-3 sm:gap-4">
+          <AccountChip />
           <AccountLink className="whitespace-nowrap text-[13.5px] font-semibold text-[var(--muted)] hover:text-[var(--foreground)]" />
           <Link href="/diagnostic" className="btn btn-secondary btn-sm">
             Start
           </Link>
         </div>
       </header>
-
-      {/*
-        Only rendered for somebody who arrived on an invite. Everyone else sees
-        the page exactly as it was.
-      */}
-      <WorkspaceReadyBar />
 
       <main className="flex-1">
         {/* ---------------------------------------------------------------- */}
