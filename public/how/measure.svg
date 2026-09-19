@@ -1,0 +1,41 @@
+<svg width="240" height="120" viewBox="0 0 240 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <title>Measure lead value</title>
+  <desc>CRM records become differentiated conversion value signals.</desc>
+  <defs>
+    <linearGradient id="measure-blue" x1="153" y1="25" x2="213" y2="96" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#6681FF"/>
+      <stop offset="1" stop-color="#2A47F5"/>
+    </linearGradient>
+    <linearGradient id="measure-card" x1="31" y1="22" x2="102" y2="99" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#F4F6FF"/>
+    </linearGradient>
+    <filter id="measure-shadow" x="17" y="14" width="104" height="100" filterUnits="userSpaceOnUse">
+      <feDropShadow dx="0" dy="5" stdDeviation="7" flood-color="#2A47F5" flood-opacity="0.12"/>
+    </filter>
+  </defs>
+
+  <circle cx="188" cy="59" r="43" fill="#F4F6FF"/>
+  <circle cx="188" cy="59" r="33" stroke="#DFE5FF" stroke-dasharray="3 6"/>
+
+  <g filter="url(#measure-shadow)">
+    <rect x="31" y="25" width="72" height="68" rx="15" fill="url(#measure-card)" stroke="#CBD3E3" stroke-width="2"/>
+  </g>
+  <rect x="43" y="38" width="14" height="14" rx="5" fill="#E8ECFF"/>
+  <path d="M47 45.1L50.1 48L54.2 42.5" stroke="#3155F5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M64 41H90" stroke="#A9B4C7" stroke-width="2.5" stroke-linecap="round"/>
+  <path d="M43 62H89" stroke="#C3CBDA" stroke-width="2.5" stroke-linecap="round"/>
+  <path d="M43 73H78" stroke="#C3CBDA" stroke-width="2.5" stroke-linecap="round"/>
+
+  <path d="M112 59H143" stroke="#667085" stroke-width="2.5" stroke-linecap="round"/>
+  <path d="M136 51L144 59L136 67" stroke="#667085" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="119" cy="59" r="3" fill="#3155F5"/>
+
+  <rect x="157" y="65" width="11" height="25" rx="4" fill="url(#measure-blue)" opacity="0.68"/>
+  <rect x="175" y="50" width="11" height="40" rx="4" fill="url(#measure-blue)" opacity="0.8"/>
+  <rect x="193" y="31" width="11" height="59" rx="4" fill="url(#measure-blue)"/>
+  <rect x="211" y="43" width="11" height="47" rx="4" fill="url(#measure-blue)" opacity="0.9"/>
+  <path d="M152 90H226" stroke="#BAC4D6" stroke-width="2" stroke-linecap="round"/>
+  <circle cx="198.5" cy="25.5" r="5.5" fill="#2A47F5"/>
+  <path d="M196.5 25.5L198 27L201 23.5" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
